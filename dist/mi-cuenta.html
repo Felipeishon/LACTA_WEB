@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Cuenta - LactaNido</title>
+  <link rel="icon" type="image/png" href="/assets/logo_trans-qpLd1ehy.png" />
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?display=swap&family=Lexend:wght@400;500;700;900&family=Noto+Sans:wght@400;500;700;900" />
+  <style>
+    /* Custom Animations & Glassmorphism */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    .slide-up {
+      animation: slideUp 0.5s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Base fonts */
+    body {
+      font-family: 'Lexend', 'Noto Sans', sans-serif;
+      background-color: #fbf9f8;
+      /* Subtle animated gradient background */
+      background: linear-gradient(-45deg, #fbf9f8, #f4eade, #f0e6e6, #e8ede3);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+
+    @keyframes gradientBG {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/miCuenta-B9z4Wape.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/formularios-Dd8wk6Te.js">
+  <link rel="stylesheet" crossorigin href="/assets/formularios-VqBeCJ1J.css">
+</head>
+
+<body class="min-h-screen text-[#181411] flex overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside
+    class="w-64 glass-panel border-r border-[#e5dfdc] flex flex-col justify-between hidden md:flex h-screen relative z-10">
+    <div class="p-6">
+      <a href="index.html"
+        class="flex items-center gap-3 text-[#e87a30] hover:scale-105 transition-transform duration-300">
+        <img src="/assets/logo_trans-qpLd1ehy.png" alt="LactaNido Logo" class="size-10 object-contain">
+        <span class="text-xl font-black text-[#181411]">LactaNido</span>
+      </a>
+
+      <nav id="sidebar-nav" class="mt-10 flex flex-col gap-2">
+        <!-- Dinámico basado en rol -->
+      </nav>
+    </div>
+
+    <div class="p-6 border-t border-[#e5dfdc]/50">
+      <div class="flex items-center gap-3 mb-4">
+        <div
+          class="w-10 h-10 rounded-full bg-gradient-to-tr from-[#e87a30] to-[#f4c28e] flex items-center justify-center text-white font-bold text-lg shadow-md">
+          <span id="user-initial">-</span>
+        </div>
+        <div>
+          <p id="user-name" class="font-bold text-sm">Cargando...</p>
+          <p id="user-role-label" class="text-xs text-[#887263] capitalize">...</p>
+        </div>
+      </div>
+      <a href="#" id="btnCerrarSesion"
+        class="flex items-center gap-2 text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium w-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256">
+          <path
+            d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H104a8,8,0,0,0,0,16H204.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z">
+          </path>
+        </svg>
+        Cerrar Sesión
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col h-screen overflow-y-auto relative z-0">
+
+    <!-- Top Bar -->
+    <header
+      class="glass-panel sticky top-0 z-20 border-b border-[#e5dfdc]/50 px-6 py-4 flex items-center justify-between">
+      <div class="md:hidden flex items-center gap-3">
+        <img src="/assets/logo_trans-qpLd1ehy.png" alt="LactaNido Logo" class="size-6 object-contain">
+        <span class="font-bold">Mi Cuenta</span>
+      </div>
+    </header>
+
+    <!-- Dashboard Body -->
+    <div class="p-4 md:p-8 flex-1 w-full max-w-6xl mx-auto space-y-6" id="dashboard-content">
+      <div class="flex flex-col items-center justify-center h-64 text-gray-400">
+        <div class="w-12 h-12 border-4 border-[#e87a30] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="animate-pulse font-medium">Preparando tu panel personalizado...</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL AGENDAR CITA (Ahora dentro de Mi Cuenta) -->
+  <dialog id="modalAgendarCita" class="bg-transparent p-0 m-auto w-full max-w-lg outline-none">
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl overflow-y-auto max-h-[90vh]">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <h2 class="text-xl font-bold mb-4 text-[#181411]">Agendar Nueva Cita</h2>
+      <form id="reservaForm" class="flex flex-col gap-4" autocomplete="off">
+        <label class="text-[#181411] font-medium text-sm">Fecha:
+          <div class="flex items-center">
+            <input type="date" name="fecha" id="fecha" required
+              class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+            <button type="button" id="btnAbrirModalCalendario" class="ml-2 p-2 bg-gray-200 rounded hover:bg-gray-300">
+              📅
+            </button>
+          </div>
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Hora:
+          <input type="time" name="hora" id="hora" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Servicio:
+          <select name="servicio" id="servicio" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]">
+            <option value="">Selecciona...</option>
+            <option value="Cuidador">Cuidador 24/7</option>
+            <option value="Consultor">Consultoría Lactancia</option>
+          </select>
+        </label>
+        <label class="text-[#181411] font-medium text-sm hidden" id="labelProfesional">Profesional:
+          <select name="profesionalId" id="profesional" disabled required class="w-full mt-1 p-2 rounded border border-[#e5dfdc] bg-gray-50">
+            <option value="">Selecciona profesional...</option>
+          </select>
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Duración Estimada (Horas):
+          <input type="number" name="duracion" id="duracion" min="1" max="24" required
+            class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+        </label>
+        <span id="avisoHorario" class="text-xs text-[#e87a30]"></span>
+        <span id="avisoReserva" class="text-xs text-red-600"></span>
+        <button type="submit"
+          class="bg-[#e87a30] text-white font-bold rounded-full py-2 mt-2 hover:bg-[#d66a20] transition-colors">Confirmar
+          Reserva</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- MODAL CALENDARIO -->
+  <dialog id="modalCalendario" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <div id="calendarioContainer"></div>
+    </div>
+  </dialog>
+
+  <!-- MODAL PERFIL BEBÉ -->
+  <dialog id="modalPerfilBebe" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl text-center">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <div class="w-20 h-20 bg-[#f4eade] rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-inner">
+        👶
+      </div>
+      <h2 class="text-2xl font-bold text-[#181411]">Perfil de Nido</h2>
+      <p class="text-gray-500 mb-6 text-sm">Información compartida con tus cuidadores</p>
+      
+      <div class="bg-gray-50 rounded-lg p-4 text-left border border-gray-100 mb-6">
+        <h3 class="font-bold text-[#e87a30] mb-2 text-sm uppercase tracking-wider">Datos del Bebé</h3>
+        <p class="text-sm"><strong>RUT:</strong> <span class="text-gray-600">Registrado y Seguro</span></p>
+        <p class="text-sm mt-1 text-gray-500 italic">Próximamente: Historial clínico, alergias y notas de las cuidadoras 24/7.</p>
+      </div>
+
+      <div class="bg-blue-50 rounded-lg p-4 text-left border border-blue-100">
+        <h3 class="font-bold text-blue-800 mb-2 text-sm uppercase tracking-wider">Cuidadores (Padres)</h3>
+        <p class="text-sm text-blue-900 flex items-center gap-2 mb-2">👨‍👩‍👧 <span class="font-medium">Nido activo y vinculado</span></p>
+        <div class="cuidadores-lista border-t border-blue-200 pt-2 mt-2">
+          <!-- Los nombres de los padres se cargarán aquí dinámicamente -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL FICHA DE CUIDADO -->
+  <dialog id="modalFichaCuidado" class="bg-transparent p-0 m-auto w-full max-w-xl outline-none">
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl overflow-y-auto max-h-[90vh]">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <h2 class="text-xl font-bold mb-2 text-[#181411]">Registrar Ficha de Cuidado</h2>
+      <p class="text-xs text-gray-500 mb-4">Completa el reporte diario de atención del bebé.</p>
+      
+      <form id="fichaCuidadoForm" class="flex flex-col gap-4">
+        <input type="hidden" name="reservaId" id="ficha-reservaId" />
+        <input type="hidden" name="nidoId" id="ficha-nidoId" />
+        
+        <div class="grid grid-cols-2 gap-4">
+          <label class="text-[#181411] font-medium text-xs">Fecha:
+            <input type="date" name="fecha" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc] text-sm" />
+          </label>
+          <label class="text-[#181411] font-medium text-xs">Horas de Cuidado:
+            <input type="number" name="horasEfectivas" min="1" max="24" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc] text-sm" />
+          </label>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4">
+          <h3 class="font-bold text-sm text-[#e87a30] mb-3">Actividades del Bebé</h3>
+          
+          <div class="flex flex-col gap-3">
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <span class="text-xs font-bold text-[#181411]">🍼 Alimentación</span>
+              <div class="grid grid-cols-2 gap-3 mt-2">
+                <select name="tipoAlimentacion" class="p-2 border border-[#e5dfdc] rounded text-xs bg-white">
+                  <option value="Materna Directa">Lactancia Directa</option>
+                  <option value="Fórmula">Fórmula</option>
+                  <option value="Mixta">Mixta</option>
+                  <option value="Ninguna">Ninguna en el turno</option>
+                </select>
+                <input type="number" name="cantidadOz" placeholder="Cantidad (Oz)" min="0" class="p-2 border border-[#e5dfdc] rounded text-xs" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <span class="text-xs font-bold text-[#181411]">😴 Horas de Sueño</span>
+                <input type="number" step="0.5" name="horasSueno" placeholder="Horas aproximadas" min="0" class="w-full mt-2 p-2 border border-[#e5dfdc] rounded text-xs" />
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <span class="text-xs font-bold text-[#181411]">🧷 Pañales Sucios</span>
+                <input type="number" name="cantidadPanales" placeholder="Cantidad" min="0" class="w-full mt-2 p-2 border border-[#e5dfdc] rounded text-xs" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4 flex flex-col gap-3">
+          <label class="text-[#181411] font-medium text-xs">Observaciones Generales:
+            <textarea name="observaciones" rows="2" placeholder="Estado del bebé, ánimo, etc." class="w-full mt-1 p-2 rounded border border-[#e5dfdc] text-sm"></textarea>
+          </label>
+          <label class="text-[#181411] font-medium text-xs">Recomendaciones para Padres:
+            <textarea name="recomendaciones" rows="2" placeholder="Consejos de lactancia, rutinas, etc." class="w-full mt-1 p-2 rounded border border-[#e5dfdc] text-sm"></textarea>
+          </label>
+          <label class="text-[#181411] font-medium text-xs">Indicaciones de Seguimiento:
+            <input type="text" name="seguimiento" placeholder="Ej. Control de peso el próximo martes" class="w-full mt-1 p-2 rounded border border-[#e5dfdc] text-sm" />
+          </label>
+        </div>
+
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2.5 mt-2 hover:bg-[#d66a20] transition-colors text-sm">
+          Guardar y Enviar Bitácora
+        </button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- MODAL CARRITO DE COMPRAS -->
+  <dialog id="modalCarrito" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
+    <div class="bg-white rounded-lg p-6 w-full relative shadow-xl flex flex-col max-h-[90vh]">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <h2 class="text-xl font-bold mb-4 text-[#181411] flex items-center gap-2">🛒 Carrito de Compras</h2>
+      
+      <div id="carrito-items" class="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[150px] max-h-[40vh]">
+        <!-- Items se inyectan dinámicamente -->
+        <p class="text-gray-400 text-center py-8 text-sm italic">Tu carrito está vacío.</p>
+      </div>
+
+      <div class="border-t border-gray-100 pt-4 mt-4 space-y-3">
+        <div class="flex justify-between font-bold text-lg text-[#181411]">
+          <span>Total:</span>
+          <span id="carrito-total">$0</span>
+        </div>
+        
+        <form id="checkoutForm" class="flex flex-col gap-2 pt-2">
+          <label class="block text-xs font-bold text-[#181411]">Dirección de Despacho
+            <input type="text" id="cart-direccion" required placeholder="Ej. Av. Providencia 1234, Dpto 502" class="w-full mt-1 p-2 border border-[#e5dfdc] rounded text-xs" />
+          </label>
+          <label class="block text-xs font-bold text-[#181411]">Teléfono de Contacto
+            <input type="tel" id="cart-telefono" required placeholder="Ej. +56912345678" class="w-full mt-1 p-2 border border-[#e5dfdc] rounded text-xs" />
+          </label>
+          <button type="submit" id="btnConfirmarPedido" class="w-full bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-2.5 rounded-full text-sm mt-2 transition-all">
+            Confirmar Pedido y Pagar 💳
+          </button>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
+</body>
+
+</html>

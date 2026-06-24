@@ -1,318 +1,623 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="LactaNido: Consultoría experta en lactancia y servicios de cuidadores 24/7 para el cuidado del bebé y apoyo a la paternidad." />
-    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
-    <link rel="stylesheet" href="styles.css" />
-    <link
-      rel="stylesheet"
-      as="style"
-      onload="this.rel='stylesheet'"
-      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Lexend%3Awght%40400%3B500%3B700%3B900&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900"
-    />
-    <title>LactaNido</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  </head>
-  <body class="bg-white min-h-screen flex flex-col" style='font-family: Lexend, "Noto Sans", sans-serif;'>
-    <div class="flex flex-col min-h-screen">
-      <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f4f2f0] px-4 md:px-10 py-3 w-full">
-        <div class="flex items-center gap-4 text-[#181411]">
-          <div class="size-4">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="LactaNido: Consultoría experta en lactancia y servicios de cuidadores 24/7 para el cuidado del bebé y apoyo a la paternidad." />
+
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+
+  <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
+  <link rel="stylesheet" as="style" onload="this.rel='stylesheet'"
+    href="https://fonts.googleapis.com/css2?display=swap&family=Lexend%3Awght%40400%3B500%3B700%3B900&family=Noto+Sans%3Awght%40400%3B500%3B700%3B900" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+
+  <title>LactaNido | Tu nido seguro</title>
+  <meta property="og:title" content="LactaNido - Cuidado Experto y Empático" />
+  <meta property="og:description"
+    content="Tú cuidas de él, nosotros cuidamos de ti. Consultoría en lactancia y cuidadores 24/7." />
+  <meta property="og:image"
+    content="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=1200&q=80" />
+  <link rel="icon" href="/logo/logo_trans.png" type="image/png">
+
+  <script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
+</head>
+
+<body class="bg-[#fdf5f0] min-h-screen flex flex-col text-[#181411]"
+  style='font-family: Lexend, "Noto Sans", sans-serif;'>
+  <div class="flex flex-col min-h-screen">
+
+    <header
+      class="sticky top-0 left-0 w-full z-50 bg-[#efe6df] shadow-sm flex items-center justify-between border-b border-solid border-b-[#e5dfdc] px-4 md:px-10 py-3 transition-all">
+
+      <div class="flex flex-1 justify-start">
+        <a href="#" aria-label="Volver al inicio"
+          class="flex items-center gap-4 transition-transform duration-300 hover:scale-105">
+          <img src="/logo/logo_trans.png" alt="LactaNido Logo" class="size-33 object-contain"
+            onerror="this.src='https://via.placeholder.com/150x50?text=Logo+Aqui'">
+        </a>
+      </div>
+
+      <nav class="hidden md:flex flex-1 justify-center gap-9" aria-label="Navegación principal">
+        <a class="text-[#181411] text-sm font-bold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#servicios">Servicios</a>
+        <a class="text-[#181411] text-sm font-bold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#tienda">Tienda</a>
+        <a class="text-[#181411] text-sm font-bold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#testimonios">Testimonios</a>
+        <a class="text-[#181411] text-sm font-bold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#contacto">Contacto</a>
+      </nav>
+
+      <div class="flex flex-1 justify-end items-center gap-3 lg:gap-4">
+
+        <div class="hidden lg:flex items-center gap-4 pr-3 border-r border-[#887263]/30">
+          <a href="https://wa.me/56912345678" target="_blank" rel="noopener" aria-label="WhatsApp"
+            class="text-[#887263] hover:text-[#25D366] transition-transform hover:scale-110">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path
-                d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z"
-                fill="currentColor"
-              ></path>
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
             </svg>
-          </div>
-          <h1 class="text-[#181411] text-lg font-bold leading-tight tracking-[-0.015em]">LactaNido</h1>
+          </a>
+          <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"
+            class="text-[#887263] hover:text-[#E1306C] transition-transform hover:scale-110">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.974.974 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.974.974-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.974-.974-1.246-2.242-1.308-3.608C2.175 15.647 2.163 15.267 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.515 2.567 5.783 2.295 7.15 2.233 8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.072 5.771.13 4.659.388 3.678 1.37c-.98.98-1.238 2.092-1.297 3.373C2.013 8.332 2 8.741 2 12c0 3.259.013 3.668.072 4.948.059 1.281.317 2.393 1.297 3.373.98.98 2.092 1.238 3.373 1.297C8.332 23.987 8.741 24 12 24s3.668-.013 4.948-.072c1.281-.059 2.393-.317 3.373-1.297.98-.98 1.238-2.092 1.297-3.373.059-1.28.072-1.689.072-4.948 0-3.259-.013-3.668-.072-4.948-.059-1.281-.317-2.393-1.297-3.373-.98-.98-2.092-1.238-3.373-1.297C15.668.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a3.999 3.999 0 1 1 0-7.998 3.999 3.999 0 0 1 0 7.998zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" />
+            </svg>
+          </a>
+          <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook"
+            class="text-[#887263] hover:text-[#1877F2] transition-transform hover:scale-110">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M22 12c0-5.522-4.477-10-10-10S2 6.478 2 12c0 4.991 3.657 9.128 8.438 9.877v-6.987h-2.54v-2.89h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.242 0-1.632.771-1.632 1.562v1.875h2.773l-.443 2.89h-2.33v6.987C18.343 21.128 22 16.991 22 12" />
+            </svg>
+          </a>
         </div>
-        <nav class="flex flex-1 justify-end gap-4 md:gap-8" aria-label="Navegación principal">
-          <div class="hidden md:flex items-center gap-9">
-            <a class="text-[#181411] text-sm font-medium leading-normal" href="#">Servicios</a>
-            <a class="text-[#181411] text-sm font-medium leading-normal" href="#">Reservas</a>
-            <a class="text-[#181411] text-sm font-medium leading-normal" href="#">Tienda</a>
-            <a class="text-[#181411] text-sm font-medium leading-normal" href="#">Sobre Nosotros</a>
-            <a class="text-[#181411] text-sm font-medium leading-normal" href="#">Contacto</a>
-          </div>
-          <button
-            class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em]"
-            onclick="document.getElementById('modalRegistroPadre').classList.remove('hidden')"
-            aria-label="Abrir registro de padres"
-          >
-            <span class="truncate">Registrarse</span>
-          </button>
-          <button
-            class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#887263] text-white text-sm font-bold leading-normal tracking-[0.015em]"
-            onclick="document.getElementById('modalRegistroPrestador').classList.remove('hidden')"
-            aria-label="Abrir registro de consejeras o cuidadoras"
-          >
-            <span class="truncate">¿Eres Consejera/Cuidadora?</span>
-          </button>
-        </nav>
-      </header>
-      <main class="flex-1 flex justify-center items-start w-full">
-        <div class="w-full max-w-5xl mx-auto px-2 md:px-8 flex flex-col items-center">
-          <!-- Hero Section -->
-          <section class="w-full @container mt-6" aria-label="Bienvenida">
-            <div class="@[480px]:p-4">
-              <div
-                class="flex min-h-[320px] md:min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-xl items-center justify-center p-4"
-                style='background-image: linear-gradient(rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCGgkgV_vS9GftDYus6cQmdxdjjaeOp4LjbZfPAdnb5PpzYopw3S0kXYzYpU0tE_Ap0hRexUyzHG59Bj-4fTWM6OIJcluTAt2pjKM6rrkFKduQNwjdIPUNGK6HsUTQkxJDfK1RReW7PksS2Px-BvR8M4-q27L2dYkUOY09ebUuDbuSH96teFi7xgPE7yfjIG-EnU_dk8QYlot-dItDiK1gUzbhIV9eZt9pRK6qzAQfbpwnMCvQjKX4Scs1BlL2BQeWFT0Cp6li4oRk");'
-              >
-                <div class="flex flex-col gap-2 text-center">
-                  <h2
-                    class="text-white text-2xl md:text-4xl font-black leading-tight tracking-[-0.033em]"
-                  >
-                    Bienvenido a LactaNido
-                  </h2>
-                  <p class="text-white text-sm font-normal leading-normal md:text-base">
-                    Tu socio de confianza en el cuidado del bebé y el apoyo a la lactancia. Ofrecemos consultoría experta en lactancia y servicios de cuidadores 24/7 para ayudarte a navegar por las alegrías y los desafíos de la paternidad.
-                  </p>
-                </div>
-                <button
-                  class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 md:h-12 md:px-5 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] md:text-base"
-                >
-                  <span class="truncate">Aprender Más</span>
-                </button>
-              </div>
-            </div>
-          </section>
-          <!-- Servicios -->
-          <section class="w-full" aria-label="Nuestros Servicios">
-            <h2 class="text-[#181411] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-center w-full">Nuestros Servicios</h2>
-            <div class="flex flex-col gap-10 px-4 py-10 @container w-full items-center">
-              <div class="flex flex-col gap-4 items-center">
-                <h3
-                  class="text-[#181411] tracking-light text-[32px] font-bold leading-tight md:text-4xl md:font-black md:leading-tight md:tracking-[-0.033em] max-w-[720px] text-center"
-                >
-                  Cuidado Integral para tu Pequeño
-                </h3>
-                <p class="text-[#181411] text-base font-normal leading-normal max-w-[720px] text-center">
-                  Ofrecemos una gama de servicios adaptados a las necesidades únicas de tu familia, desde consultoría experta en lactancia hasta cuidado del bebé las 24 horas.
+
+        <button id="btnAbrirModalLogin"
+          class="hidden sm:flex items-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-white hover:bg-gray-50 text-[#181411] text-sm font-bold transition-all border border-[#e5dfdc] shadow-sm active:scale-95"
+          aria-label="Iniciar Sesión">
+          <span>👤 Ingresar</span>
+        </button>
+
+        <button id="btnAbrirModalRegistroPadre"
+          class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          aria-label="Abrir registro de padres">
+          <span class="truncate">Registrarse</span>
+        </button>
+
+        <a id="btnIrMiCuenta" href="mi-cuenta.html"
+          class="hidden items-center gap-2 cursor-pointer rounded-full h-10 px-5 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          aria-label="Ir a Mi Cuenta">
+          <span>👤 Mi Cuenta</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="flex-1 flex justify-center items-start w-full">
+      <div class="w-full max-w-5xl mx-auto px-2 md:px-8 flex flex-col items-center">
+
+        <section class="w-full @container" aria-label="Bienvenida">
+          <div class="@[480px]:p-4">
+            <div
+              class="flex min-h-[320px] md:min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-xl items-center justify-center p-6 shadow-sm"
+              style='background-image: linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCGgkgV_vS9GftDYus6cQmdxdjjaeOp4LjbZfPAdnb5PpzYopw3S0kXYzYpU0tE_Ap0hRexUyzHG59Bj-4fTWM6OIJcluTAt2pjKM6rrkFKduQNwjdIPUNGK6HsUTQkxJDfK1RReW7PksS2Px-BvR8M4-q27L2dYkUOY09ebUuDbuSH96teFi7xgPE7yfjIG-EnU_dk8QYlot-dItDiK1gUzbhIV9eZt9pRK6qzAQfbpwnMCvQjKX4Scs1BlL2BQeWFT0Cp6li4oRk");'>
+              <div class="flex flex-col gap-3 text-center max-w-3xl">
+                <h2 class="text-white text-3xl md:text-5xl font-black leading-tight tracking-[-0.033em] drop-shadow-md">
+                  Bienvenido a tu Nido Seguro
+                </h2>
+                <p class="text-white text-sm md:text-lg font-medium leading-relaxed drop-shadow">
+                  Tú cuidas de él, nosotros cuidamos de ti. Ofrecemos consultoría experta en lactancia y cuidadores 24/7
+                  para acompañarte, sin juicios y con mucho amor, en tu maternidad.
                 </p>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-0 w-full max-w-4xl">
-                <article class="flex flex-1 gap-3 rounded-lg border border-[#e5dfdc] bg-white p-4 flex-col items-center">
-                  <div class="text-[#181411]" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path
-                        d="M92,140a12,12,0,1,1,12-12A12,12,0,0,1,92,140Zm72-24a12,12,0,1,0,12,12A12,12,0,0,0,164,116Zm-12.27,45.23a45,45,0,0,1-47.46,0,8,8,0,0,0-8.54,13.54,61,61,0,0,0,64.54,0,8,8,0,0,0-8.54-13.54ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88.11,88.11,0,0,0-84.09-87.91C120.32,56.38,120,71.88,120,72a8,8,0,0,0,16,0,8,8,0,0,1,16,0,24,24,0,0,1-48,0c0-.73.13-14.3,8.46-30.63A88,88,0,1,0,216,128Z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-1 text-center">
-                    <h4 class="text-[#181411] text-base font-bold leading-tight">Consultoría de Lactancia</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-normal">
-                      Recibe orientación personalizada de consultores de lactancia certificados para asegurar un viaje de lactancia sin problemas.
-                    </p>
-                  </div>
-                </article>
-                <article class="flex flex-1 gap-3 rounded-lg border border-[#e5dfdc] bg-white p-4 flex-col items-center">
-                  <div class="text-[#181411]" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path
-                        d="M208,96a80,80,0,1,0-88,79.6V200H88a8,8,0,0,0,0,16h32v24a8,8,0,0,0,16,0V216h32a8,8,0,0,0,0-16H136V175.6A80.11,80.11,0,0,0,208,96ZM64,96a64,64,0,1,1,64,64A64.07,64.07,0,0,1,64,96Z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-1 text-center">
-                    <h4 class="text-[#181411] text-base font-bold leading-tight">Servicios de Cuidadores 24/7</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-normal">
-                      Nuestros cuidadores experimentados están disponibles en cualquier momento para proporcionar cuidado amoroso a tu bebé, de día o de noche.
-                    </p>
-                  </div>
-                </article>
-                <article class="flex flex-1 gap-3 rounded-lg border border-[#e5dfdc] bg-white p-4 flex-col items-center">
-                  <div class="text-[#181411]" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path
-                        d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-1 text-center">
-                    <h4 class="text-[#181411] text-base font-bold leading-tight">Apoyo Personalizado</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-normal">
-                      Ofrecemos planes de cuidado personalizados y apoyo continuo para abordar tus preocupaciones y objetivos específicos.
-                    </p>
-                  </div>
-                </article>
-              </div>
-            </div>
-          </section>
-          <!-- Calendario -->
-          <section class="w-full" aria-label="Reserva tu Cita">
-            <h2 class="text-[#181411] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-center w-full">Reserva tu Cita</h2>
-            <form id="reservaForm" action="mailto:testcero1973@gmail.com" method="POST" enctype="text/plain" class="max-w-md w-full bg-[#f4f2f0] p-6 rounded-lg flex flex-col gap-4 my-8 mx-auto" autocomplete="off">
-              <label class="text-[#181411] font-medium">Nombre:
-                <input type="text" name="nombre" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Nombre" />
-              </label>
-              <label class="text-[#181411] font-medium">Email:
-                <input type="email" name="email" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Email" />
-              </label>
-              <label class="text-[#181411] font-medium">Teléfono:
-                <input type="tel" name="telefono" required pattern="[0-9+ ]{7,15}" class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" placeholder="Ej: +56912345678" aria-label="Teléfono" />
-              </label>
-              <label class="text-[#181411] font-medium">Fecha:
-                <input type="date" name="fecha" id="fecha" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Fecha" />
-              </label>
-              <label class="text-[#181411] font-medium">Hora:
-                <input type="time" name="hora" id="hora" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Hora" />
-              </label>
-              <label class="text-[#181411] font-medium">Servicio:
-                <select name="servicio" id="servicio" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Servicio">
-                  <option value="">Selecciona...</option>
-                  <option value="Cuidador">Cuidador</option>
-                  <option value="Consultor">Consultor</option>
-                </select>
-              </label>
-              <label class="text-[#181411] font-medium">Duración (horas):
-                <input type="number" name="duracion" id="duracion" min="1" max="40" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" aria-label="Duración" />
-                <span class="text-xs text-[#e87a30]">Máximo 40 horas semanales</span>
-              </label>
-              <span id="avisoHorario" class="text-xs text-[#e87a30]"></span>
-              <span id="avisoReserva" class="text-xs text-red-600"></span>
-              <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2 mt-2">Reservar</button>
-              <button type="button" id="eliminarReserva" class="bg-[#f4f2f0] text-[#e87a30] font-bold rounded-full py-2 mt-2 border border-[#e87a30] hidden">Eliminar mi reserva</button>
-            </form>
-            <p class="text-[#181411] text-base font-normal leading-normal pb-3 pt-1 px-4 text-center w-full">
-              Los cuidadores están disponibles 24/7. Los consultores están disponibles de lunes a viernes de 8 am a 6 pm, sábados de 9 am a 5 pm.
-            </p>
-          </section>
-          <!-- Productos -->
-          <section class="w-full" aria-label="Productos">
-            <h2 class="text-[#181411] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-center w-full">Compra Nuestros Productos Seleccionados</h2>
-            <div class="flex overflow-x-auto w-full justify-center">
-              <div class="flex items-stretch p-4 gap-3 min-w-max mx-auto">
-                <div class="flex flex-col bg-white rounded-lg border border-[#e5dfdc] p-4 w-56 items-center">
-                  <img src="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=400&q=80" alt="Biberón de vidrio" class="w-24 h-24 object-cover rounded mb-2" />
-                  <h3 class="text-[#181411] font-bold text-base mb-1">Biberones</h3>
-                  <p class="text-[#887263] text-xs mb-2 text-center">Selección de alimentación segura y cómoda.</p>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-green-500 text-white rounded-full px-4 py-1 text-xs font-bold">Comprar por WhatsApp</a>
-                </div>
-                <div class="flex flex-col bg-white rounded-lg border border-[#e5dfdc] p-4 w-56 items-center">
-                  <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" alt="Portabebé ergonómico" class="w-24 h-24 object-cover rounded mb-2" />
-                  <h3 class="text-[#181411] font-bold text-base mb-1">Portabebé</h3>
-                  <p class="text-[#887263] text-xs mb-2 text-center">Portabebés ergonómicos para recién nacidos.</p>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-green-500 text-white rounded-full px-4 py-1 text-xs font-bold">Comprar por WhatsApp</a>
-                </div>
-                <div class="flex flex-col bg-white rounded-lg border border-[#e5dfdc] p-4 w-56 items-center">
-                  <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" alt="Pañales ecológicos" class="w-24 h-24 object-cover rounded mb-2" />
-                  <h3 class="text-[#181411] font-bold text-base mb-1">Pañales</h3>
-                  <p class="text-[#887263] text-xs mb-2 text-center">Pañales de alta calidad para máximo confort.</p>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-green-500 text-white rounded-full px-4 py-1 text-xs font-bold">Comprar por WhatsApp</a>
-                </div>
-              </div>
-            </div>
-            <div class="flex px-4 py-3 justify-center w-full">
               <button
-                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#f4f2f0] text-[#181411] text-sm font-bold leading-normal tracking-[0.015em]"
-              >
-                <span class="truncate">Comprar Todos los Productos</span>
+                class="flex min-w-[120px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-6 md:h-12 md:px-8 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] md:text-base hover:bg-[#d66a20] hover:shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95">
+                <span class="truncate">Descubre cómo te ayudamos</span>
               </button>
             </div>
-          </section>
-          <!-- Testimonios -->
-          <section class="w-full" aria-label="Testimonios">
-            <h2 class="text-[#181411] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-center w-full">Testimonios</h2>
-            <div class="flex flex-col md:flex-row gap-6 min-w-max mx-auto justify-center items-center">
-              <article class="bg-[#f4f2f0] rounded-lg p-6 max-w-xs w-full shadow text-center">
-                <p class="text-[#181411] text-base mb-2">"El servicio de consultoría de lactancia fue excelente, resolvieron todas mis dudas y me sentí muy apoyada."</p>
-                <span class="block text-[#887263] text-sm font-bold">María P.</span>
-                <span class="block text-[#887263] text-xs">Mamá primeriza</span>
+          </div>
+        </section>
+
+        <section id="servicios"
+          class="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-center pt-20 pb-12 scroll-mt-[90px]"
+          aria-label="Nuestros Servicios">
+          <div class="flex flex-col gap-10 px-4 py-6 @container w-full items-center">
+            <div class="flex flex-col gap-4 items-center">
+              <span class="text-[#e87a30] font-bold text-sm uppercase tracking-wider">Servicios</span>
+              <h2 class="text-[#181411] text-3xl font-bold leading-tight tracking-[-0.015em] text-center w-full">
+                Apoyo integral para ti y tu bebé
+              </h2>
+              <p class="text-[#887263] text-base font-normal leading-normal max-w-[720px] text-center">
+                Validamos tu esfuerzo. Ofrecemos servicios adaptados a las necesidades únicas de tu familia, dándote la
+                tranquilidad que necesitas para descansar.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-0 w-full max-w-5xl">
+
+              <article
+                class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
+                <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor"
+                    viewBox="0 0 256 256">
+                    <path
+                      d="M92,140a12,12,0,1,1,12-12A12,12,0,0,1,92,140Zm72-24a12,12,0,1,0,12,12A12,12,0,0,0,164,116Zm-12.27,45.23a45,45,0,0,1-47.46,0,8,8,0,0,0-8.54,13.54,61,61,0,0,0,64.54,0,8,8,0,0,0-8.54-13.54ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88.11,88.11,0,0,0-84.09-87.91C120.32,56.38,120,71.88,120,72a8,8,0,0,0,16,0,8,8,0,0,1,16,0,24,24,0,0,1-48,0c0-.73.13-14.3,8.46-30.63A88,88,0,1,0,216,128Z">
+                    </path>
+                  </svg>
+                </div>
+                <div class="flex flex-col gap-2 text-center">
+                  <h4 class="text-[#181411] text-lg font-bold leading-tight">Consultoría de Lactancia</h4>
+                  <p class="text-[#887263] text-sm font-normal leading-relaxed">
+                    Recibe orientación personalizada y sin juicios de consultores certificados. Estamos aquí para
+                    escucharte y guiarte.
+                  </p>
+                </div>
               </article>
-              <article class="bg-[#f4f2f0] rounded-lg p-6 max-w-xs w-full shadow text-center">
-                <p class="text-[#181411] text-base mb-2">"Las cuidadoras son muy profesionales y cariñosas. Mi bebé estuvo en las mejores manos."</p>
-                <span class="block text-[#887263] text-sm font-bold">Javier R.</span>
-                <span class="block text-[#887263] text-xs">Papá de Sofía</span>
+
+              <article
+                class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
+                <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor"
+                    viewBox="0 0 256 256">
+                    <path
+                      d="M208,96a80,80,0,1,0-88,79.6V200H88a8,8,0,0,0,0,16h32v24a8,8,0,0,0,16,0V216h32a8,8,0,0,0,0-16H136V175.6A80.11,80.11,0,0,0,208,96ZM64,96a64,64,0,1,1,64,64A64.07,64.07,0,0,1,64,96Z">
+                    </path>
+                  </svg>
+                </div>
+                <div class="flex flex-col gap-2 text-center">
+                  <h4 class="text-[#181411] text-lg font-bold leading-tight">Servicios de Cuidadores 24/7</h4>
+                  <p class="text-[#887263] text-sm font-normal leading-relaxed">
+                    Nuestros cuidadores profesionales están disponibles para darte ese merecido descanso, sabiendo que
+                    tu bebé está a salvo.
+                  </p>
+                </div>
               </article>
-              <article class="bg-[#f4f2f0] rounded-lg p-6 max-w-xs w-full shadow text-center">
-                <p class="text-[#181411] text-base mb-2">"Recomiendo LactaNido a todas las familias que buscan apoyo real y humano."</p>
-                <span class="block text-[#887263] text-sm font-bold">Camila S.</span>
-                <span class="block text-[#887263] text-xs">Mamá de gemelos</span>
+
+              <article
+                class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
+                <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor"
+                    viewBox="0 0 256 256">
+                    <path
+                      d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z">
+                    </path>
+                  </svg>
+                </div>
+                <div class="flex flex-col gap-2 text-center">
+                  <h4 class="text-[#181411] text-lg font-bold leading-tight">Apoyo Personalizado</h4>
+                  <p class="text-[#887263] text-sm font-normal leading-relaxed">
+                    Planes de cuidado personalizados para abordar tus preocupaciones. Tú no estás sola en este proceso.
+                  </p>
+                </div>
               </article>
             </div>
-          </section>
-          <!-- Contacto -->
-          <section class="w-full" aria-label="Contacto">
-            <h2 class="text-[#181411] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-center w-full">Contáctanos</h2>
-            <p class="text-[#181411] text-base font-normal leading-normal pb-3 pt-1 px-4 text-center w-full">
-              ¿Tienes preguntas? Contáctanos en <a href="mailto:support@lactanido.cl" class="underline text-[#e87a30]">support@lactanido.cl</a> o llámanos al <a href="tel:+5551234567" class="underline text-[#e87a30]">(555) 123-4567</a>.
+          </div>
+        </section>
+
+        <section id="tienda"
+          class="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-center pt-20 pb-12 scroll-mt-[90px]"
+          aria-label="Tienda">
+          <div class="flex flex-col gap-4 items-center mb-8">
+            <span class="text-[#e87a30] font-bold text-sm uppercase tracking-wider">Tienda</span>
+            <h2 class="text-[#181411] text-3xl font-bold leading-tight tracking-[-0.015em] text-center w-full">
+              Productos Seleccionados con Amor
+            </h2>
+            <p class="text-[#887263] text-base text-center max-w-2xl">Todo lo que necesitas, aprobado por nuestras
+              especialistas para tu tranquilidad.</p>
+          </div>
+
+          <div class="flex overflow-x-auto w-full justify-center pb-4">
+            <div class="flex items-stretch p-4 gap-6 min-w-max mx-auto">
+              <div
+                class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-64 items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
+                <div class="flex flex-col items-center flex-1 w-full text-center">
+                  <img src="https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&w=400&q=80"
+                    loading="lazy" alt="Biberón de vidrio" class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
+                  <h3 class="text-[#181411] font-bold text-lg mb-1">Biberones Anticólicos</h3>
+                  <p class="text-[#887263] text-sm mb-4">Para las noches en las que necesitas que papá tome el
+                    relevo y cuide su guatita.</p>
+                </div>
+                <a href="https://wa.me/56912345678" target="_blank" rel="noopener"
+                  class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
+                  <span>Adquirir por WhatsApp</span>
+                </a>
+              </div>
+
+              <div
+                class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-64 items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
+                <div class="flex flex-col items-center flex-1 w-full text-center">
+                  <img
+                    src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80"
+                    loading="lazy" alt="Portabebé ergonómico"
+                    class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
+                  <h3 class="text-[#181411] font-bold text-lg mb-1">Portabebés</h3>
+                  <p class="text-[#887263] text-sm mb-4">Mantén a tu bebé cerca y tus manos libres con total
+                    seguridad y comodidad.</p>
+                </div>
+                <a href="https://wa.me/56912345678" target="_blank" rel="noopener"
+                  class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
+                  <span>Adquirir por WhatsApp</span>
+                </a>
+              </div>
+
+              <div
+                class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-64 items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
+                <div class="flex flex-col items-center flex-1 w-full text-center">
+                  <img
+                    src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80"
+                    loading="lazy" alt="Pañales ecológicos" class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
+                  <h3 class="text-[#181411] font-bold text-lg mb-1">Pañales Ecológicos</h3>
+                  <p class="text-[#887263] text-sm mb-4">Máxima suavidad y protección natural para la piel más
+                    delicada de tu bebé.</p>
+                </div>
+                <a href="https://wa.me/56912345678" target="_blank" rel="noopener"
+                  class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
+                  <span>Adquirir por WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="flex px-4 py-6 justify-center w-full">
+            <button
+              class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 bg-white border border-[#e5dfdc] hover:bg-gray-50 text-[#181411] text-sm font-bold leading-normal tracking-[0.015em] transition-all active:scale-95 shadow-sm">
+              <span class="truncate">Ver Todos los Productos</span>
+            </button>
+          </div>
+        </section>
+
+        <section id="testimonios"
+          class="w-full min-h-[calc(100vh-80px)] flex flex-col justify-center py-12 scroll-mt-20"
+          aria-label="Testimonios">
+          <div class="flex flex-col gap-4 items-center mb-8">
+            <span class="text-[#e87a30] font-bold text-sm uppercase tracking-wider">Testimonios</span>
+            <h2 class="text-[#181411] text-3xl font-bold leading-tight tracking-[-0.015em] text-center w-full">
+              Mamás que ya son parte de la tribu
+            </h2>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mx-auto items-stretch px-4">
+            <article
+              class="bg-white rounded-xl border border-[#e5dfdc] p-8 w-full max-w-xs mx-auto shadow-sm text-center flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+              <p class="text-[#181411] text-base mb-6 italic">"Sentía mucho dolor al amamantar. El servicio fue
+                excelente, me sentí escuchada y muy apoyada."</p>
+              <div>
+                <span class="block text-[#e87a30] text-lg font-bold">María P.</span>
+                <span class="block text-[#887263] text-sm">Mamá de 2 meses</span>
+              </div>
+            </article>
+            <article
+              class="bg-white rounded-xl border border-[#e5dfdc] p-8 w-full max-w-xs mx-auto shadow-sm text-center flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+              <p class="text-[#181411] text-base mb-6 italic">"Por fin pude dormir 6 horas seguidas. Las cuidadoras son
+                muy cariñosas. Mi bebé estuvo en las mejores manos."</p>
+              <div>
+                <span class="block text-[#e87a30] text-lg font-bold">Javier R.</span>
+                <span class="block text-[#887263] text-sm">Papá de Sofía</span>
+              </div>
+            </article>
+            <article
+              class="bg-white rounded-xl border border-[#e5dfdc] p-8 w-full max-w-xs mx-auto shadow-sm text-center flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+              <p class="text-[#181411] text-base mb-6 italic">"Recomiendo LactaNido a todas las familias que buscan
+                apoyo real, empático y humano sin ser juzgadas."</p>
+              <div>
+                <span class="block text-[#e87a30] text-lg font-bold">Camila S.</span>
+                <span class="block text-[#887263] text-sm">Mamá de gemelos</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="contacto"
+          class="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-center pt-20 pb-12 scroll-mt-[90px] px-4"
+          aria-label="Contacto">
+
+          <div class="flex flex-col gap-4 items-center mb-8 w-full">
+            <span class="text-[#e87a30] font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                <path
+                  d="M232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88.11,88.11,0,0,0-84.09-87.91C120.32,56.38,120,71.88,120,72a8,8,0,0,0,16,0,8,8,0,0,1,16,0,24,24,0,0,1-48,0c0-.73.13-14.3,8.46-30.63A88,88,0,1,0,216,128Z">
+                </path>
+              </svg>
+              Contacto
+            </span>
+            <h2 class="text-[#181411] text-3xl font-bold leading-tight tracking-[-0.015em] text-center w-full">
+              ¿Necesitas ayuda con tu bebé?
+            </h2>
+            <p class="text-[#887263] text-base text-center max-w-2xl">
+              Estamos para leerte y escucharte sin juicios. Escríbenos y te responderemos a la brevedad.
             </p>
-          </section>
-        </div>
-      </main>
-      <footer class="flex justify-center w-full" aria-label="Pie de página">
-        <div class="flex max-w-[960px] flex-1 flex-col w-full">
-          <footer class="flex flex-col gap-6 px-5 py-10 text-center @container w-full">
-            <div class="flex flex-wrap items-center justify-center gap-6 @[480px]:flex-row @[480px]:justify-around">
-              <a class="text-[#887263] text-base font-normal leading-normal min-w-40" href="#">Política de Privacidad</a>
-              <a class="text-[#887263] text-base font-normal leading-normal min-w-40" href="#">Términos de Servicio</a>
-            </div>
-            <div class="flex flex-wrap justify-center gap-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook" class="text-[#887263] hover:text-[#e87a30]">
-                <svg width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M22 12c0-5.522-4.477-10-10-10S2 6.478 2 12c0 4.991 3.657 9.128 8.438 9.877v-6.987h-2.54v-2.89h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.242 0-1.632.771-1.632 1.562v1.875h2.773l-.443 2.89h-2.33v6.987C18.343 21.128 22 16.991 22 12"></path></svg>
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram" class="text-[#887263] hover:text-[#e87a30]">
-                <svg width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.974.974 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.974.974-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.974-.974-1.246-2.242-1.308-3.608C2.175 15.647 2.163 15.267 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.515 2.567 5.783 2.295 7.15 2.233 8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.072 5.771.13 4.659.388 3.678 1.37c-.98.98-1.238 2.092-1.297 3.373C2.013 8.332 2 8.741 2 12c0 3.259.013 3.668.072 4.948.059 1.281.317 2.393 1.297 3.373.98.98 2.092 1.238 3.373 1.297C8.332 23.987 8.741 24 12 24s3.668-.013 4.948-.072c1.281-.059 2.393-.317 3.373-1.297.98-.98 1.238-2.092 1.297-3.373.059-1.28.072-1.689.072-4.948 0-3.259-.013-3.668-.072-4.948-.059-1.281-.317-2.393-1.297-3.373-.98-.98-2.092-1.238-3.373-1.297C15.668.013 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a3.999 3.999 0 1 1 0-7.998 3.999 3.999 0 0 1 0 7.998zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"></path></svg>
-              </a>
-            </div>
-            <p class="text-[#887263] text-base font-normal leading-normal">© 2024 LactaNido. Todos los derechos reservados.</p>
-          </footer>
-        </div>
-      </footer>
-    </div>
+          </div>
 
-    <!-- MODAL REGISTRO PADRE -->
-    <div id="modalRegistroPadre" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-lg p-8 max-w-md w-full relative">
-        <button class="absolute top-2 right-2 text-xl" aria-label="Cerrar" onclick="document.getElementById('modalRegistroPadre').classList.add('hidden')">&times;</button>
-        <h2 class="text-xl font-bold mb-4 text-[#181411]">Registro de Padres</h2>
-        <form id="registroPadreForm" class="flex flex-col gap-4" autocomplete="off">
-          <input name="nombre" placeholder="Nombre" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Nombre" />
-          <input name="email" type="email" placeholder="Email" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Email" />
-          <input name="telefono" placeholder="Teléfono" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Teléfono" />
-          <input name="password" type="password" placeholder="Contraseña" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Contraseña" />
-          <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2">Registrarse</button>
-        </form>
+          <div
+            class="bg-white flex flex-col md:flex-row w-full max-w-5xl mx-auto rounded-2xl border border-[#e5dfdc] shadow-md overflow-hidden transition-all hover:shadow-lg">
+
+            <div class="hidden md:block md:w-5/12 bg-cover bg-center relative"
+              style="background-image: url('https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=800&q=80'); min-height: 400px;">
+              <div class="absolute inset-0 bg-gradient-to-t from-[#181411]/40 to-transparent"></div>
+              <div class="absolute bottom-6 left-6 right-6">
+                <p class="text-white font-medium text-sm italic drop-shadow-md">"Encontramos el descanso que
+                  necesitábamos..."</p>
+              </div>
+            </div>
+
+            <div class="w-full md:w-7/12 p-8 lg:p-12">
+              <form action="https://formsubmit.co/support@lactanido.cl" method="POST" class="space-y-5">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <input type="text" name="nombre" placeholder="Tu nombre" required
+                    class="w-full border border-[#e5dfdc] bg-[#fdf5f0]/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 transition-colors">
+                  <input type="tel" name="telefono" placeholder="Tu teléfono" required
+                    class="w-full border border-[#e5dfdc] bg-[#fdf5f0]/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 transition-colors">
+                </div>
+
+                <input type="email" name="email" placeholder="Tu correo electrónico" required
+                  class="w-full border border-[#e5dfdc] bg-[#fdf5f0]/50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 transition-colors">
+
+                <textarea name="mensaje" placeholder="Cuéntanos, ¿En qué te podemos apoyar hoy?" required
+                  class="w-full border border-[#e5dfdc] bg-[#fdf5f0]/50 rounded-lg p-3 h-32 resize-none focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 transition-colors"></textarea>
+
+                <input type="hidden" name="_captcha" value="false">
+
+                <button type="submit"
+                  class="w-full sm:w-auto bg-[#e87a30] text-white font-bold px-8 py-3 rounded-full hover:bg-[#d66a20] transition-all active:scale-95 shadow-md flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                    viewBox="0 0 256 256">
+                    <path
+                      d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-192,64a16,16,0,0,0-2.42,29.84l85.62,40.55,40.55,85.62A15.86,15.86,0,0,0,157.74,256q.43,0,.86,0a16,16,0,0,0,14.62-10.76l64-192A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-35.46-74.9,50.8-50.8a8,8,0,0,0-11.31-11.31l-50.8,50.8-74.9-35.46L216.92,49.08Z">
+                    </path>
+                  </svg>
+                  Enviar mensaje
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </section>
+
       </div>
-    </div>
+    </main>
 
-    <!-- MODAL REGISTRO PRESTADOR -->
-    <div id="modalRegistroPrestador" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-lg p-8 max-w-md w-full relative">
-        <button class="absolute top-2 right-2 text-xl" aria-label="Cerrar" onclick="document.getElementById('modalRegistroPrestador').classList.add('hidden')">&times;</button>
-        <h2 class="text-xl font-bold mb-4 text-[#181411]">Registro de Consejeras/Cuidadoras</h2>
-        <form id="registroPrestadorForm" class="flex flex-col gap-4" autocomplete="off">
-          <input name="nombre" placeholder="Nombre" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Nombre" />
-          <input name="email" type="email" placeholder="Email" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Email" />
-          <input name="telefono" placeholder="Teléfono" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Teléfono" />
-          <select name="tipo" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Tipo de prestador">
-            <option value="">Selecciona tipo</option>
-            <option value="consejera">Consejera</option>
-            <option value="cuidadora">Cuidadora</option>
+    <p class="text-center text-gray-400 text-xs mb-4">
+      Cuidando cada detalle para ti y tu bebé 🤍
+    </p>
+
+    <footer class="bg-[#f9f5f1] border-t border-[#e6ddd6] py-8 text-sm text-gray-500">
+      <div
+        class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+
+        <div>
+          <p>
+            © <span id="current-year"></span> LactaNido.
+            Todos los derechos reservados.
+          </p>
+        </div>
+
+        <div>
+          <p class="flex flex-wrap items-center justify-center sm:justify-end">
+            Diseñado y desarrollado por
+            <span class="text-gray-700 font-medium ml-1">
+              FG Soluciones Digitales
+            </span>, consultas +56930994849 o
+
+
+            <a href="https://t.me/56930994849" target="_blank" rel="noopener noreferrer" aria-label="Telegram"
+              title="Contactar por Telegram"
+              class="inline-flex items-center ml-2 text-[#e87a30] hover:opacity-80 transition duration-200">
+
+              <i class="fa-brands fa-telegram text-lg"></i>
+            </a>
+
+          </p>
+        </div>
+
+      </div>
+
+      <script>
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+      </script>
+    </footer>
+  </div>
+
+  <dialog id="modalRegistroPadre" class="bg-transparent p-0 m-auto w-full max-w-md outline-none backdrop:bg-black/50">
+    <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl">
+      <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]"
+        aria-label="Cerrar">×</button>
+      <h2 class="text-2xl font-bold mb-6 text-[#181411]">Únete a nuestra tribu</h2>
+      <form id="registroPadreForm" class="flex flex-col gap-4" autocomplete="off">
+        <div class="flex gap-4 p-3 border border-[#e5dfdc] rounded-lg bg-[#fdf5f0]">
+          <p class="text-sm font-bold text-[#887263] self-center">Soy:</p>
+          <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="subtipo" value="madre"
+              checked class="accent-[#e87a30]"> Madre</label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="subtipo" value="padre"
+              class="accent-[#e87a30]"> Padre</label>
+        </div>
+        <input name="nombre" placeholder="Nombre" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Nombre" />
+        <input name="rut" placeholder="RUT (ej: 12.345.678-9)" required
+          class="input-rut p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="RUT o DNI" maxlength="12" />
+        <input name="email" type="email" placeholder="Email" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Email" />
+        <input name="telefono" placeholder="Teléfono" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Teléfono" />
+        <input name="password" type="password" placeholder="Contraseña" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Contraseña" />
+        <button type="submit"
+          class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Crear
+          mi cuenta</button>
+        <p class="text-center text-sm text-[#887263] mt-2">¿Eres colaborador? <button type="button"
+            id="linkCambiarAPrestador" class="text-[#e87a30] underline font-bold">Regístrate aquí</button></p>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modalRegistroPrestador"
+    class="bg-transparent p-0 m-auto w-full max-w-md outline-none backdrop:bg-black/50">
+    <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl">
+      <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]"
+        aria-label="Cerrar">×</button>
+      <h2 class="text-2xl font-bold mb-6 text-[#181411]">Registro Profesionales</h2>
+      <form id="registroPrestadorForm" class="flex flex-col gap-4" autocomplete="off">
+        <input name="nombre" placeholder="Nombre" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Nombre" />
+        <input name="rut" placeholder="RUT (ej: 12.345.678-9)" required
+          class="input-rut p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="RUT o DNI" maxlength="12" />
+        <input name="email" type="email" placeholder="Email" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Email" />
+        <input name="telefono" placeholder="Teléfono" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Teléfono" />
+        <div class="flex flex-col gap-2 p-3 border border-[#e5dfdc] rounded-lg bg-[#fdf5f0]">
+          <p class="text-sm font-bold text-[#887263]">Especialidades:</p>
+          <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" name="tipo"
+              value="consejera" class="accent-[#e87a30]"> Consejera de Lactancia</label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" name="tipo"
+              value="cuidadora" class="accent-[#e87a30]"> Cuidadora 24/7</label>
+        </div>
+        <textarea name="referencias" placeholder="Cuéntanos sobre tu experiencia o links a certificaciones"
+          class="p-3 rounded-lg border border-[#e5dfdc] text-sm focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          rows="3"></textarea>
+        <input name="password" type="password" placeholder="Contraseña" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Contraseña" />
+        <button type="submit"
+          class="bg-[#887263] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#6b584b] transition-colors active:scale-95 shadow-md">Registrarse
+          como Prestador</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modalAgendarCita" class="bg-transparent p-0 m-auto w-full max-w-lg outline-none backdrop:bg-black/50">
+    <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl overflow-y-auto max-h-[90vh]">
+      <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]"
+        aria-label="Cerrar">×</button>
+      <h2 class="text-2xl font-bold mb-2 text-[#181411]">Llamada de Evaluación</h2>
+      <p class="text-sm text-[#887263] mb-6">Agenda 15 minutos gratuitos para conocernos sin presiones.</p>
+
+      <form id="reservaForm" class="flex flex-col gap-4" autocomplete="off">
+        <label class="text-sm text-[#181411] font-bold">Nombre:
+          <input type="text" name="nombre" required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+            aria-label="Nombre" />
+        </label>
+        <label class="text-sm text-[#181411] font-bold">Email:
+          <input type="email" name="email" required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+            aria-label="Email" />
+        </label>
+        <label class="text-sm text-[#181411] font-bold">Teléfono:
+          <input type="tel" name="telefono" required pattern="[0-9+ ]{7,15}"
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+            placeholder="Ej: +56912345678" aria-label="Teléfono" />
+        </label>
+        <label class="text-sm text-[#181411] font-bold">Fecha sugerida:
+          <div class="flex items-center">
+            <input type="date" name="fecha" id="fechaAnon" required
+              class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+              aria-label="Fecha" />
+            <button type="button" id="btnAbrirModalCalendarioAnon"
+              class="ml-2 p-3 bg-[#fdf5f0] text-[#e87a30] rounded-lg hover:bg-[#f4e2d8] transition-colors"
+              aria-label="Abrir calendario">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
+                <path
+                  d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A24,24,0,0,0,24,56V208a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V56A24,24,0,0,0,208,32Zm8,176a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V88H216Zm0-136H40V56a8,8,0,0,1,8-8H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24a8,8,0,0,1,8,8Z">
+                </path>
+              </svg>
+            </button>
+          </div>
+        </label>
+        <label class="text-sm text-[#181411] font-bold">Hora:
+          <input type="time" name="hora" id="horaAnon" required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+            aria-label="Hora" />
+        </label>
+        <label class="text-sm text-[#181411] font-bold">¿En qué necesitas apoyo?:
+          <select name="servicio" id="servicioAnon" required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer"
+            aria-label="Servicio">
+            <option value="">Selecciona...</option>
+            <option value="Cuidador">Apoyo de Cuidadora</option>
+            <option value="Consultor">Asesoría de Lactancia</option>
           </select>
-          <input name="password" type="password" placeholder="Contraseña" required class="p-2 rounded border border-[#e5dfdc]" aria-label="Contraseña" />
-          <button type="submit" class="bg-[#887263] text-white font-bold rounded-full py-2">Registrarse como Prestador</button>
-        </form>
+        </label>
+        <label class="text-sm text-[#181411] font-bold hidden" id="labelProfesionalAnon">Especialista:
+          <select name="profesionalId" id="profesionalAnon" disabled required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] bg-gray-50 font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer"
+            aria-label="Profesional">
+            <option value="">Selecciona profesional...</option>
+          </select>
+        </label>
+        <label class="text-sm text-[#181411] font-bold">Duración estimada del apoyo (horas):
+          <input type="number" name="duracion" id="duracion" min="1" max="40" required
+            class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+            aria-label="Duración" />
+        </label>
+        <span id="avisoHorarioAnon" class="text-xs text-[#e87a30] font-medium"></span>
+        <span id="avisoReservaAnon" class="text-xs text-red-600 font-medium"></span>
+        <button type="submit"
+          class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-4 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Confirmar
+          Evaluación</button>
+      </form>
+      <p class="text-[#887263] text-xs font-normal leading-normal pt-5 text-center w-full">
+        Los cuidadores están disponibles 24/7. Las consultas de L-V 8am-6pm, Sáb 9am-5pm.
+      </p>
+    </div>
+  </dialog>
+
+  <dialog id="modalCalendarioAnon" class="bg-transparent p-0 m-auto w-full max-w-md outline-none backdrop:bg-black/50">
+    <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl">
+      <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]"
+        aria-label="Cerrar">×</button>
+      <h2 class="text-2xl font-bold mb-4 text-[#181411]">Seleccionar Fecha</h2>
+      <div id="calendarioContainer" class="mt-4">
       </div>
     </div>
+  </dialog>
 
-    <script>
-      // Mostrar/ocultar modales y ejemplo de envío (simulado)
-      document.getElementById('registroPadreForm').onsubmit = function(e) {
-        e.preventDefault();
-        alert('Registro de padre enviado (simulado)');
-        document.getElementById('modalRegistroPadre').classList.add('hidden');
-      };
-      document.getElementById('registroPrestadorForm').onsubmit = function(e) {
-        e.preventDefault();
-        alert('Registro de prestador enviado (simulado)');
-        document.getElementById('modalRegistroPrestador').classList.add('hidden');
-      };
-    </script>
-  </body>
+  <dialog id="modalLogin" class="bg-transparent p-0 m-auto w-full max-w-sm outline-none backdrop:bg-black/50">
+    <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl">
+      <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]"
+        aria-label="Cerrar">×</button>
+      <h2 class="text-2xl font-bold mb-6 text-[#181411] text-center">Ingresar a mi cuenta</h2>
+      <form id="loginForm" class="flex flex-col gap-4" autocomplete="off">
+        <input name="email" type="email" placeholder="Email" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Email" />
+        <input name="password" type="password" placeholder="Contraseña" required
+          class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50"
+          aria-label="Contraseña" />
+        <button type="submit"
+          class="bg-[#181411] text-white font-bold rounded-full py-3 mt-2 hover:bg-gray-800 transition-colors active:scale-95 shadow-md">Entrar</button>
+      </form>
+      <div class="mt-6 text-center space-y-3">
+        <p class="text-sm text-[#887263]">¿Aún no eres parte? <button type="button" id="linkRegistrateGratis"
+            class="text-[#e87a30] hover:underline font-bold">Regístrate gratis.</button></p>
+        <button type="button" id="btnOlvidasteClave"
+          class="text-sm text-[#e87a30] hover:underline font-medium">¿Olvidaste tu contraseña?</button>
+        <p id="msgRecuperacion" class="text-sm text-[#5b8a72] hidden font-medium">✅ Revisa tu correo para
+          restablecer
+          tu
+          contraseña.</p>
+        <p id="msgRecuperacionError" class="text-sm text-red-500 hidden font-medium"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>
