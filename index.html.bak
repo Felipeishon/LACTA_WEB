@@ -7,6 +7,12 @@
   <meta name="description"
     content="LactaNido: Consultoría experta en lactancia y servicios de cuidadores 24/7 para el cuidado del bebé y apoyo a la paternidad." />
 
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+
   <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
   <link rel="stylesheet" as="style" onload="this.rel='stylesheet'"
     href="https://fonts.googleapis.com/css2?display=swap&family=Lexend%3Awght%40400%3B500%3B700%3B900&family=Noto+Sans%3Awght%40400%3B500%3B700%3B900" />
@@ -28,63 +34,34 @@
   <div class="flex flex-col min-h-screen">
 
     <header
-      class="header-overlap relative sticky top-0 left-0 w-full z-50 bg-[#efe6df] shadow-sm flex items-center justify-between border-b border-solid border-b-[#e5dfdc] px-4 md:px-10 py-3 transition-all overflow-visible">
+      class="relative sticky top-0 left-0 w-full z-50 bg-[#efe6df] shadow-sm flex items-center justify-between border-b border-solid border-b-[#e5dfdc] px-4 md:px-10 py-3 transition-all">
 
-      <!-- Mobile header top bar: izquierda = logo, centro = hamburguesa, derecha = auth buttons -->
-      <div class="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 md:hidden">
-        <div class="flex items-center justify-start">
-          <a href="#" aria-label="Volver al inicio" class="brand-logo-inline">
-            <img src="/logo/logo_trans.png" alt="LactaNido Logo" onerror="this.src='https://via.placeholder.com/150x50?text=Logo+Aqui'" />
-          </a>
-        </div>
-
-        <button id="btnToggleMenu" type="button"
-          class="inline-flex items-center justify-center rounded-lg border border-[#d6c8b8] bg-white p-2 text-[#887263] shadow-sm hover:bg-[#f5f0eb] transition-colors"
-          aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileNav">
-          <i class="fa-solid fa-bars text-lg"></i>
-        </button>
-
-        <div class="flex items-center justify-end gap-2">
-          <button id="btnMobileLogin" type="button"
-            class="inline-flex items-center justify-center rounded-full border border-[#e5dfdc] bg-white px-4 py-3 text-[#181411] font-semibold hover:bg-[#f5f0eb] transition-colors">
-            Ingresar
-          </button>
-          <button id="btnMobileRegistro" type="button"
-            class="inline-flex items-center justify-center rounded-full bg-[#e87a30] px-4 py-3 text-white font-semibold hover:bg-[#d66a20] transition-colors">
-            Registrarse
-          </button>
-        </div>
+      <div class="flex flex-1 justify-start">
+        <a href="#" aria-label="Volver al inicio"
+          class="flex items-center gap-4 transition-transform duration-300 hover:scale-105">
+          <img src="/logo/logo_trans.png" alt="LactaNido Logo" class="size-33 object-contain"
+            onerror="this.src='https://via.placeholder.com/150x50?text=Logo+Aqui'">
+        </a>
       </div>
 
-      <!-- Floating logo for desktop/tablet (overlaps header bottom) -->
-      <a href="#" aria-label="Volver al inicio" class="brand-logo-desktop" style="text-decoration:none">
-        <img src="/logo/logo_trans.png" alt="LactaNido Logo" onerror="this.src='https://via.placeholder.com/220x220?text=Logo+Aqui'" />
-      </a>
+      <button id="btnToggleMenu" type="button"
+        class="md:hidden inline-flex items-center justify-center rounded-lg border border-[#d6c8b8] bg-white p-2 text-[#887263] shadow-sm hover:bg-[#f5f0eb] transition-colors"
+        aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileNav">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
 
-      <div class="hidden md:flex flex-1"></div>
+      <nav class="hidden md:flex flex-1 justify-center gap-9" aria-label="Navegación principal">
+        <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#servicios">Servicios</a>
+        <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#tienda">Tienda</a>
+        <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#testimonios">Testimonios</a>
+        <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
+          href="#contacto">Contacto</a>
+      </nav>
 
-      <div id="userMenu"
-        class="hidden desktop-user-menu-panel absolute right-4 top-full mt-2 w-44 rounded-2xl bg-white border border-[#e5dfdc] shadow-lg p-2 z-50">
-        <button id="btnUserMenuLogin" type="button"
-          class="w-full text-left text-[#181411] px-3 py-2 rounded-xl hover:bg-[#f5f0eb] transition-colors">Ingresar</button>
-        <button id="btnUserMenuRegistro" type="button"
-          class="w-full text-left text-[#181411] px-3 py-2 rounded-xl hover:bg-[#f5f0eb] transition-colors">Registrarse</button>
-      </div>
-
-      <div class="hidden md:flex flex-1 justify-center">
-        <nav class="flex gap-9" aria-label="Navegación principal">
-          <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
-            href="#servicios">Servicios</a>
-          <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
-            href="#tienda">Tienda</a>
-          <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
-            href="#testimonios">Testimonios</a>
-          <a class="text-[#887263] text-base md:text-lg font-semibold leading-normal hover:text-[#e87a30] transition-colors"
-            href="#contacto">Contacto</a>
-        </nav>
-      </div>
-
-      <div class="hidden md:flex flex-1 justify-end items-center gap-3 lg:gap-4">
+      <div class="flex flex-1 justify-end items-center gap-3 lg:gap-4">
 
         <div class="hidden lg:flex items-center gap-4 pr-3 border-r border-[#887263]/30">
           <a href="https://wa.me/56983966404" target="_blank" rel="noopener" aria-label="WhatsApp"
@@ -102,26 +79,28 @@
             </svg>
           </a>
         </div>
-        <div class="hidden lg:flex items-center gap-3 ml-4">
-          <button id="btnAbrirModalLogin"
-            class="inline-flex items-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-white text-[#181411] text-sm font-bold border border-[#e5dfdc] shadow-sm hover:bg-gray-50 active:scale-95"
-            aria-label="Iniciar Sesión">
-            <i class="fa-solid fa-user text-[#5b4b4b]"></i>
-            <span>Ingresar</span>
-          </button>
 
-          <button id="btnAbrirModalRegistroPadre"
-            class="ml-3 min-w-[84px] cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
-            aria-label="Abrir registro de padres">
-            <span class="truncate">Registrarse</span>
-          </button>
-        </div>
+        <button id="btnAbrirModalLogin"
+          class="hidden sm:flex items-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-white hover:bg-gray-50 text-[#181411] text-sm font-bold transition-all border border-[#e5dfdc] shadow-sm active:scale-95"
+          aria-label="Iniciar Sesión">
+          <span>👤 Ingresar</span>
+        </button>
 
-        <!-- User actions moved to the compact user menu (desktop) and mobile nav actions -->
+        <button id="btnAbrirModalRegistroPadre"
+          class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          aria-label="Abrir registro de padres">
+          <span class="truncate">Registrarse</span>
+        </button>
+
+        <a id="btnIrMiCuenta" href="mi-cuenta.html"
+          class="hidden items-center gap-2 cursor-pointer rounded-full h-10 px-5 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          aria-label="Ir a Mi Cuenta">
+          <span>👤 Mi Cuenta</span>
+        </a>
       </div>
 
-      <div id="mobileNav" class="hidden absolute inset-x-0 mx-auto top-full w-full max-w-[calc(100vw-1.5rem)] bg-[#efe6df] border-t border-[#e5dfdc] px-4 py-4 shadow-lg md:hidden z-50 mobile-nav-panel">
-        <nav class="flex flex-col items-center gap-3">
+      <div id="mobileNav" class="hidden absolute inset-x-0 top-full bg-[#efe6df] border-t border-[#e5dfdc] px-4 py-4 shadow-lg md:hidden z-40">
+        <nav class="flex flex-col gap-3">
           <a class="text-[#887263] text-base font-semibold leading-normal hover:text-[#e87a30] transition-colors"
             href="#servicios">Servicios</a>
           <a class="text-[#887263] text-base font-semibold leading-normal hover:text-[#e87a30] transition-colors"
@@ -407,13 +386,13 @@
       Cuidando cada detalle para ti y tu bebé 🤍
     </p>
 
-    <footer class="bg-[#f9f5f1] border-t border-[#e6ddd6] py-4 text-[11px] text-gray-500">
-      <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-1 text-center sm:text-left">
+    <footer class="bg-[#f9f5f1] border-t border-[#e6ddd6] py-8 text-sm text-gray-500">
+      <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
         <div>
-          <p class="leading-tight">© <span id="current-year"></span> LactaNido. Todos los derechos reservados.</p>
+          <p>© <span id="current-year"></span> LactaNido. Todos los derechos reservados.</p>
         </div>
         <div>
-          <p class="flex flex-wrap items-center justify-center sm:justify-end leading-tight">
+          <p class="flex flex-wrap items-center justify-center sm:justify-end">
             Diseñado y desarrollado por <span class="text-gray-700 font-medium ml-1">FG Soluciones Digitales</span>, consultas +56930994849 o
             <a href="https://t.me/56930994849" target="_blank" rel="noopener noreferrer" aria-label="Telegram" title="Contactar por Telegram" class="inline-flex items-center ml-2 text-[#e87a30] hover:opacity-80 transition duration-200">
               <i class="fa-brands fa-telegram text-lg"></i>

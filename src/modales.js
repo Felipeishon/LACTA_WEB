@@ -4,7 +4,8 @@ export function initModales() {
     registroPrestador: document.getElementById('modalRegistroPrestador'),
     agendarCita: document.getElementById('modalAgendarCita'),
     calendario: document.getElementById('modalCalendario') || document.getElementById('modalCalendarioAnon'),
-    login: document.getElementById('modalLogin')
+    login: document.getElementById('modalLogin'),
+    tipsLactancia: document.getElementById('modalTipsLactancia')
   };
 
   const btnAbrirPadre = document.getElementById('btnAbrirModalRegistroPadre');
@@ -12,6 +13,9 @@ export function initModales() {
   const btnAbrirCita = document.getElementById('btnAbrirModalAgendarCita');
   const btnAbrirCalendario = document.getElementById('btnAbrirModalCalendario') || document.getElementById('btnAbrirModalCalendarioAnon');
   const btnAbrirLogin = document.getElementById('btnAbrirModalLogin');
+  const btnDescubreComo = document.getElementById('btnDescubreComo');
+  const btnCerrarTips = document.getElementById('btnCerrarTips');
+  const btnEntendidoTips = document.getElementById('btnEntendidoTips');
 
   const btnsCerrar = document.querySelectorAll('.btnCerrarModal');
 
@@ -19,6 +23,12 @@ export function initModales() {
   if (btnAbrirPrestador) btnAbrirPrestador.addEventListener('click', () => modales.registroPrestador?.showModal());
   if (btnAbrirCita) btnAbrirCita.addEventListener('click', () => modales.agendarCita?.showModal());
   if (btnAbrirLogin) btnAbrirLogin.addEventListener('click', () => modales.login?.showModal());
+  if (btnDescubreComo) btnDescubreComo.addEventListener('click', (e) => {
+    e.preventDefault();
+    modales.tipsLactancia?.showModal();
+  });
+  if (btnCerrarTips) btnCerrarTips.addEventListener('click', () => modales.tipsLactancia?.close());
+  if (btnEntendidoTips) btnEntendidoTips.addEventListener('click', () => modales.tipsLactancia?.close());
 
   // Lógica para saltar del registro de padre al de prestador
   const linkPrestador = document.getElementById('linkCambiarAPrestador');

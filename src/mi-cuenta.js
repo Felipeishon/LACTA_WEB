@@ -29,6 +29,7 @@ import {
   fetchTodosPedidos
 } from './api/firestore.js';
 import { showToast } from './ui/notifications.js';
+import './css/mi-cuenta.css';
 
 function escapeHTML(str) {
   if (!str) return '';
@@ -120,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!sidebarNav) return;
     const items = NAV_CONFIG[role] || [];
     
-    // Crear botón del carrito flotante para el perfil Padres en la barra superior o sidebar
     let cartBtnHtml = '';
     if (role === 'padre') {
       cartBtnHtml = `
@@ -240,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-[#e5dfdc]">
-              <!-- Dinámico -->
             </tbody>
           </table>
         </div>
@@ -319,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
     } else if (activeTab === 'tienda') {
-      // Vista Tienda
       dashboardContent.innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-2xl font-black text-[#181411]">🛍️ Tienda de Bebés</h2>
@@ -336,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderTiendaProductos('Todos');
 
-      // Filtrado por categoría
       dashboardContent.querySelectorAll('.btn-categoria').forEach(btn => {
         btn.addEventListener('click', (e) => {
           dashboardContent.querySelectorAll('.btn-categoria').forEach(b => {
@@ -348,7 +345,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
     } else if (activeTab === 'pedidos') {
-      // Historial de compras
       dashboardContent.innerHTML = `
         <h2 class="text-2xl font-black text-[#181411] mb-6">📦 Historial de Pedidos</h2>
         <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] overflow-hidden" id="pedidos-container">
@@ -358,19 +354,17 @@ document.addEventListener('DOMContentLoaded', () => {
       renderMisPedidos(userData.uid);
 
     } else if (activeTab === 'bitacora') {
-      // Línea de tiempo de bitácoras del bebé
       dashboardContent.innerHTML = `
-        <h2 class="text-2xl font-black text-[#181411] mb-2">🍼 Bitácora de Cuidado del Bebé</h2>
-        <p class="text-sm text-gray-500 mb-6">Información ingresada por los prestadores durante las citas de tu nido.</p>
+        <h2 class="text-2xl font-black text-[#181411] mb-2">🍼 Historial del Bebé</h2>
+        <p class="text-sm text-gray-500 mb-6">Información e indicaciones ingresadas por las cuidadoras y consejeras de LactaNido.</p>
         <div class="space-y-6" id="bitacora-timeline">
-          <p class="text-center py-10 text-gray-400 italic">Cargando bitácoras...</p>
+          <p class="text-center py-10 text-gray-400 italic">Cargando bitácoras y fichas...</p>
         </div>
       `;
       renderBitacoraTimeline(userData.nidoId);
     }
   }
 
-  // Cargar productos de la tienda de forma dinámica
   async function renderTiendaProductos(categoria) {
     const grid = document.getElementById('tienda-productos-grid');
     if (!grid) return;
@@ -395,7 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `).join('');
 
-      // Listener para añadir al carrito
       grid.querySelectorAll('.btn-agregar-carrito').forEach(btn => {
         btn.onclick = () => {
           const { id, nombre, precio, stock } = btn.dataset;
@@ -425,7 +418,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Renders de bitácoras del bebé (línea de tiempo)
   async function renderBitacoraTimeline(nidoId) {
     const timeline = document.getElementById('bitacora-timeline');
     if (!timeline) return;
@@ -435,43 +427,99 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const bitacoras = await fetchFichasCuidadoPorNido(nidoId);
-      if (bitacoras.length === 0) {
-        timeline.innerHTML = '<p class="text-center py-10 text-gray-400 italic">No hay registros de cuidado cargados todavía.</p>';
+      const uidPadreActual = auth.currentUser.uid;
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      
+      const qBitacoras = query(collection(db, "bitacoras"), where("uidPadre", "==", uidPadreActual));
+      const qFichas = query(collection(db, "fichas_atencion"), where("uidPadre", "==", uidPadreActual));
+
+      const [snapBitacoras, snapFichas] = await Promise.all([
+        getDocs(qBitacoras),
+        getDocs(qFichas)
+      ]);
+
+      // CORREGIDO: Se quitó el espacio inválido en "registrosCombinados" para solucionar el SyntaxError
+      let registrosCombinados = [];
+
+      snapBitacoras.forEach(doc => {
+        const d = doc.data();
+        registrosCombinados.push({
+          ...d,
+          tipoRegistro: 'bitacora',
+          fechaOrden: d.fecha?.toDate() || new Date(0)
+        });
+      });
+
+      snapFichas.forEach(doc => {
+        const d = doc.data();
+        registrosCombinados.push({
+          ...d,
+          tipoRegistro: 'ficha_clinica',
+          fechaOrden: d.fechaAtencion?.toDate() || new Date(0)
+        });
+      });
+
+      registrosCombinados.sort((a, b) => b.fechaOrden - a.fechaOrden);
+
+      if (registrosCombinados.length === 0) {
+        timeline.innerHTML = '<p class="text-center py-10 text-gray-400 italic">No hay registros de cuidado ni clínicos cargados todavía.</p>';
         return;
       }
 
-      timeline.innerHTML = bitacoras.map(b => `
-        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative pl-8 border-l-4 border-[#e87a30]">
-          <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
-            <div>
-              <span class="text-xs text-gray-400 font-bold block">${new Date(b.creadoEn).toLocaleDateString()} ${new Date(b.creadoEn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-              <h4 class="font-bold text-lg text-[#181411]">Reporte de ${escapeHTML(b.prestadorNombre || 'Colaboradora')}</h4>
-              <p class="text-xs text-[#887263]">Duración del Turno: ${b.horasEfectivas || 0} hrs</p>
+      timeline.innerHTML = registrosCombinados.map(reg => {
+        const fechaLegible = reg.fechaOrden.toLocaleDateString('es-CL');
+        const horaLegible = reg.fechaOrden.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (reg.tipoRegistro === 'bitacora') {
+          return `
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative pl-8 border-l-4 border-emerald-500 slide-up">
+              <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+                <div>
+                  <span class="text-xs text-gray-400 font-bold block">${fechaLegible} a las ${horaLegible} hrs</span>
+                  <h4 class="font-bold text-lg text-[#181411]">Reporte de Cuidado Nocturno</h4>
+                  <p class="text-xs text-[#887263]">Turno efectivo: ${reg.horasEfectivas || 0} hrs</p>
+                </div>
+                <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full uppercase tracking-wider">🍼 Cuidadora</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100 text-xs">
+                <div><strong>🥛 Alimentación:</strong> ${escapeHTML(reg.alimentacion)}</div>
+                <div><strong>😴 Horas Sueño:</strong> ${reg.sueno}</div>
+                <div><strong>🧷 Deposiciones/Mudas:</strong> ${escapeHTML(reg.deposiciones)}</div>
+              </div>
+              <div class="space-y-1 text-sm text-[#181411]">
+                <p><strong>Observaciones generales:</strong> <span class="text-gray-600">${escapeHTML(reg.observaciones || 'Sin observaciones.')}</span></p>
+              </div>
             </div>
-            <span class="text-xs font-bold bg-[#f4eade] text-[#e87a30] px-2.5 py-1 rounded-full uppercase tracking-wider">${escapeHTML(b.prestadorRol)}</span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100">
-            <div class="text-sm"><strong>🍼 Alimentación:</strong> ${escapeHTML(b.tipoAlimentacion || 'Ninguna')} ${b.cantidadOz ? `(${b.cantidadOz} Oz)` : ''}</div>
-            <div class="text-sm"><strong>😴 Sueño:</strong> ${b.horasSueno || 0} hrs</div>
-            <div class="text-sm"><strong>🧷 Pañales:</strong> ${b.cantidadPanales || 0} cambiados</div>
-          </div>
-
-          <div class="space-y-2 text-sm text-[#181411]">
-            <p><strong>Observaciones:</strong> <span class="text-gray-600">${escapeHTML(b.observaciones || 'Sin observaciones.')}</span></p>
-            <p><strong>Recomendaciones:</strong> <span class="text-gray-600">${escapeHTML(b.recomendaciones || 'Sin recomendaciones especiales.')}</span></p>
-            ${b.seguimiento ? `<p><strong>Seguimiento:</strong> <span class="text-[#e87a30] font-medium">${escapeHTML(b.seguimiento)}</span></p>` : ''}
-          </div>
-        </div>
-      `).join('');
+          `;
+        } else {
+          return `
+            <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative pl-8 border-l-4 border-orange-500 slide-up">
+              <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+                <div>
+                  <span class="text-xs text-gray-400 font-bold block">${fechaLegible} - Control Clínico</span>
+                  <h4 class="font-bold text-lg text-[#181411]">Ficha de Atención de Lactancia</h4>
+                  <p class="text-xs text-red-500 font-semibold">Motivo: ${escapeHTML(reg.motivoConsulta)}</p>
+                </div>
+                <span class="text-xs font-bold bg-orange-50 text-[#e87a30] px-2.5 py-1 rounded-full uppercase tracking-wider">🤱 Consejera</span>
+              </div>
+              <div class="space-y-3 text-sm text-[#181411] mt-3">
+                <p class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs"><strong>Evaluación de la Especialista:</strong><br><span class="text-gray-600">${escapeHTML(reg.evaluacion)}</span></p>
+                <div class="p-4 bg-orange-50/40 rounded-xl border border-orange-100/70 text-sm text-gray-800">
+                  <strong class="text-[#e87a30]">📋 Plan de Acción e Indicaciones:</strong>
+                  <p class="mt-1 font-medium whitespace-pre-wrap">${escapeHTML(reg.planAccion)}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
 
     } catch (e) {
-      timeline.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error al cargar bitácoras.</p>';
+      console.error("Error cargando bitácoras:", e);
+      timeline.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error al cargar el historial unificado.</p>';
     }
   }
 
-  // Renders de historial de compras para Padres
   async function renderMisPedidos(uid) {
     const container = document.getElementById('pedidos-container');
     if (!container) return;
@@ -527,7 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <p class="text-gray-500 text-sm">Gestiona tus consultas y reporta las bitácoras del bebé.</p>
           </div>
         </div>
-
         <h3 class="font-bold text-lg mb-4">Tus Citas Programadas</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           ${appointments.length > 0 ? appointments.map(app => `
@@ -571,7 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPrestadorFichas(userData.uid);
 
     } else if (activeTab === 'horarios') {
-      // Renderizar cuadrícula original de horarios
       const h = userData.horarios || {};
       const getBtn = (day, block) => {
         const disp = h[day] && h[day][block];
@@ -621,7 +667,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Registrar lógica de guardar horarios
       const botonesBloque = dashboardContent.querySelectorAll('.btn-bloque');
       botonesBloque.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -674,7 +719,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </div>
-
         <h3 class="font-bold text-lg mb-4">Turnos de Cuidado Asignados</h3>
         <div class="space-y-4" id="cuidadora-turnos-list">
           ${appointments.length > 0 ? appointments.map(app => `
@@ -717,11 +761,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPrestadorFichas(userData.uid);
 
     } else if (activeTab === 'disponibilidad') {
-      // Gestión de bloqueos
       dashboardContent.innerHTML = `
         <h3 class="font-bold text-xl mb-2">Bloqueo de Días por Vacaciones / Descanso</h3>
         <p class="text-sm text-gray-500 mb-6">Ingresa las fechas específicas que deseas bloquear en el calendario.</p>
-        
         <div class="bg-white border border-[#e5dfdc] rounded-xl p-4 mb-4 flex flex-col md:flex-row gap-4 items-end">
           <div class="flex-1 w-full">
             <label class="block text-xs font-bold text-[#181411] mb-1">Fecha a bloquear</label>
@@ -733,7 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <button id="btnAñadirBloqueo" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors w-full md:w-auto h-[38px]">Añadir Bloqueo</button>
         </div>
-
         <h4 class="font-bold text-sm text-[#181411] mb-2">Bloqueos de Fechas Activos:</h4>
         <ul class="space-y-2" id="caregiver-blocked-days-list"></ul>
       `;
@@ -764,7 +805,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Renderizar fichas emitidas por prestador
   async function renderPrestadorFichas(uid) {
     const list = document.getElementById('prestador-fichas-list');
     if (!list) return;
@@ -813,7 +853,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="admin-orders-count" class="text-3xl font-black">Cargando...</div>
           </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 class="font-bold text-lg mb-4 border-b pb-2">Aprobaciones Pendientes</h3>
@@ -833,7 +872,6 @@ document.addEventListener('DOMContentLoaded', () => {
       loadPendingUsers();
       loadLatestUsers();
       
-      // Cargar contador de pedidos en el admin
       try {
         const ped = await fetchTodosPedidos();
         const cnt = document.getElementById('admin-orders-count');
@@ -843,9 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (activeTab === 'admin_tienda') {
       dashboardContent.innerHTML = `
         <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Tienda & Inventario</h2>
-        
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Formulario Agregar -->
           <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h4 class="font-bold text-lg text-[#181411] mb-4">Añadir Nuevo Producto</h4>
             <form id="adminAddProductForm" class="space-y-4">
@@ -882,8 +918,6 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </form>
           </div>
-
-          <!-- Listado de Productos -->
           <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
             <h4 class="font-bold text-lg text-[#181411] mb-4">Productos en Inventario</h4>
             <div class="flex-1 overflow-y-auto space-y-3 max-h-[500px]" id="admin-inventory-list">
@@ -891,7 +925,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </div>
-
         <h3 class="font-bold text-lg mt-8 mb-4">Todos los Pedidos Clientes</h3>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="admin-orders-list">
           <p class="text-center py-6 text-gray-400 italic">Cargando historial de pedidos...</p>
@@ -901,7 +934,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderAdminInventory();
       renderAdminAllOrders();
 
-      // Submit Formulario
       const addForm = document.getElementById('adminAddProductForm');
       addForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1009,14 +1041,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- LOGICA DE MODALES DE SOPORTE ---
   function openPerfilBebeModal(userData) {
     const modal = document.getElementById('modalPerfilBebe');
     if (!modal) return;
     modal.showModal();
   }
 
-  // --- LOGICA DEL CARRITO ---
   function openCartModal() {
     const modal = document.getElementById('modalCarrito');
     if (!modal) return;
@@ -1057,7 +1087,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (totalEl) totalEl.textContent = `$${total.toLocaleString('cl-CL')}`;
 
-    // Eventos cantidad
     container.querySelectorAll('.btn-cart-qty').forEach(btn => {
       btn.onclick = () => {
         const idx = parseInt(btn.dataset.idx);
@@ -1085,7 +1114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Confirmar Pedido (Checkout Form)
   const checkoutForm = document.getElementById('checkoutForm');
   checkoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1123,16 +1151,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- LOGICA DE BITACORA DE CUIDADO MODAL (PRESTADOR) ---
   function openFichaCuidadoModal(reservaId, nidoId) {
     const modal = document.getElementById('modalFichaCuidado');
     if (!modal) return;
     
-    // Setear valores ocultos
     document.getElementById('ficha-reservaId').value = reservaId;
     document.getElementById('ficha-nidoId').value = nidoId;
     
-    // Pre-llenar fecha de hoy
     const inputFecha = modal.querySelector('input[name="fecha"]');
     if (inputFecha) inputFecha.value = new Date().toISOString().split('T')[0];
 
@@ -1185,8 +1210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-
-  // --- ADMINISTRADOR (APROBACIONES PENDIENTES) ---
   async function loadPendingUsers() {
     const container = document.getElementById('pending-users-list');
     if (!container) return;
@@ -1211,7 +1234,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       container.querySelectorAll('.btn-approve').forEach(b => b.addEventListener('click', async (e) => {
         const { uid, nombre, email } = e.target.dataset;
-        e.target.disabled = true;
+        const targetBtn = e.target;
+        targetBtn.disabled = true;
         try {
           await approveUser(uid);
           showToast('Usuario aprobado con éxito', 'success');
@@ -1219,7 +1243,7 @@ document.addEventListener('DOMContentLoaded', () => {
           loadPendingUsers();
         } catch (error) {
           showToast('Error al aprobar usuario', 'error');
-          e.target.disabled = false;
+          targetBtn.disabled = false;
         }
       }));
     } catch (e) {
@@ -1309,24 +1333,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const rol = (Array.isArray(userData.rol) ? userData.rol[0] : userData.rol) || 'padre';
             currentUserRole = rol;
             
-            // Seteo de cabecera de cuenta
             if (userNameEl) userNameEl.textContent = userData?.nombre || "Usuario";
             if (userInitial) userInitial.textContent = (userData?.nombre || "U").charAt(0).toUpperCase();
             if (userRoleLabel) {
-              // Prioridad 1: Si es admin, siempre mostramos 'Administrador'
               if (rol === 'admin') {
                 userRoleLabel.textContent = 'Administrador';
-              // Prioridad 2: Si tiene subtipo (madre/padre), mostramos eso
               } else if (userData.subtipo && userData.subtipo !== 'admin') {
                 userRoleLabel.textContent = userData.subtipo === 'madre' ? 'Mamá' : 'Papá';
-              // Prioridad 3: Mostramos el rol capitalizado como fallback
               } else {
                 const labelMap = { consejera: 'Consejera', cuidadora: 'Cuidadora', padre: 'Padre' };
                 userRoleLabel.textContent = labelMap[rol] || rol;
               }
             }
 
-            // Seleccionar pestaña por defecto
             activeTab = (rol === 'padre') ? 'resumen' : 'dashboard';
 
             renderSidebar(rol, userData);
@@ -1356,13 +1375,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Cerrar sesión
   const btnLogout = document.getElementById('btnCerrarSesion');
   if (btnLogout) {
     btnLogout.addEventListener('click', async (e) => {
       e.preventDefault();
       await signOut(auth);
       window.location.href = 'index.html';
+    });
+  }
+
+  // --- LÓGICA MODAL TIPS DE LACTANCIA ---
+  const modalTips = document.getElementById('modalTipsLactancia');
+  const btnDescubreComo = document.getElementById('btnDescubreComo');
+  const btnCerrarTips = document.getElementById('btnCerrarTips');
+  const btnEntendidoTips = document.getElementById('btnEntendidoTips');
+
+  if (btnDescubreComo && modalTips) {
+    btnDescubreComo.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalTips.showModal();
+    });
+  }
+
+  if (btnCerrarTips && modalTips) {
+    btnCerrarTips.onclick = () => modalTips.close();
+  }
+
+  if (btnEntendidoTips && modalTips) {
+    btnEntendidoTips.onclick = () => modalTips.close();
+  }
+
+  if (modalTips) {
+    modalTips.addEventListener('click', (e) => {
+      if (e.target === modalTips) {
+        modalTips.close();
+      }
     });
   }
 });
