@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* Index styles */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Header + logo overlap helpers */
+.header-overlap {
+  padding-bottom: 2.25rem;
+}
+
+.brand-logo-desktop {
+  position: absolute;
+  left: 1rem;
+  top: 100%;
+  transform: translateY(-30%);
+  width: 180px;
+  z-index: 120;
+  display: block;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.brand-logo-desktop img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.brand-logo-inline {
+  display: none;
+}
+
+.desktop-user-menu-panel {
+  min-width: 182px;
+}
+
+.active-nav-link {
+  color: #e87a30;
+  font-weight: 700;
+  border-bottom: 2px solid #e87a30;
+  padding-bottom: 2px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+@media (max-width: 767px) {
+  .brand-logo-desktop { display: none; }
+  .brand-logo-inline { display: block; }
+  .brand-logo-inline img { width: 108px; display:block; margin:0; }
+  .desktop-user-menu-button,
+  .desktop-user-menu-panel { display: none !important; }
+  .mobile-nav-panel {
+    width: min(calc(100vw - 1.5rem), 360px);
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .header-overlap { padding-bottom: 0.75rem; }
+}

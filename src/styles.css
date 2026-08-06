@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+.calendario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.calendario-header button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #e87a30;
+  cursor: pointer;
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.calendario-grid .day-name {
+  font-weight: bold;
+  color: #181411;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.calendario-grid button {
+  background: none;
+  border: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: #181411;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.calendario-grid button.selected,
+.calendario-grid button:hover:not(.selected) {
+  background: #e87a30;
+  color: #fff;
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+dialog {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+dialog[open] {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

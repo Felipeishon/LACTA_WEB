@@ -1,0 +1,130 @@
+html {
+  scroll-behavior: smooth;
+}
+
+:root {
+  --header-height: 80px; /* used to compute section heights */
+}
+
+/* Header + logo helpers */
+.header-overlap {
+  min-height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding-bottom: 0; /* avoid unnecessary extra space when logo is inside header */
+  box-sizing: border-box;
+}
+
+.brand-logo-desktop {
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem; /* Ajusta este valor para mover el logo verticalmente. 0 lo alinea arriba. */
+  transform: none;
+  width: clamp(110px, 10vw, 180px);
+  max-width: 180px;
+  z-index: 120;
+  display: block;
+  pointer-events: auto;
+}
+
+.brand-logo-desktop img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.brand-logo-inline {
+  display: none;
+}
+
+.desktop-user-menu-panel {
+  min-width: 182px;
+}
+
+.active-nav-link {
+  color: #e87a30;
+  font-weight: 700;
+  border-bottom: 2px solid #e87a30;
+  padding-bottom: 2px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Navbar: balance spacing and center items vertically */
+header.header-overlap {
+  padding-left: calc(1rem + clamp(110px, 10vw, 180px) + 0.5rem); /* avoid overlap with the logo */
+  padding-right: 1rem;
+}
+
+/* Ensure nav links are vertically centered */
+header .hidden.md\:flex.flex-1.justify-center nav { align-items: center; display:flex; }
+
+/* Make header slightly more compact on larger screens */
+@media(min-width:768px){
+  :root{ --header-height:72px; }
+  header.header-overlap{ padding-left: calc(1rem + clamp(110px, 9vw, 160px) + 0.5rem); }
+}
+
+@media (max-width: 767px) {
+  .brand-logo-desktop { display: none; }
+  .brand-logo-inline { display: block; }
+  .brand-logo-inline img { width: 108px; display:block; margin:0; }
+  .desktop-user-menu-button,
+  .desktop-user-menu-panel {
+    display: none !important;
+  }
+  .mobile-nav-panel {
+    width: min(calc(100vw - 1.5rem), 360px); /* centered panel width for mobile */
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .header-overlap { min-height: auto; padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* Scroll snapping to prevent partial section previews while scrolling */
+html, body {
+  scroll-snap-type: y proximity;
+}
+
+/* Sections should fill viewport minus header */
+section[id] {
+  min-height: calc(100vh - var(--header-height));
+  height: calc(100vh - var(--header-height));
+  scroll-snap-align: start;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Section background decorative images */
+.section-bg {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: background-position 800ms ease, opacity 400ms ease;
+}
+
+.section-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(245,237,229,0.88) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.section-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+.section-bg.in-view {
+  background-position: center 45%;
+}
+
+@media (max-width: 768px){
+  .section-bg::before { background: rgba(255,255,255,0.94); }
+}
+
+/* Respect OS reduce-motion preference */
+@media (prefers-reduced-motion: reduce){
+  .section-bg { transition: none !important; }
+}
