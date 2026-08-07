@@ -10,6 +10,8 @@
 // - Mantener `mi-cuenta.js` como punto de entrada/orquestador simplifica
 //   pruebas y futuras migraciones a frameworks.
 
+import '../index.css';
+
 import { db, auth } from './firebase.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { initFormularios } from './formularios.js';
