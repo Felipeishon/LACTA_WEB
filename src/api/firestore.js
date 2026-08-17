@@ -199,6 +199,29 @@ export async function getAvailabilitySlots(uid) {
     }
 }
 
+// Devuelve horas disponibles (formato 'HH:MM') para un profesional en una fecha YYYY-MM-DD
+export async function getAvailableHoursForProfessional(uid, fecha) {
+    try {
+        if (!uid || !fecha) return [];
+        const slots = await getAvailabilitySlots(uid);
+        // Filtramos por fecha exacta (asumimos que `fechaInicio` está en ISO)
+        const matches = slots.filter(s => s.fechaInicio && s.fechaInicio.startsWith(fecha) && !s.reservado);
+        const hours = matches.map(s => {
+            const d = new Date(s.fechaInicio);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        });
+        // Deduplicamos y ordenamos
+        const unique = Array.from(new Set(hours));
+        unique.sort();
+        return unique;
+    } catch (error) {
+        console.error('Error al obtener horas disponibles:', error);
+        throw error;
+    }
+}
+
 export async function addAvailabilitySlot(uid, slotData) {
     try {
         const data = {

@@ -421,49 +421,45 @@
   <dialog id="modalAgendarCita" class="bg-transparent p-0 m-auto w-full max-w-lg outline-none backdrop:bg-black/50">
     <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl overflow-y-auto max-h-[90vh]">
       <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]" aria-label="Cerrar">×</button>
-      <h2 class="text-2xl font-bold mb-2 text-[#181411]">Llamada de Evaluación</h2>
-      <p class="text-sm text-[#887263] mb-6">Agenda 15 minutos gratuitos para conocernos sin presiones.</p>
+      <h2 class="text-2xl font-bold mb-2 text-[#181411]">Agendar Nueva Cita</h2>
+      <p class="text-sm text-[#887263] mb-6">Selecciona servicio, profesional, fecha y horario.</p>
       <form id="reservaForm" class="flex flex-col gap-4" autocomplete="off">
-        <label class="text-sm text-[#181411] font-bold">Nombre:
-          <input type="text" name="nombre" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Nombre" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Email:
-          <input type="email" name="email" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Teléfono:
-          <input type="tel" name="telefono" required pattern="[0-9+ ]{7,15}" class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" placeholder="Ej: +56912345678" aria-label="Teléfono" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Fecha sugerida:
-          <div class="flex items-center">
-            <input type="date" name="fecha" id="fechaAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Fecha" />
-            <button type="button" id="btnAbrirModalCalendarioAnon" class="ml-2 p-3 bg-[#fdf5f0] text-[#e87a30] rounded-lg hover:bg-[#f4e2d8] transition-colors" aria-label="Abrir calendario">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A24,24,0,0,0,24,56V208a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V56A24,24,0,0,0,208,32Zm8,176a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V88H216Zm0-136H40V56a8,8,0,0,1,8-8H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24a8,8,0,0,1,8,8Z"></path>
-              </svg>
-            </button>
-          </div>
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Hora:
-          <input type="time" name="hora" id="horaAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Hora" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">¿En qué necesitas apoyo?:
-          <select name="servicio" id="servicioAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Servicio">
+        <!-- 1. Servicio -->
+        <label class="text-sm text-[#181411] font-bold">Servicio:
+          <select name="servicio" id="servicio" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Servicio">
             <option value="">Selecciona...</option>
-            <option value="Cuidador">Apoyo de Cuidadora</option>
-            <option value="Consultor">Asesoría de Lactancia</option>
+            <option value="consejera">Consejería (Asesoría de Lactancia)</option>
+            <option value="cuidadora">Cuidadora (Apoyo 24/7)</option>
           </select>
         </label>
-        <label class="text-sm text-[#181411] font-bold hidden" id="labelProfesionalAnon">Especialista:
-          <select name="profesionalId" id="profesionalAnon" disabled required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] bg-gray-50 font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Profesional">
+
+        <!-- 2. Profesional (dinámico según servicio) -->
+        <label id="labelProfesional" class="text-sm text-[#181411] font-bold hidden">Profesional:
+          <select name="profesionalId" id="profesionalId" disabled required class="w-full mt-1 p-2 border rounded bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Profesional">
             <option value="">Selecciona profesional...</option>
           </select>
         </label>
-        <label class="text-sm text-[#181411] font-bold">Duración estimada del apoyo (horas):
-          <input type="number" name="duracion" id="duracion" min="1" max="40" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Duración" />
+
+        <!-- 3. Fecha -->
+        <label class="text-sm text-[#181411] font-bold">Fecha:
+          <input type="date" name="fecha" id="fecha" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Fecha" />
         </label>
-        <span id="avisoHorarioAnon" class="text-xs text-[#e87a30] font-medium"></span>
-        <span id="avisoReservaAnon" class="text-xs text-red-600 font-medium"></span>
-        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-4 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Confirmar Evaluación</button>
+
+        <!-- 4. Hora de Inicio (select con bloques disponibles) -->
+        <label class="text-sm text-[#181411] font-bold">Hora de Inicio:
+          <select name="hora" id="horaCita" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Hora de Inicio">
+            <option value="">Selecciona fecha y profesional primero</option>
+          </select>
+        </label>
+
+        <!-- 5. Duración Estimada -->
+        <label class="text-sm text-[#181411] font-bold">Duración estimada (horas):
+          <input type="number" name="duracion" id="duracion" min="1" max="40" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Duración" />
+        </label>
+
+        <span id="avisoHorario" class="text-xs text-[#e87a30] font-medium"></span>
+        <span id="avisoReserva" class="text-xs text-red-600 font-medium"></span>
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-4 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Confirmar Reserva</button>
       </form>
       <p class="text-[#887263] text-xs font-normal leading-normal pt-5 text-center w-full">Los cuidadores están disponibles 24/7. Las consultas de L-V 8am-6pm, Sáb 9am-5pm.</p>
     </div>

@@ -25,7 +25,7 @@ import { hasRole } from '../utils/roles.js';
 import { db } from '../firebase.js'; // Importar db desde su origen
 import { doc, updateDoc } from 'firebase/firestore'; // Importar funciones de firestore
 
-export async function renderAdminTab(activeTab, userData) {
+export async function renderAdminTab(activeTab) {
   const dashboardContent = document.getElementById('dashboard-content');
   if (!dashboardContent) return;
 
@@ -136,7 +136,6 @@ export async function renderAdminTab(activeTab, userData) {
     `;
 
     renderAdminInventory();
-    renderAdminAllOrders();
 
     const addForm = document.getElementById('adminAddProductForm');
     if (addForm) {
@@ -156,11 +155,20 @@ export async function renderAdminTab(activeTab, userData) {
           showToast('Producto creado con éxito', 'success');
           addForm.reset();
           renderAdminInventory();
-        } catch (err) {
+        } catch {
           showToast('Error al crear producto', 'error');
         }
       });
     }
+
+  } else if (activeTab === 'admin_pedidos') {
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">📦 Historial de Todos los Pedidos</h2>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="admin-orders-list">
+        <p class="text-center py-10 text-gray-400 italic">Cargando todos los pedidos...</p>
+      </div>
+    `;
+    renderAdminAllOrders();
   }
 }
 
@@ -189,19 +197,19 @@ async function renderAdminInventory() {
 
     list.querySelectorAll('.btn-delete-product').forEach(btn => {
       btn.onclick = async () => {
-        if (confirm('¿Estás seguro de eliminar este producto?')) {
+        if (window.confirm('¿Estás seguro de eliminar este producto?')) {
           try {
             await deleteProduct(btn.dataset.id);
             showToast('Producto eliminado', 'success');
             renderAdminInventory();
-          } catch (e) {
+          } catch {
             showToast('Error al eliminar producto', 'error');
           }
         }
       };
     });
 
-  } catch (e) {
+  } catch {
     list.innerHTML = '<p class="text-red-500 italic text-sm">Error cargando inventario.</p>';
   }
 }
@@ -242,7 +250,7 @@ async function renderAdminAllOrders() {
         </tbody>
       </table>
     `;
-  } catch (e) {
+  } catch {
     div.innerHTML = '<p class="text-center py-6 text-red-500 italic">Error cargando pedidos.</p>';
   }
 }
@@ -288,7 +296,7 @@ async function loadPendingUsers() {
       }
     }));
 
-  } catch (e) {
+  } catch {
     container.innerHTML = '<p class="text-xs text-red-500">Error al cargar.</p>';
   }
 }
@@ -306,7 +314,16 @@ async function loadLatestUsers() {
     container.innerHTML = users.map(u => {
       const esPrestador = !hasRole(u, 'padre');
       const color = esPrestador ? 'bg-green-500' : 'bg-blue-500';
-      const fecha = u.fechaRegistro ? new Date(u.fechaRegistro).toLocaleDateString() : '---';
+      
+      // Lógica de fecha robusta para evitar "Invalid Date"
+      let fecha = '---';
+      if (u.fechaRegistro) {
+        const dateObj = new Date(u.fechaRegistro);
+        // Se comprueba si la fecha es un número válido antes de mostrarla
+        if (!isNaN(dateObj.getTime())) {
+          fecha = dateObj.toLocaleDateString();
+        }
+      }
       
       // Lógica para el toggle de permisos de tips
       const puedeCrearTips = u.puedeCrearTips || false;
@@ -346,7 +363,7 @@ async function loadLatestUsers() {
         }
       });
     });
-  } catch (e) {
+  } catch {
     showToast('Error al cargar últimos registros', 'error');
   }
 }

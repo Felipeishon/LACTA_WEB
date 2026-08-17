@@ -167,31 +167,59 @@ export async function renderCreatorTipsManagement(containerId) {
             </div>
         `;
 
+        // ============================================================
+        // 🔧 PARTE CORREGIDA: El evento submit del formulario
+        // ============================================================
         const form = document.getElementById('formAddTip');
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                
                 const btn = form.querySelector('button[type="submit"]');
                 btn.disabled = true;
                 btn.textContent = 'Guardando...';
 
-                const tipData = {
-                    titulo: form.titulo.value,
-                    contenido: form.contenido.value,
-                    autorId: auth.currentUser.uid
-                };
-
                 try {
+                    // Verificar que el usuario está autenticado
+                    if (!auth.currentUser) {
+                        showToast('Debes iniciar sesión para guardar un tip.', 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Guardar Tip';
+                        return;
+                    }
+
+                    // Preparar los datos del tip
+                    const tipData = {
+                        titulo: form.titulo.value.trim(),
+                        contenido: form.contenido.value.trim(),
+                        autorId: auth.currentUser.uid,
+                        autorNombre: auth.currentUser.displayName || 'Anónimo',
+                        fechaCreacion: new Date().toISOString()
+                    };
+
+                    // Guardar en Firebase
                     await createTip(tipData);
+                    
+                    // Mostrar mensaje de éxito
                     showToast('Tip guardado con éxito.', 'success');
-                    await renderCreatorTipsManagement(containerId); // Recargar la vista
+                    
+                    // Limpiar el formulario
+                    form.reset();
+                    
+                    // Recargar la lista de tips
+                    await renderCreatorTipsManagement(containerId);
+                    
                 } catch (error) {
-                    showToast('Error al guardar el tip.', 'error');
+                    console.error('Error al guardar el tip:', error);
+                    showToast('Error al guardar el tip. Intenta nuevamente.', 'error');
+                    // Reactivar el botón en caso de error
                     btn.disabled = false;
                     btn.textContent = 'Guardar Tip';
                 }
             });
         }
+        // ============================================================
+
     } catch (error) {
         console.error("Error al renderizar gestión de tips:", error);
         container.innerHTML = `<p class="text-center text-red-500">Error al cargar la sección de tips.</p>`;

@@ -20,13 +20,20 @@ export async function seedDatabase() {
             rut: "1.111.111-1" 
         },
         { 
-            uid: "l19of6LT5DSnZ2GeETTtS8dClNt1", 
+            uid: "WOq9SZDW05WO7wuKqv00hgaLg9F2", 
             nombre: "Papá de Prueba", 
             email: "papalactanido@gmail.com", 
             rol: ["padre"], 
             estado: "activo", 
             rut: "2.222.222-2", 
-            subtipo: "padre" 
+        },
+        { 
+            uid: "cIvpMyhk5gfCeeezR2KYsIlnHn42", 
+            nombre: "Mamá de Prueba", 
+            email: "mamalacta@proton.me", 
+            rol: ["padre"], 
+            estado: "activo", 
+            rut: "3.333.333-3", 
         },
         { 
             uid: "26M7wJcPbEMwqNexLUFU8J5AXcE2", 
@@ -35,20 +42,9 @@ export async function seedDatabase() {
             rol: ["consejera"], 
             estado: "pendiente", 
             rut: "5.555.555-5" 
-        },
-        // --- USUARIOS NUEVOS / A MODIFICAR (requieren tu acción) ---
-        // Para estos, crea la cuenta en Firebase Auth, copia su UID y reemplaza el texto "REEMPLAZAR_CON_UID...".
+        },        
         { 
-            uid: "REEMPLAZAR_CON_UID_DE_MAMALACTA", 
-            nombre: "Mamá de Prueba", 
-            email: "mamalacta@proton.me", 
-            rol: ["padre"], 
-            estado: "activo", 
-            rut: "3.333.333-3", 
-            subtipo: "madre" 
-        },
-        { 
-            uid: "REEMPLAZAR_CON_UID_DE_CUIDALACTANIDO", 
+            uid: "glslfOGjZzYa3nZitb6DTjLVqN33", 
             nombre: "Cuidadora Test", 
             email: "cuidalactanido@proton.me", 
             rol: ["cuidadora"], 
@@ -56,7 +52,7 @@ export async function seedDatabase() {
             rut: "4.444.444-4" 
         },
         { 
-            uid: "REEMPLAZAR_CON_UID_DE_IPTVPROFESIONAL", 
+            uid: "10NSGh5qAJXDX36r6QpdSVsoV8v2", 
             nombre: "Profesional Mixto", 
             email: "iptvprofesional2020@gmail.com", 
             rol: ["consejera", "cuidadora"], 
@@ -77,7 +73,7 @@ export async function seedDatabase() {
     }
 
     const dummyReservas = [
-        { nombre: "Papá de Prueba", servicio: "Consultor", fecha: "2025-05-20", hora: "10:00", estado: "pendiente", uid: "l19of6LT5DSnZ2GeETTtS8dClNt1", creadoEn: new Date().toISOString() }, // Reserva para el papá con UID real
+        { nombre: "Papá de Prueba", servicio: "Consultor", fecha: "2025-05-20", hora: "10:00", estado: "pendiente", uid: "WOq9SZDW05WO7wuKqv00hgaLg9F2", creadoEn: new Date().toISOString() }, // Reserva para el papá con UID real
         { nombre: "Anónimo Test", servicio: "Cuidador", fecha: "2025-05-21", hora: "22:00", estado: "pendiente", uid: null, creadoEn: new Date().toISOString() }
     ];
 
