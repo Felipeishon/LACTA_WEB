@@ -5,7 +5,8 @@ export function initModales() {
     agendarCita: document.getElementById('modalAgendarCita'),
     calendario: document.getElementById('modalCalendario') || document.getElementById('modalCalendarioAnon'),
     login: document.getElementById('modalLogin'),
-    tipsLactancia: document.getElementById('modalTipsLactancia')
+    tipsLactancia: document.getElementById('modalTipsLactancia'),
+    edicionUsuario: document.getElementById('modalEdicionUsuario')
   };
 
   // Botones para abrir modales (pueden no existir en todas las páginas)

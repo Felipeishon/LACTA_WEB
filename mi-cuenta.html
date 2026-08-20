@@ -397,7 +397,111 @@
 
 
 
+  <!-- MODAL EDICION DE USUARIO -->
+
+  <dialog id="modalEdicionUsuario" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
+
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl">
+
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+
+      <h2 class="text-xl font-bold mb-6 text-[#181411]">Editar Usuario</h2>
+
+      <form id="formEdicionUsuario" class="flex flex-col gap-4" autocomplete="off">
+
+        <input type="hidden" name="uid" />
+
+        <label class="text-[#181411] font-medium text-sm">Nombre:
+
+          <input type="text" name="nombre" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+
+        </label>
+
+        <label class="text-[#181411] font-medium text-sm">Email:
+
+          <input type="email" name="email" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+
+        </label>
+
+        <label class="text-[#181411] font-medium text-sm">Estado:
+
+          <select name="estado" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]">
+            <option value="activo">Activo</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+
+        </label>
+
+        <fieldset class="flex flex-col gap-2 p-3 border border-[#e5dfdc] rounded-lg bg-[#fdf5f0]">
+
+          <legend class="text-sm font-bold text-[#887263]">Roles:</legend>
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="rol" value="padre" class="accent-[#e87a30]" /> Padre
+          </label>
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="rol" value="consejera" class="accent-[#e87a30]" /> Consejera
+          </label>
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="rol" value="cuidadora" class="accent-[#e87a30]" /> Cuidadora
+          </label>
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="rol" value="admin" class="accent-[#e87a30]" /> Administrador
+          </label>
+
+        </fieldset>
+
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2 mt-2 hover:bg-[#d66a20] transition-colors">
+          Guardar Cambios
+        </button>
+
+      </form>
+
+    </div>
+
+  </dialog>
+
+
+
   <!-- MODAL CARRITO DE COMPRAS -->
+
+  <!-- MODAL EDICION DE PRODUCTO -->
+  <dialog id="modalEdicionProducto" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
+    <div class="bg-white rounded-lg p-8 w-full relative shadow-xl">
+      <button type="button" class="btnCerrarModal absolute top-2 right-2 text-xl" aria-label="Cerrar">&times;</button>
+      <h2 class="text-xl font-bold mb-6 text-[#181411]">Editar Producto</h2>
+      <form id="formEdicionProducto" class="flex flex-col gap-4" autocomplete="off">
+        <input type="hidden" name="id" />
+        <label class="text-[#181411] font-medium text-sm">Nombre:
+          <input type="text" name="nombre" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Precio (CLP):
+          <input type="number" name="precio" min="0" step="1" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Stock:
+          <input type="number" name="stock" min="0" step="1" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]" />
+        </label>
+        <label class="text-[#181411] font-medium text-sm">Categoría:
+          <select name="categoria" required class="w-full mt-1 p-2 rounded border border-[#e5dfdc]">
+            <option value="Lactancia">Lactancia</option>
+            <option value="Higiene">Higiene</option>
+            <option value="Accesorios">Accesorios</option>
+          </select>
+        </label>
+        <input type="hidden" name="imagenUrlActual" />
+        <label class="text-[#181411] font-medium text-sm">Imagen:
+          <input type="file" name="imagenFile" accept="image/*" class="w-full mt-1 p-2 rounded border border-[#e5dfdc] file:mr-3 file:rounded file:border-0 file:bg-[#f4eade] file:px-3 file:py-1 file:text-xs file:font-bold" />
+        </label>
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2 mt-2 hover:bg-[#d66a20] transition-colors">
+          Guardar Cambios
+        </button>
+      </form>
+    </div>
+  </dialog>
 
   <dialog id="modalCarrito" class="bg-transparent p-0 m-auto w-full max-w-md outline-none">
 

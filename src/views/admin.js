@@ -13,10 +13,14 @@ import { emailService } from '../emailService.js';
 import {
   fetchAdminStats,
   getPendingUsers,
+  getAllUsers,
+  updateUserProfile,
+  deleteUserProfile,
   getLatestUsers,
   fetchTodosPedidos,
   fetchActiveProducts,
   createProduct,
+  updateProduct,
   deleteProduct,
 } from '../api/firestore.js';
 import { approveUserWithAudit } from '../api/admin.js';
@@ -24,6 +28,65 @@ import { escapeHTML } from '../utils/html.js';
 import { hasRole } from '../utils/roles.js';
 import { db } from '../firebase.js'; // Importar db desde su origen
 import { doc, updateDoc } from 'firebase/firestore'; // Importar funciones de firestore
+
+function fileToBase64(file) {
+  const maxBytes = 200 * 1024;
+  if (file.size <= maxBytes) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const maxWidth = 800;
+      const scale = Math.min(1, maxWidth / image.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('No se pudo preparar la imagen.'));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const compress = (quality, attemptsLeft) => {
+        canvas.toBlob(blob => {
+          if (!blob) {
+            reject(new Error('No se pudo comprimir la imagen.'));
+            return;
+          }
+          if (blob.size <= maxBytes || attemptsLeft === 0) {
+            if (blob.size > maxBytes) {
+              reject(new Error('La imagen no pudo reducirse por debajo de 200 KB.'));
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('No se pudo leer la imagen comprimida.'));
+            reader.readAsDataURL(blob);
+            return;
+          }
+          compress(Math.max(0.2, quality - 0.1), attemptsLeft - 1);
+        }, 'image/jpeg', quality);
+      };
+
+      compress(0.8, 6);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('El archivo seleccionado no es una imagen válida.'));
+    };
+    image.src = objectUrl;
+  });
+}
 
 export async function renderAdminTab(activeTab) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -81,11 +144,28 @@ export async function renderAdminTab(activeTab) {
   } else if (activeTab === 'usuarios') {
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Usuarios</h2>
-      <div class="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-        <p class="text-gray-600">Esta sección está en desarrollo. Próximamente, aquí encontrarás una tabla completa con todos los usuarios de la plataforma, con herramientas de búsqueda, filtro y acciones de moderación directa (como editar perfiles o eliminar cuentas).</p>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <input id="users-search" type="search" placeholder="Buscar por nombre, email o RUT" class="p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none" />
+          <select id="users-role-filter" class="p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none">
+            <option value="">Todos los roles</option>
+            <option value="padre">Padre</option>
+            <option value="consejera">Consejera</option>
+            <option value="cuidadora">Cuidadora</option>
+          </select>
+          <select id="users-status-filter" class="p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none">
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div id="users-table-container" class="overflow-x-auto">
+          <p class="text-center py-8 text-gray-400 italic">Cargando usuarios...</p>
+        </div>
       </div>
     `;
-    // En el futuro, aquí se llamaría a una función como `loadAllUsersTable()`
+    loadAllUsersTable();
   } else if (activeTab === 'admin_tienda') {
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Tienda & Inventario</h2>
@@ -117,8 +197,8 @@ export async function renderAdminTab(activeTab) {
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1">Imagen (URL)</label>
-                <input type="url" name="imagenUrl" placeholder="https://..." class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none" />
+                <label class="block text-xs font-bold text-gray-700 mb-1">Imagen</label>
+                <input type="file" name="imagenFile" accept="image/*" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none file:mr-3 file:rounded file:border-0 file:bg-[#f4eade] file:px-3 file:py-1 file:text-xs file:font-bold" />
               </div>
             </div>
             <button type="submit" class="w-full bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-2.5 rounded-lg text-sm transition">
@@ -142,12 +222,19 @@ export async function renderAdminTab(activeTab) {
       addForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(addForm);
+        const imageFile = fd.get('imagenFile');
+        let imagenUrl = 'https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=300&q=80';
+
+        if (imageFile instanceof File && imageFile.size > 0) {
+          imagenUrl = await fileToBase64(imageFile);
+        }
+
         const data = {
           nombre: fd.get('nombre'),
           precio: parseFloat(fd.get('precio')),
           stock: parseInt(fd.get('stock')),
           categoria: fd.get('categoria'),
-          imagenUrl: fd.get('imagenUrl') || 'https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=300&q=80'
+          imagenUrl
         };
 
         try {
@@ -187,13 +274,33 @@ async function renderAdminInventory() {
         <div class="flex items-center gap-3">
           <img src="${p.imagenUrl}" alt="" class="w-10 h-10 object-cover rounded" />
           <div>
-            <p class="font-bold text-sm text-[#181411]">${p.nombre}</p>
-            <p class="text-xs text-gray-500">$${p.precio.toLocaleString('cl-CL')} • Stock: ${p.stock} • Cat: ${p.categoria}</p>
+            <p class="font-bold text-sm text-[#181411]">${escapeHTML(p.nombre)}</p>
+            <p class="text-xs text-gray-500">$${p.precio.toLocaleString('cl-CL')} • Stock: ${p.stock} • Cat: ${escapeHTML(p.categoria)}</p>
           </div>
         </div>
-        <button data-id="${p.id}" class="btn-delete-product text-red-500 hover:text-red-700 text-xs font-bold transition">Quitar</button>
+        <div class="flex items-center gap-3">
+          <button type="button" data-id="${p.id}" class="btn-edit-product text-blue-600 hover:text-blue-800 text-xs font-bold transition">Editar</button>
+          <button type="button" data-id="${p.id}" class="btn-delete-product text-red-500 hover:text-red-700 text-xs font-bold transition">Quitar</button>
+        </div>
       </div>
     `).join('');
+
+    list.querySelectorAll('.btn-edit-product').forEach(btn => {
+      btn.onclick = () => {
+        const product = products.find(item => item.id === btn.dataset.id);
+        const modal = document.getElementById('modalEdicionProducto');
+        const form = document.getElementById('formEdicionProducto');
+        if (!product || !modal || !form) return;
+
+        form.elements.id.value = product.id;
+        form.elements.nombre.value = product.nombre || '';
+        form.elements.precio.value = product.precio ?? '';
+        form.elements.stock.value = product.stock ?? '';
+        form.elements.categoria.value = product.categoria || 'Lactancia';
+        form.elements.imagenUrlActual.value = product.imagenUrl || '';
+        modal.showModal();
+      };
+    });
 
     list.querySelectorAll('.btn-delete-product').forEach(btn => {
       btn.onclick = async () => {
@@ -208,6 +315,42 @@ async function renderAdminInventory() {
         }
       };
     });
+
+    const editForm = document.getElementById('formEdicionProducto');
+    const editModal = document.getElementById('modalEdicionProducto');
+    if (editForm && !editForm.dataset.listenerAttached) {
+      editForm.dataset.listenerAttached = 'true';
+      editForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(editForm);
+        const imageFile = formData.get('imagenFile');
+        let imagenUrl = formData.get('imagenUrlActual') || '';
+        const submitButton = editForm.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+          if (imageFile instanceof File && imageFile.size > 0) {
+            imagenUrl = await fileToBase64(imageFile);
+          }
+
+          await updateProduct(formData.get('id'), {
+            nombre: formData.get('nombre'),
+            precio: formData.get('precio'),
+            stock: formData.get('stock'),
+            categoria: formData.get('categoria'),
+            imagenUrl
+          });
+          editModal?.close();
+          showToast('Producto actualizado con éxito', 'success');
+          renderAdminInventory();
+        } catch (error) {
+          console.error('Error al actualizar producto:', error);
+          showToast(error.message || 'Error al actualizar producto', 'error');
+        } finally {
+          if (submitButton) submitButton.disabled = false;
+        }
+      });
+    }
 
   } catch {
     list.innerHTML = '<p class="text-red-500 italic text-sm">Error cargando inventario.</p>';
@@ -241,8 +384,8 @@ async function renderAdminAllOrders() {
             <tr>
               <td class="p-3 font-mono text-xs">${o.id}</td>
               <td class="p-3 text-xs text-gray-600">${o.compradorUid}</td>
-              <td class="p-3 text-xs">${o.direccion || 'No ingresada'}</td>
-              <td class="p-3 text-xs">${o.productos.map(p => `${p.nombre} x${p.cantidad}`).join(', ')}</td>
+              <td class="p-3 text-xs">${escapeHTML(o.direccion || 'No ingresada')}</td>
+              <td class="p-3 text-xs">${o.productos.map(p => `${escapeHTML(p.nombre)} x${p.cantidad}`).join(', ')}</td>
               <td class="p-3 font-bold text-[#e87a30]">$${o.total.toLocaleString('cl-CL')}</td>
               <td class="p-3 text-xs text-gray-400">${new Date(o.creadoEn).toLocaleDateString()}</td>
             </tr>
@@ -301,6 +444,176 @@ async function loadPendingUsers() {
   }
 }
 
+async function loadAllUsersTable() {
+  const container = document.getElementById('users-table-container');
+  const searchInput = document.getElementById('users-search');
+  const roleFilter = document.getElementById('users-role-filter');
+  const statusFilter = document.getElementById('users-status-filter');
+  if (!container) return;
+
+  try {
+    const users = await getAllUsers();
+
+    const renderTable = () => {
+      const search = searchInput.value.trim().toLowerCase();
+      const role = roleFilter.value;
+      const status = statusFilter.value;
+      const filteredUsers = users.filter(user => {
+        const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+        const searchable = [user.nombre, user.email, user.rut].filter(Boolean).join(' ').toLowerCase();
+        return (!search || searchable.includes(search))
+          && (!role || roles.includes(role))
+          && (!status || user.estado === status);
+      });
+
+      if (filteredUsers.length === 0) {
+        container.innerHTML = '<p class="text-center py-8 text-gray-400 italic">No hay usuarios que coincidan.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+            <tr>
+              <th class="p-3">Nombre</th>
+              <th class="p-3">Email</th>
+              <th class="p-3">RUT</th>
+              <th class="p-3">Rol</th>
+              <th class="p-3">Estado</th>
+              <th class="p-3">Registro</th>
+              <th class="p-3">Tips</th>
+              <th class="p-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            ${filteredUsers.map(user => {
+              const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+              const fecha = user.fechaRegistro ? new Date(user.fechaRegistro).toLocaleDateString() : '---';
+              const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
+              return `
+                <tr>
+                  <td class="p-3 font-bold">${escapeHTML(user.nombre || 'Sin nombre')}</td>
+                  <td class="p-3 text-xs">${escapeHTML(user.email || '---')}</td>
+                  <td class="p-3 text-xs">${escapeHTML(user.rut || '---')}</td>
+                  <td class="p-3 text-xs">${escapeHTML(roles.join(', ') || '---')}</td>
+                  <td class="p-3 text-xs">${escapeHTML(user.estado || '---')}</td>
+                  <td class="p-3 text-xs text-gray-500">${escapeHTML(fecha)}</td>
+                  <td class="p-3 text-center">
+                    ${esPrestador ? `<input type="checkbox" data-uid="${escapeHTML(user.id)}" class="toggle-tips-admin" ${user.puedeCrearTips ? 'checked' : ''}>` : '---'}
+                  </td>
+                  <td class="p-3 whitespace-nowrap">
+                    <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-edit-user text-blue-600 hover:text-blue-800 text-xs font-bold">Editar</button>
+                    <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-delete-user text-red-600 hover:text-red-800 text-xs font-bold ml-3">Eliminar</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      container.querySelectorAll('.toggle-tips-admin').forEach(toggle => {
+        toggle.addEventListener('change', async event => {
+          const canCreateTips = event.target.checked;
+          try {
+            await updateDoc(doc(db, 'usuarios', event.target.dataset.uid), { puedeCrearTips: canCreateTips });
+            showToast(`Permiso para crear tips ${canCreateTips ? 'otorgado' : 'revocado'}.`, 'success');
+          } catch {
+            event.target.checked = !canCreateTips;
+            showToast('Error al actualizar permiso.', 'error');
+          }
+        });
+      });
+
+      container.querySelectorAll('.btn-edit-user').forEach(button => {
+        button.addEventListener('click', () => {
+          const user = users.find(item => item.id === button.dataset.uid);
+          const modal = document.getElementById('modalEdicionUsuario');
+          const form = document.getElementById('formEdicionUsuario');
+          if (!user || !modal || !form) return;
+
+          const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+          form.elements.uid.value = user.id;
+          form.elements.nombre.value = user.nombre || '';
+          form.elements.email.value = user.email || '';
+          form.elements.estado.value = user.estado || 'pendiente';
+          form.querySelectorAll('input[name="rol"]').forEach(input => {
+            input.checked = roles.includes(input.value);
+          });
+          modal.showModal();
+        });
+      });
+
+      container.querySelectorAll('.btn-delete-user').forEach(button => {
+        button.addEventListener('click', async () => {
+          const uid = button.dataset.uid;
+          if (!window.confirm('¿Estás seguro de desactivar este usuario?')) return;
+
+          button.disabled = true;
+          try {
+            await deleteUserProfile(uid);
+            const userIndex = users.findIndex(user => user.id === uid);
+            if (userIndex !== -1) users[userIndex].estado = 'inactivo';
+            renderTable();
+            showToast('Usuario desactivado correctamente.', 'success');
+          } catch (error) {
+            console.error('Error al desactivar usuario:', error);
+            button.disabled = false;
+            showToast(error.message || 'Error al desactivar usuario.', 'error');
+          }
+        });
+      });
+    };
+
+    const editModal = document.getElementById('modalEdicionUsuario');
+    const editForm = document.getElementById('formEdicionUsuario');
+    if (editForm && !editForm.dataset.listenerAttached) {
+      editForm.dataset.listenerAttached = 'true';
+      editForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(editForm);
+        const uid = formData.get('uid');
+        const roles = Array.from(editForm.querySelectorAll('input[name="rol"]:checked')).map(input => input.value);
+        if (roles.length === 0) {
+          showToast('Selecciona al menos un rol.', 'error');
+          return;
+        }
+
+        try {
+          await updateUserProfile(uid, {
+            nombre: formData.get('nombre'),
+            email: formData.get('email'),
+            estado: formData.get('estado'),
+            rol: roles
+          });
+
+          const user = users.find(item => item.id === uid);
+          if (user) {
+            user.nombre = formData.get('nombre');
+            user.email = formData.get('email');
+            user.estado = formData.get('estado');
+            user.rol = roles;
+          }
+          editModal?.close();
+          renderTable();
+          showToast('Usuario actualizado con éxito.', 'success');
+        } catch (error) {
+          console.error('Error al actualizar usuario:', error);
+          showToast('Error al actualizar usuario.', 'error');
+        }
+      });
+    }
+
+    searchInput.addEventListener('input', renderTable);
+    roleFilter.addEventListener('change', renderTable);
+    statusFilter.addEventListener('change', renderTable);
+    renderTable();
+  } catch (error) {
+    console.error('Error en loadAllUsersTable:', error);
+    container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando usuarios.</p>';
+  }
+}
+
 async function loadLatestUsers() {
   const container = document.getElementById('admin-latest-users');
   if (!container) return;
@@ -325,44 +638,15 @@ async function loadLatestUsers() {
         }
       }
       
-      // Lógica para el toggle de permisos de tips
-      const puedeCrearTips = u.puedeCrearTips || false;
-      const tipsPermissionToggle = esPrestador ? `
-        <div class="flex items-center gap-1 text-[10px] text-gray-500">
-          <label for="tips-${u.id}" class="cursor-pointer">Tips:</label>
-          <input type="checkbox" id="tips-${u.id}" data-uid="${u.id}" class="toggle-tips-permission" ${puedeCrearTips ? 'checked' : ''}>
-        </div>
-      ` : '';
-
       return `
         <li class="flex items-center justify-between text-sm">
           <span class="flex items-center gap-2">
             <span class="w-2 h-2 ${color} rounded-full"></span> ${escapeHTML(u.nombre)}
           </span>
-          <span class="flex items-center gap-3 text-gray-400 text-xs">${tipsPermissionToggle} ${escapeHTML(fecha)}</span>
+          <span class="text-gray-400 text-xs">${escapeHTML(fecha)}</span>
         </li>
       `;
     }).join('');
-
-    // Toggle para permiso de crear tips (movido aquí, a la lista de usuarios ya activos)
-    container.querySelectorAll('.toggle-tips-permission').forEach(toggle => {
-      toggle.addEventListener('change', async (e) => {
-        const { uid } = e.target.dataset;
-        const canCreate = e.target.checked;
-        try {
-          const userRef = doc(db, "usuarios", uid);
-          await updateDoc(userRef, {
-            puedeCrearTips: canCreate
-          });
-          showToast(`Permiso para crear tips ${canCreate ? 'otorgado' : 'revocado'}.`, 'success');
-        } catch (error) {
-          console.error("Error al actualizar permiso de tips:", error);
-          showToast('Error al actualizar permiso.', 'error');
-          // Revertir el estado visual del toggle en caso de error
-          e.target.checked = !canCreate;
-        }
-      });
-    });
   } catch {
     showToast('Error al cargar últimos registros', 'error');
   }

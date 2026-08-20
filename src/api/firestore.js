@@ -1,4 +1,4 @@
-import { db } from '../firebase.js';
+import { db, auth } from '../firebase.js';
 import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 export async function getUserProfileWithSubcollections(uid) {
@@ -109,6 +109,22 @@ export async function getPendingUsers() {
     }
 }
 
+export async function getPendingPrestadores() {
+    try {
+        const q = query(collection(db, "usuarios"), where("estado", "==", "pendiente"));
+        const snap = await getDocs(q);
+        return snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(user => {
+                const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+                return roles.includes('consejera') || roles.includes('cuidadora');
+            });
+    } catch (error) {
+        console.error("Error al obtener prestadores pendientes:", error);
+        throw error;
+    }
+}
+
 export async function getActiveProfessionals(rolStr) {
     try {
         const q = query(
@@ -133,6 +149,81 @@ export async function getLatestUsers() {
         console.error("Error al obtener últimos usuarios:", error);
         throw error;
     }
+}
+
+export async function getAllUsers() {
+    try {
+        const snap = await getDocs(collection(db, "usuarios"));
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener todos los usuarios:", error);
+        throw error;
+    }
+}
+
+export async function updateUserProfile(uid, updateData) {
+    const adminUid = auth.currentUser?.uid;
+    const allowedRoles = ['padre', 'consejera', 'cuidadora', 'admin'];
+    const allowedStatuses = ['activo', 'pendiente', 'inactivo'];
+    const roles = Array.isArray(updateData.rol) ? [...new Set(updateData.rol)] : [];
+    const changes = {
+        nombre: String(updateData.nombre || '').trim(),
+        email: String(updateData.email || '').trim(),
+        estado: updateData.estado,
+        rol: roles
+    };
+
+    if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
+    if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) {
+        throw new Error('Los datos del usuario no son válidos.');
+    }
+    if (roles.length === 0 || roles.some(role => !allowedRoles.includes(role))) {
+        throw new Error('Los roles del usuario no son válidos.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const userRef = doc(db, 'usuarios', uid);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(userRef, changes);
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'UPDATE_USER',
+            targetType: 'USER',
+            targetId: uid,
+            changes,
+            timestamp: serverTimestamp()
+        });
+    });
+}
+
+export async function deleteUserProfile(uid) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar al usuario.');
+    if (adminUid === uid) throw new Error('No puedes desactivar tu propia cuenta.');
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const userRef = doc(db, 'usuarios', uid);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(userRef, { estado: 'inactivo' });
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'DELETE_USER',
+            targetType: 'USER',
+            targetId: uid,
+            reason: 'Desactivado desde el panel de administración.',
+            timestamp: serverTimestamp()
+        });
+    });
 }
 
 export async function getCaregiverBlockedDays(uid) {
@@ -368,6 +459,48 @@ export async function createProduct(productData) {
         console.error("Error al crear producto:", error);
         throw error;
     }
+}
+
+export async function updateProduct(productId, productData) {
+    const adminUid = auth.currentUser?.uid;
+    const allowedCategories = ['Lactancia', 'Higiene', 'Accesorios'];
+    const changes = {
+        nombre: String(productData.nombre || '').trim(),
+        precio: Number(productData.precio),
+        stock: Number(productData.stock),
+        categoria: productData.categoria,
+        imagenUrl: String(productData.imagenUrl || '').trim()
+    };
+
+    if (!adminUid || typeof productId !== 'string' || !productId.trim()) throw new Error('No se pudo identificar el producto.');
+    if (!changes.nombre || !Number.isFinite(changes.precio) || changes.precio < 0) {
+        throw new Error('El nombre o precio del producto no son válidos.');
+    }
+    if (!Number.isInteger(changes.stock) || changes.stock < 0) {
+        throw new Error('El stock del producto no es válido.');
+    }
+    if (!allowedCategories.includes(changes.categoria)) {
+        throw new Error('La categoría del producto no es válida.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const productRef = doc(db, 'productos', productId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(productRef, changes);
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'UPDATE_PRODUCT',
+            targetType: 'PRODUCT',
+            targetId: productId,
+            changes,
+            timestamp: serverTimestamp()
+        });
+    });
 }
 
 export async function deleteProduct(productId) {
