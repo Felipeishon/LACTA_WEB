@@ -92,14 +92,16 @@
           <span>Ingresar</span>
         </button>
 
+        <!-- Botón Registrarse corregido -->
         <button id="btnAbrirModalRegistroPadre"
-          class="min-w-[84px] cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          class="inline-flex items-center justify-center cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold shadow-md hover:bg-[#d66a20] transition-all active:scale-95"
           aria-label="Abrir registro de padres">
-          <span class="truncate">Registrarse</span>
+          <span>Registrarse</span>
         </button>
 
+        <!-- Botón Mi Cuenta corregido -->
         <a href="mi-cuenta.html" id="btnIrMiCuenta"
-          class="hidden items-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          class="hidden items-center justify-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold shadow-md hover:bg-[#d66a20] transition-all active:scale-95"
           aria-label="Ir a mi cuenta">
           <i class="fa-solid fa-user-check text-white"></i>
           <span>Mi Cuenta</span>
@@ -535,7 +537,7 @@
     </svg>
   </a>
 
-  <!-- Script para control de visibilidad del botón Ingresar según sesión -->
+  <!-- Script con la lógica exacta y limpia de visibilidad -->
   <script type="module">
     import { auth } from './src/firebase.js';
     import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
@@ -549,7 +551,7 @@
       const btnMobileRegistro = document.getElementById('btnMobileRegistro');
 
       if (user) {
-        // Usuario logueado: Oculta "Ingresar" y "Registrarse", muestra "Mi Cuenta"
+        // SESIÓN ACTIVA: Ocultamos "Ingresar" y "Registrarse", y mostramos únicamente "Mi Cuenta"
         if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'none';
         if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'none';
         if (btnIrMiCuenta) {
@@ -559,7 +561,7 @@
         if (btnMobileLogin) btnMobileLogin.style.display = 'none';
         if (btnMobileRegistro) btnMobileRegistro.style.display = 'none';
       } else {
-        // Usuario no logueado: Muestra "Ingresar" y "Registrarse", oculta "Mi Cuenta"
+        // SIN SESIÓN: Mostramos "Ingresar" y "Registrarse" con sus estilos originales, y ocultamos "Mi Cuenta"
         if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'inline-flex';
         if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'inline-flex';
         if (btnIrMiCuenta) {

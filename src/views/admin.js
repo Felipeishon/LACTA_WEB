@@ -426,8 +426,8 @@ async function renderAdminInventory() {
 
           await updateProduct(formData.get('id'), {
             nombre: formData.get('nombre'),
-            precio: formData.get('precio'),
-            stock: formData.get('stock'),
+            precio: Number(formData.get('precio')),
+            stock: Number(formData.get('stock')),
             categoria: formData.get('categoria'),
             imagenUrl
           });
