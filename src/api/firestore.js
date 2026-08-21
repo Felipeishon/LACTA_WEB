@@ -611,3 +611,54 @@ export async function createTip(tipData) {
         throw error;
     }
 }
+
+export async function deleteTip(tipId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) {
+        throw new Error('No se pudo identificar el tip.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const tipRef = doc(db, 'tips', tipId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.delete(tipRef);
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'DELETE_TIP',
+            targetType: 'TIP',
+            targetId: tipId,
+            reason: 'Moderado desde el panel de administración.',
+            timestamp: serverTimestamp()
+        });
+    });
+}
+
+export async function approveTip(tipId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) {
+        throw new Error('No se pudo identificar el tip.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const tipRef = doc(db, 'tips', tipId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(tipRef, { estado: 'aprobado' });
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'APPROVE_TIP',
+            targetType: 'TIP',
+            targetId: tipId,
+            timestamp: serverTimestamp()
+        });
+    });
+}

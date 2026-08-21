@@ -89,7 +89,7 @@ export function initTipsModal() {
         document.getElementById('tips-carousel-content').innerHTML = `<p class="p-8 text-center text-gray-500">Cargando tips...</p>`;
 
         try {
-            allTips = await fetchAllTips();
+            allTips = (await fetchAllTips()).filter(tip => tip.estado === 'aprobado');
             if (allTips.length === 0) {
                 document.getElementById('tips-carousel-content').innerHTML = `<p class="p-8 text-center text-gray-500">Aún no hay tips disponibles.</p>`;
                 return;
@@ -154,6 +154,7 @@ export async function renderCreatorTipsManagement(containerId) {
         }
 
         container.innerHTML = `
+            <h2 class="text-2xl font-black text-[#181411] mb-6">Tips</h2>
             <h4 class="font-bold text-lg mb-2">Añadir Nuevo Tip</h4>
             <form id="formAddTip" class="space-y-3 mb-6">
                 <input type="text" name="titulo" placeholder="Título del tip" required class="w-full p-2 border rounded-md text-sm">
@@ -194,6 +195,7 @@ export async function renderCreatorTipsManagement(containerId) {
                         contenido: form.contenido.value.trim(),
                         autorId: auth.currentUser.uid,
                         autorNombre: auth.currentUser.displayName || 'Anónimo',
+                        estado: 'pendiente',
                         fechaCreacion: new Date().toISOString()
                     };
 

@@ -73,19 +73,20 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: "Fichas Guardadas", icon: "🤱", action: "historial_fichas" },
       { label: "Mi Horario", icon: "⏱️", action: "horarios" },
       { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
-      { label: "Gestionar Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
+      { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
     cuidadora: [
       { label: "Turnos", icon: "🌙", action: "dashboard" },
       { label: "Fichas Guardadas", icon: "📋", action: "historial_fichas" },
       { label: "Disponibilidad", icon: "🗓️", action: "disponibilidad" },
       { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
-      { label: "Gestionar Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
+      { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
     admin: [
       { label: "Visión General", icon: "👁️", action: "dashboard" },
       { label: "Usuarios", icon: "👥", action: "usuarios" },
-      { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" }
+      { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" },
+      { label: "Gestión de Tips", icon: "💡", action: "admin_tips" }
     ]
   };
 

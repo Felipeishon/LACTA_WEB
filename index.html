@@ -535,6 +535,43 @@
     </svg>
   </a>
 
+  <!-- Script para control de visibilidad del botón Ingresar según sesión -->
+  <script type="module">
+    import { auth } from './src/firebase.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+
+    onAuthStateChanged(auth, (user) => {
+      const btnIngresarDesktop = document.getElementById('btnAbrirModalLogin');
+      const btnRegistroDesktop = document.getElementById('btnAbrirModalRegistroPadre');
+      const btnIrMiCuenta = document.getElementById('btnIrMiCuenta');
+
+      const btnMobileLogin = document.getElementById('btnMobileLogin');
+      const btnMobileRegistro = document.getElementById('btnMobileRegistro');
+
+      if (user) {
+        // Usuario logueado: Oculta "Ingresar" y "Registrarse", muestra "Mi Cuenta"
+        if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'none';
+        if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'none';
+        if (btnIrMiCuenta) {
+          btnIrMiCuenta.classList.remove('hidden');
+          btnIrMiCuenta.classList.add('flex');
+        }
+        if (btnMobileLogin) btnMobileLogin.style.display = 'none';
+        if (btnMobileRegistro) btnMobileRegistro.style.display = 'none';
+      } else {
+        // Usuario no logueado: Muestra "Ingresar" y "Registrarse", oculta "Mi Cuenta"
+        if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'inline-flex';
+        if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'inline-flex';
+        if (btnIrMiCuenta) {
+          btnIrMiCuenta.classList.remove('flex');
+          btnIrMiCuenta.classList.add('hidden');
+        }
+        if (btnMobileLogin) btnMobileLogin.style.display = 'inline-flex';
+        if (btnMobileRegistro) btnMobileRegistro.style.display = 'inline-flex';
+      }
+    });
+  </script>
+
   <script type="module" src="src/main.js"></script>
 </body>
 
