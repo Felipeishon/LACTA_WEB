@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       if (activeTab === 'gestionar_tips') {
-        await renderCreatorTipsManagement('dashboard-content');
+          await renderCreatorTipsManagement('dashboard-content', userData);
       }
     } catch (error) {
       console.error("Error cargando pestaña:", error);
