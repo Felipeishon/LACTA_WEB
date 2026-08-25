@@ -269,7 +269,6 @@ export async function saveConsejeraSchedule(uid, horarios) {
     }
 }
 
-// NUEVA FUNCIÓN: Guarda las tarifas personalizadas en el documento principal del usuario
 export async function saveUserTarifas(uid, tarifas) {
     try {
         await updateDoc(doc(db, "usuarios", uid), { tarifas });
@@ -290,12 +289,10 @@ export async function getAvailabilitySlots(uid) {
     }
 }
 
-// Devuelve horas disponibles (formato 'HH:MM') para un profesional en una fecha YYYY-MM-DD
 export async function getAvailableHoursForProfessional(uid, fecha) {
     try {
         if (!uid || !fecha) return [];
         const slots = await getAvailabilitySlots(uid);
-        // Filtramos por fecha exacta (asumimos que `fechaInicio` está en ISO)
         const matches = slots.filter(s => s.fechaInicio && s.fechaInicio.startsWith(fecha) && !s.reservado);
         const hours = matches.map(s => {
             const d = new Date(s.fechaInicio);
@@ -303,7 +300,6 @@ export async function getAvailableHoursForProfessional(uid, fecha) {
             const mm = String(d.getMinutes()).padStart(2, '0');
             return `${hh}:${mm}`;
         });
-        // Deduplicamos y ordenamos
         const unique = Array.from(new Set(hours));
         unique.sort();
         return unique;
@@ -339,39 +335,55 @@ export async function removeAvailabilitySlot(uid, slotId) {
     }
 }
 
-export async function vincularNidoPorRutBebe(uidPadre, rutBebe, nombreBebe) {
+export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
     try {
-        const q = query(collection(db, "nidos"), where("rutBebe", "==", rutBebe));
-        const snap = await getDocs(q);
-        let nidoId = null;
+        if (!Array.isArray(hijosArray) || hijosArray.length === 0) {
+            throw new Error("Debe ingresar al menos un hijo/bebé.");
+        }
 
-        if (snap.empty) {
+        let nidoId = null;
+        const nidosSnap = await getDocs(collection(db, "nidos"));
+        let nidoExistenteDoc = null;
+
+        for (const nidoDoc of nidosSnap.docs) {
+            const data = nidoDoc.data();
+            const hijosRegistrados = data.hijos || [];
+            const matchHijosArray = hijosRegistrados.some(h => hijosArray.some(nuevo => nuevo.rut === h.rut));
+            const matchAntiguo = data.rutBebe && hijosArray.some(nuevo => nuevo.rut === data.rutBebe);
+
+            if (matchHijosArray || matchAntiguo) {
+                nidoExistenteDoc = nidoDoc;
+                break;
+            }
+        }
+
+        if (!nidoExistenteDoc) {
             const nuevoNidoRef = doc(collection(db, "nidos"));
             nidoId = nuevoNidoRef.id;
             await setDoc(nuevoNidoRef, {
-                rutBebe: rutBebe,
-                nombreBebe: nombreBebe,
-                padresUids: [uidPadre],
+                hijos: hijosArray,
+                padresUids: [uidUsuario],
                 creadoEn: new Date().toISOString()
             });
         } else {
-            const nidoDoc = snap.docs[0];
-            nidoId = nidoDoc.id;
-            const datosNido = nidoDoc.data();
-            if (!datosNido.padresUids.includes(uidPadre)) {
+            nidoId = nidoExistenteDoc.id;
+            const datosNido = nidoExistenteDoc.data();
+            const padresActuales = datosNido.padresUids || [];
+            
+            if (!padresActuales.includes(uidUsuario)) {
                 await updateDoc(doc(db, "nidos", nidoId), {
-                    padresUids: [...datosNido.padresUids, uidPadre]
+                    padresUids: [...padresActuales, uidUsuario]
                 });
             }
         }
 
-        await updateDoc(doc(db, "usuarios", uidPadre), {
+        await updateDoc(doc(db, "usuarios", uidUsuario), {
             nidoId: nidoId
         });
 
         return nidoId;
     } catch (error) {
-        console.error("Error al vincular nido:", error);
+        console.error("Error al vincular el nido familiar:", error);
         throw error;
     }
 }

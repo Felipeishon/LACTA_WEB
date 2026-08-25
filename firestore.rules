@@ -75,9 +75,17 @@ service cloud.firestore {
     }
 
     match /nidos/{nidoId} {
-      allow read, update: if request.auth != null &&
+      // Permitir listar/consultar la colección completa a cualquier usuario autenticado (necesario para la búsqueda por RUT de hijos)
+      allow list: if request.auth != null;
+      
+      // Permitir leer un documento específico, actualizarlo solo si es miembro o admin
+      allow get, update: if request.auth != null &&
         (request.auth.uid in resource.data.padresUids || isAdmin());
+        
+      // Permitir crear un nido a cualquier usuario autenticado
       allow create: if request.auth != null;
+      
+      // Solo el administrador puede eliminar nidos
       allow delete: if isAdmin();
     }
 

@@ -1,7 +1,7 @@
 import { formatRut, validarRut } from '../rut.js';
 import { addToCart } from '../ui/cart.js';
 import { showToast } from '../ui/notifications.js';
-import { fetchUserAppointments, fetchActiveProducts, fetchPedidosUsuario, vincularNidoPorRutBebe, fetchFichasCuidadoPorNido } from '../api/firestore.js';
+import { fetchUserAppointments, fetchActiveProducts, fetchPedidosUsuario, vincularNidoFamiliar, fetchFichasCuidadoPorNido } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 
 export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, switchTab) {
@@ -10,7 +10,7 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
 
   if (activeTab === 'resumen') {
     dashboardContent.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 slide-up">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 slide-up mb-8">
         <div class="col-span-1 md:col-span-2 glass-panel p-8 rounded-2xl border-l-4 border-[#e87a30] relative overflow-hidden group">
           <div class="absolute -right-10 -top-10 text-[#e87a30] opacity-10 text-9xl transition-transform group-hover:scale-110">🍼</div>
           <h2 class="text-3xl font-black text-[#181411] mb-2">¡Hola, ${escapeHTML(userData?.nombre?.split(' ')[0] || 'Bienvenido/a')}! 👋</h2>
@@ -30,37 +30,45 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
            <div class="w-16 h-16 bg-[#f4eade] rounded-full flex items-center justify-center text-2xl mb-4 shadow-inner">
              👶
            </div>
-           <h3 class="font-bold text-lg">Mi Nido (Bebé)</h3>
+           <h3 class="font-bold text-lg">Mi Nido Familiar</h3>
            ${userData.nidoId ? `
              <p class="text-sm text-green-600 font-bold mb-1">¡Nido vinculado!</p>
              <p class="text-xs text-gray-500 mb-4">Compartiendo el cuidado en familia</p>
-             <button id="btnVerPerfilBebe" class="w-full bg-[#f4f2f0] hover:bg-[#e5dfdc] text-[#181411] py-2 rounded-lg text-sm font-semibold transition-colors">Ver Perfil del Bebé</button>
+             <button id="btnVerPerfilBebe" class="w-full bg-[#f4f2f0] hover:bg-[#e5dfdc] text-[#181411] py-2 rounded-lg text-sm font-semibold transition-colors">Ver Perfil del Nido</button>
            ` : `
-             <p class="text-xs text-red-500 mb-2 font-bold">No has registrado a tu bebé</p>
-             <p class="text-[10px] text-gray-500 mb-2 leading-tight">Si tu pareja ya registró al bebé, usa el mismo RUT para vincularte a su Nido automáticamente.</p>
+             <p class="text-xs text-red-500 mb-2 font-bold">No has registrado a tus hijos</p>
+             <p class="text-[10px] text-gray-500 mb-3 leading-tight">Registra a tu hijo/a (o múltiples si son gemelos/mellizos). Si tu pareja ya los registró, usa el mismo RUT para unirte automáticamente.</p>
+             
              <form id="formVincularNido" class="flex flex-col gap-2 w-full mt-2">
-               <input type="text" name="nombreBebe" placeholder="Nombre del bebé" required class="p-2 border border-gray-200 rounded text-sm w-full" />
-               <input type="text" name="rutBebe" placeholder="RUT del bebé" maxlength="12" required class="input-rut p-2 border border-gray-200 rounded text-sm w-full" />
-               <button type="submit" class="w-full bg-[#e87a30] text-white py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[#d66a20]">Vincular Nido</button>
+               <div id="hijos-inputs-container" class="space-y-2 w-full">
+                 <div class="hijo-row flex gap-1">
+                   <input type="text" name="nombreBebe[]" placeholder="Nombre hijo/a" required class="p-2 border border-gray-200 rounded text-xs w-1/2" />
+                   <input type="text" name="rutBebe[]" placeholder="RUT hijo/a" maxlength="12" required class="input-rut p-2 border border-gray-200 rounded text-xs w-1/2" />
+                 </div>
+               </div>
+               <button type="button" id="btnAddOtroHijo" class="text-xs text-[#e87a30] font-bold self-start mt-1 hover:underline">+ Añadir otro hijo/a (gemelos/mellizos)</button>
+               <button type="submit" class="w-full bg-[#e87a30] text-white py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[#d66a20] mt-2">Vincular / Crear Nido</button>
              </form>
            `}
         </div>
       </div>
 
-      <h3 class="font-bold text-xl mt-8 mb-4">Tus Citas Recientes</h3>
-      <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] overflow-hidden">
-        <table class="w-full text-left text-sm" id="parent-appointments-table">
-          <thead class="bg-[#fbf9f8] border-b border-[#e5dfdc] text-[#887263]">
-            <tr>
-              <th class="p-4 font-medium">Servicio</th>
-              <th class="p-4 font-medium">Profesional</th>
-              <th class="p-4 font-medium">Fecha</th>
-              <th class="p-4 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#e5dfdc]">
-          </tbody>
-        </table>
+      <div class="w-full slide-up">
+        <h3 class="font-bold text-xl mb-4 text-[#181411]">Tus Citas Recientes</h3>
+        <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] overflow-hidden">
+          <table class="w-full text-left text-sm" id="parent-appointments-table">
+            <thead class="bg-[#fbf9f8] border-b border-[#e5dfdc] text-[#887263]">
+              <tr>
+                <th class="p-4 font-medium">Servicio</th>
+                <th class="p-4 font-medium">Profesional</th>
+                <th class="p-4 font-medium">Fecha</th>
+                <th class="p-4 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#e5dfdc]">
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
 
@@ -79,33 +87,72 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
 
     const formVincular = document.getElementById('formVincularNido');
     if (formVincular) {
-      const inputRutBebe = formVincular.querySelector('input[name="rutBebe"]');
-      if (inputRutBebe) {
-        inputRutBebe.addEventListener('input', (e) => {
+      const btnAddOtro = document.getElementById('btnAddOtroHijo');
+      const containerHijos = document.getElementById('hijos-inputs-container');
+
+      if (btnAddOtro && containerHijos) {
+        btnAddOtro.onclick = () => {
+          const row = document.createElement('div');
+          row.className = 'hijo-row flex gap-1 mt-2';
+          row.innerHTML = `
+            <input type="text" name="nombreBebe[]" placeholder="Nombre hijo/a" required class="p-2 border border-gray-200 rounded text-xs w-1/2" />
+            <input type="text" name="rutBebe[]" placeholder="RUT hijo/a" maxlength="12" required class="input-rut p-2 border border-gray-200 rounded text-xs w-1/2" />
+            <button type="button" class="btn-eliminar-hijo text-red-500 font-bold px-2 text-xs">✕</button>
+          `;
+          containerHijos.appendChild(row);
+
+          row.querySelector('.input-rut').addEventListener('input', (e) => {
+            e.target.value = formatRut(e.target.value);
+          });
+
+          row.querySelector('.btn-eliminar-hijo').onclick = () => row.remove();
+        };
+      }
+
+      formVincular.querySelectorAll('.input-rut').forEach(input => {
+        input.addEventListener('input', (e) => {
           e.target.value = formatRut(e.target.value);
         });
-      }
+      });
+
       formVincular.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = formVincular.querySelector('button');
+        const btn = formVincular.querySelector('button[type="submit"]');
         btn.disabled = true;
-        btn.textContent = 'Vinculando...';
+        btn.textContent = 'Procesando Nido...';
 
-        if (!validarRut(formVincular.rutBebe.value)) {
-          showToast('El RUT ingresado no es válido.', 'warning');
+        const nombres = formVincular.querySelectorAll('input[name="nombreBebe[]"]');
+        const ruts = formVincular.querySelectorAll('input[name="rutBebe[]"]');
+        
+        let hijosList = [];
+        let rutInvalido = false;
+
+        for (let i = 0; i < nombres.length; i++) {
+          const nombre = nombres[i].value.trim();
+          const rut = ruts[i].value.trim();
+
+          if (!validarRut(rut)) {
+            rutInvalido = true;
+            break;
+          }
+          hijosList.push({ nombre, rut });
+        }
+
+        if (rutInvalido) {
+          showToast('Uno o más RUTs ingresados no son válidos.', 'warning');
           btn.disabled = false;
-          btn.textContent = 'Vincular Nido';
+          btn.textContent = 'Vincular / Crear Nido';
           return;
         }
 
         try {
-          await vincularNidoPorRutBebe(userData.uid, formVincular.rutBebe.value, formVincular.nombreBebe.value);
-          showToast('¡Nido vinculado correctamente!', 'success');
+          await vincularNidoFamiliar(userData.uid, hijosList);
+          showToast('¡Nido familiar configurado con éxito!', 'success');
           setTimeout(() => location.reload(), 1500);
         } catch (error) {
-          showToast('Error al vincular el nido', 'error');
+          showToast('Error al configurar el nido', 'error');
           btn.disabled = false;
-          btn.textContent = 'Vincular Nido';
+          btn.textContent = 'Vincular / Crear Nido';
         }
       });
     }
@@ -270,11 +317,6 @@ async function renderBitacoraTimeline(nidoId) {
   }
 
   try {
-    // Antes esta consulta filtraba por `uidPadre` (campo que nunca se guarda en
-    // `bitacoras`) y además leía una colección `fichas_atencion` que la app
-    // nunca escribe, por lo que el timeline siempre quedaba vacío. La forma
-    // correcta de obtener los registros de un nido es por `nidoId`, usando la
-    // misma función que ya usan (correctamente) las vistas de prestador.
     const fichas = await fetchFichasCuidadoPorNido(nidoId);
 
     if (fichas.length === 0) {
