@@ -140,9 +140,11 @@ service cloud.firestore {
     }
 
     match /auditLogs/{logId} {
+      // Solo lectura para admins.
+      // Escritura SOLO permitida desde Cloud Functions con SDK de servidor (bypasea estas reglas).
+      // Desde el cliente, incluso el admin tiene prohibido escribir para evitar logs falsificados.
       allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if false; // Los logs de auditoría son inmutables una vez creados
+      allow write: if false;
     }
 
   }
