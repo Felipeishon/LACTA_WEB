@@ -28,6 +28,8 @@ import {
   fetchAllTips,
   approveTip,
   deleteTip,
+  fetchFichasCuidadoPorNido,
+  fetchFichasAtencionPorNido,
 } from '../api/firestore.js';
 import { approveUserWithAudit } from '../api/admin.js';
 import { escapeHTML } from '../utils/html.js';
@@ -315,7 +317,7 @@ async function loadAllNidos() {
 
     const renderTabla = () => {
       const nidosFiltrados = nidos.filter(n => {
-        const estado = n.estado || 'activo'; // Los nidos antiguos sin estado se consideran activos
+        const estado = n.estado || 'activo';
         return mostrarInactivos ? estado === 'inactivo' : estado === 'activo';
       });
 
@@ -419,37 +421,10 @@ async function loadAllNidos() {
         renderTabla();
       });
 
-      // Listener "Ver Detalles"
+      // Listener "Ver" -> Ahora llama a renderDetalleNido
       container.querySelectorAll('.btn-view-nido').forEach(btn => {
         btn.addEventListener('click', () => {
-          const nido = nidos.find(n => n.id === btn.dataset.id);
-          if (!nido) return;
-
-          const padresInfo = (nido.padresUids || []).map(uid => {
-            const user = usuarios.find(u => u.id === uid);
-            return user ? `• ${user.nombre} (${user.email})` : `• UID: ${uid}`;
-          }).join('\n');
-
-          const hijosInfo = (nido.hijos || []).map(h =>
-            `• ${h.nombre || 'Sin nombre'} ${h.rut ? `(RUT: ${h.rut})` : ''}`
-          ).join('\n');
-
-          const mensaje = `
-📋 DETALLES DEL NIDO
-━━━━━━━━━━━━━━━━━━━━
-
-🆔 ID: ${nido.id}
-📌 Estado: ${(nido.estado || 'activo').toUpperCase()}
-📅 Creado: ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleString('es-CL') : 'No registrado'}
-
-👶 HIJOS / BEBÉS:
-${hijosInfo || 'No hay hijos registrados'}
-
-👨‍👩‍👧 PADRES / FAMILIA:
-${padresInfo || 'No hay padres vinculados'}
-          `.trim();
-
-          alert(mensaje);
+          renderDetalleNido(btn.dataset.id);
         });
       });
 
@@ -504,6 +479,166 @@ ${padresInfo || 'No hay padres vinculados'}
   } catch (error) {
     console.error('Error al cargar nidos:', error);
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando nidos.</p>';
+  }
+}
+
+// --- NUEVA FUNCIÓN: VISTA DE DETALLE DEL NIDO ---
+async function renderDetalleNido(nidoId) {
+  const dashboardContent = document.getElementById('dashboard-content');
+  if (!dashboardContent) return;
+
+  dashboardContent.innerHTML = `
+    <div class="flex flex-col items-center justify-center h-64 text-gray-400">
+      <div class="w-12 h-12 border-4 border-[#e87a30] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p class="animate-pulse font-medium">Cargando detalles del nido...</p>
+    </div>
+  `;
+
+  try {
+    const [nidos, usuarios, bitacoras, fichas] = await Promise.all([
+      getAllNidos(),
+      getAllUsers(),
+      fetchFichasCuidadoPorNido(nidoId),
+      fetchFichasAtencionPorNido(nidoId)
+    ]);
+
+    const nido = nidos.find(n => n.id === nidoId);
+    if (!nido) {
+      dashboardContent.innerHTML = '<p class="text-center py-8 text-red-500">Nido no encontrado.</p>';
+      return;
+    }
+
+    const userMap = new Map();
+    usuarios.forEach(u => userMap.set(u.id, u.nombre || u.email || u.id));
+
+    const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
+    const padresUids = nido.padresUids || [];
+    const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
+
+    const renderBitacora = (b) => `
+      <div class="border rounded-lg p-4 mb-3 bg-white shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <p class="font-bold text-sm text-[#181411]">Bitácora de Cuidado</p>
+            <p class="text-xs text-gray-500">${b.creadoEn ? new Date(b.creadoEn).toLocaleString('es-CL') : 'Sin fecha'}</p>
+          </div>
+          <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">${escapeHTML(b.prestadorNombre || 'Cuidadora')}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div><span class="font-bold">Alimentación:</span> ${escapeHTML(b.tipoAlimentacion || '---')}</div>
+          <div><span class="font-bold">Horas de sueño:</span> ${b.horasSueno || '---'}</div>
+          <div><span class="font-bold">Pañales:</span> ${b.cantidadPanales || '---'}</div>
+          <div><span class="font-bold">Horas efectivas:</span> ${b.horasEfectivas || '---'}</div>
+        </div>
+        ${b.observaciones ? `<p class="text-xs mt-2 text-gray-600 italic">"${escapeHTML(b.observaciones)}"</p>` : ''}
+        <button type="button" class="btn-ver-bitacora-completa text-blue-600 text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(b))}'>Ver detalle completo</button>
+      </div>
+    `;
+
+    const renderFicha = (f) => `
+      <div class="border rounded-lg p-4 mb-3 bg-white shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <p class="font-bold text-sm text-[#181411]">Ficha de Atención</p>
+            <p class="text-xs text-gray-500">${f.creadoEn ? new Date(f.creadoEn).toLocaleString('es-CL') : 'Sin fecha'}</p>
+          </div>
+          <span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">${escapeHTML(f.consejeraNombre || 'Consejera')}</span>
+        </div>
+        ${f.motivo ? `<p class="text-xs mb-1"><span class="font-bold">Motivo:</span> ${escapeHTML(f.motivo)}</p>` : ''}
+        ${f.observaciones ? `<p class="text-xs mb-1"><span class="font-bold">Observaciones:</span> ${escapeHTML(f.observaciones)}</p>` : ''}
+        ${f.recomendaciones ? `<p class="text-xs mb-1"><span class="font-bold">Recomendaciones:</span> ${escapeHTML(f.recomendaciones)}</p>` : ''}
+        <button type="button" class="btn-ver-ficha-completa text-blue-600 text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(f))}'>Ver detalle completo</button>
+      </div>
+    `;
+
+    dashboardContent.innerHTML = `
+      <div class="mb-6">
+        <button id="btn-volver-nidos" class="text-sm text-[#e87a30] font-bold hover:underline mb-4">← Volver a Nidos / Familias</button>
+        <h2 class="text-2xl font-black text-[#181411] mb-2">Detalles del Nido</h2>
+        <p class="text-xs font-mono text-gray-500">ID: ${nido.id}</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Columna Izquierda: Información General -->
+        <div class="lg:col-span-1 space-y-6">
+          <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2">Información del Nido</h3>
+            <div class="mb-4">
+              <p class="text-xs font-bold text-gray-500 mb-2">👶 BEBÉS / HIJOS</p>
+              ${hijos.length > 0 ? hijos.map(h => `
+                <div class="mb-2 p-2 bg-gray-50 rounded">
+                  <p class="font-bold text-sm">${escapeHTML(h.nombre || 'Sin nombre')}</p>
+                  ${h.rut ? `<p class="text-xs text-gray-500">RUT: ${escapeHTML(h.rut)}</p>` : ''}
+                </div>
+              `).join('') : '<p class="text-sm text-gray-400 italic">Sin registros</p>'}
+            </div>
+            <div class="mb-4">
+              <p class="text-xs font-bold text-gray-500 mb-2">👨‍👩‍👧 PADRES / FAMILIA</p>
+              ${nombresPadres.map(n => `<p class="text-sm mb-1">${escapeHTML(n)}</p>`).join('') || '<p class="text-sm text-gray-400 italic">Sin padres vinculados</p>'}
+            </div>
+            <div>
+              <p class="text-xs font-bold text-gray-500 mb-1">📅 FECHA DE CREACIÓN</p>
+              <p class="text-sm">${nido.creadoEn ? new Date(nido.creadoEn).toLocaleString('es-CL') : 'No registrada'}</p>
+            </div>
+            <div class="mt-4">
+              <p class="text-xs font-bold text-gray-500 mb-1">📌 ESTADO</p>
+              <span class="text-[10px] font-bold px-2 py-1 rounded-full ${(nido.estado || 'activo') === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                ${(nido.estado || 'activo').toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Bitácoras y Fichas -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2">📋 Bitácoras de Cuidado (${bitacoras.length})</h3>
+            <div class="max-h-[400px] overflow-y-auto pr-2">
+              ${bitacoras.length > 0 ? bitacoras.map(renderBitacora).join('') : '<p class="text-sm text-gray-400 italic">No hay bitácoras registradas para este nido.</p>'}
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <h3 class="font-bold text-lg mb-4 border-b pb-2">💜 Fichas de Atención (${fichas.length})</h3>
+            <div class="max-h-[400px] overflow-y-auto pr-2">
+              ${fichas.length > 0 ? fichas.map(renderFicha).join('') : '<p class="text-sm text-gray-400 italic">No hay fichas de atención registradas para este nido.</p>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Botón Volver
+    document.getElementById('btn-volver-nidos')?.addEventListener('click', () => {
+      renderAdminTab('admin_nidos');
+    });
+
+    // Listeners para ver detalle completo (JSON)
+    dashboardContent.querySelectorAll('.btn-ver-bitacora-completa').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const data = JSON.parse(btn.dataset.json);
+        const mensaje = Object.entries(data)
+          .filter(([key]) => !['id', 'nidoId'].includes(key))
+          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+          .join('\n');
+        alert(`📋 DETALLE COMPLETO DE BITÁCORA\n━━━━━━━━━━━━━━━━━━━━\n\n${mensaje}`);
+      });
+    });
+
+    dashboardContent.querySelectorAll('.btn-ver-ficha-completa').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const data = JSON.parse(btn.dataset.json);
+        const mensaje = Object.entries(data)
+          .filter(([key]) => !['id', 'nidoId'].includes(key))
+          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+          .join('\n');
+        alert(`💜 DETALLE COMPLETO DE FICHA\n━━━━━━━━━━━━━━━━━━━━\n\n${mensaje}`);
+      });
+    });
+
+  } catch (error) {
+    console.error('Error al cargar detalle del nido:', error);
+    dashboardContent.innerHTML = '<p class="text-center py-8 text-red-500">Error al cargar los detalles del nido.</p>';
   }
 }
 // ------------------------------------------

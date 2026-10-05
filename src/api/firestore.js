@@ -166,7 +166,6 @@ export async function getAllNidos() {
     try {
         const snap = await getDocs(collection(db, "nidos"));
         const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Ordenar por fecha de creación descendente (el más reciente primero)
         return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
     } catch (error) {
         console.error("Error al obtener todos los nidos:", error);
@@ -377,7 +376,7 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
             await setDoc(nuevoNidoRef, {
                 hijos: hijosArray,
                 padresUids: [uidUsuario],
-                estado: 'activo', // <--- NUEVO CAMPO
+                estado: 'activo',
                 creadoEn: new Date().toISOString()
             });
         } else {
@@ -518,6 +517,19 @@ export async function fetchFichasCuidadoPorPrestador(prestadorId) {
         return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
     } catch (error) {
         console.error("Error al obtener fichas del prestador:", error);
+        throw error;
+    }
+}
+
+// --- NUEVA FUNCIÓN: FICHAS DE ATENCIÓN (CONSEJERÍA) ---
+export async function fetchFichasAtencionPorNido(nidoId) {
+    try {
+        const q = query(collection(db, "fichas_atencion"), where("nidoId", "==", nidoId));
+        const snap = await getDocs(q);
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    } catch (error) {
+        console.error("Error al obtener fichas de atención del nido:", error);
         throw error;
     }
 }
