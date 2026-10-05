@@ -1,5 +1,5 @@
 import { db, auth } from './firebase.js';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore'; // <-- Agregado getDoc
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { showToast } from './ui/notifications.js';
 import { emailService } from './emailService.js';
@@ -32,9 +32,6 @@ export function initAuthHandlers() {
           email: data.email,
           telefono: data.telefono,
           subtipo: data.subtipo,
-          // `rol` siempre se guarda como arreglo, incluso con un solo valor,
-          // para ser consistente con prestadores (que pueden tener varios roles)
-          // y con las reglas de Firestore (isAdmin/isPrestador esperan arreglo).
           rol: ['padre'],
           fechaRegistro: new Date().toISOString(),
           estado: 'activo'
@@ -118,12 +115,31 @@ export function initAuthHandlers() {
       btnSubmit.textContent = 'Iniciando sesión...';
       const email = loginForm.querySelector('input[name="email"]').value;
       const password = loginForm.querySelector('input[name="password"]').value;
+      
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // --- NUEVA VALIDACIÓN DE ESTADO ---
+        // Verificamos si el usuario está inactivo en Firestore antes de dejarlo pasar
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          if (userData.estado === 'inactivo') {
+            await auth.signOut(); // Cerrar la sesión de Firebase inmediatamente
+            showToast('Tu cuenta ha sido desactivada. Contacta al administrador.', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = 'Entrar';
+            return; // Detener la ejecución aquí para que no redirija al dashboard
+          }
+        }
+        // ----------------------------------
+
         window.location.href = 'mi-cuenta.html';
       } catch (error) {
         console.error("Error completo de login:", error);
-        // Mensaje más amigable para el usuario final
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             showToast('Correo o contraseña incorrectos.', 'error');
         } else {

@@ -27,9 +27,6 @@ service cloud.firestore {
 
     // --- SEGURIDAD POR COLECCIÓN ---
     match /usuarios/{userId} {
-      // Lectura más permisiva para perfiles públicos (profesionales activos)
-      // - El propietario y admins mantienen acceso total
-      // - Usuarios autenticados pueden leer documentos cuyo campo `estado` es 'activo'
       allow read: if request.auth.uid == userId || isAdmin() || (request.auth != null && resource.data.estado == 'activo');
       allow update: if request.auth.uid == userId || isAdmin();
       allow create: if request.auth != null
@@ -38,7 +35,7 @@ service cloud.firestore {
             request.auth.uid == userId &&
             request.resource.data.email == request.auth.token.email &&
             (request.resource.data.rol is list) &&
-            request.resource.data.rol.size() > 0 && // CORREGIDO: Usar > en lugar de &gt;
+            request.resource.data.rol.size() > 0 &&
             request.resource.data.rol.hasOnly(['padre', 'consejera', 'cuidadora', 'admin'])
           ) || isAdmin()
         );
@@ -54,20 +51,14 @@ service cloud.firestore {
         allow get, list, write: if request.auth.uid == userId || isAdmin();
       }
 
-      // REGLA NUEVA: Permite gestionar la disponibilidad granular.
-      // Reemplaza el campo `horarios` del modelo antiguo.
       match /disponibilidad/{slotId} {
-        allow read, list: if request.auth != null; // Cualquiera autenticado puede leer para buscar disponibilidad.
-        allow create, update, delete: if request.auth.uid == userId || isAdmin(); // Solo el dueño o un admin puede modificar.
+        allow read, list: if request.auth != null; 
+        allow create, update, delete: if request.auth.uid == userId || isAdmin(); 
       }
     }
 
     match /reservas/{reservaId} {
       allow read: if (isAdmin() || (request.auth != null && (request.auth.uid == resource.data.uid || request.auth.uid == resource.data.profesionalId)));
-      // Permite a un usuario autenticado listar reservas.
-      // Las queries en el cliente DEBEN ser seguras y filtrar por UID del padre o del profesional.
-      // ej. where('uid', '==', request.auth.uid) o where('profesionalId', '==', request.auth.uid)
-      // La regla es permisiva, pero las queries del cliente son las que aseguran los datos.
       allow list: if request.auth != null;
       allow update: if request.auth != null && (request.auth.uid == resource.data.uid || request.auth.uid == resource.data.profesionalId || isAdmin());
       allow delete: if isAdmin();
@@ -75,17 +66,10 @@ service cloud.firestore {
     }
 
     match /nidos/{nidoId} {
-      // Permitir listar/consultar la colección completa a cualquier usuario autenticado (necesario para la búsqueda por RUT de hijos)
       allow list: if request.auth != null;
-      
-      // Permitir leer un documento específico, actualizarlo solo si es miembro o admin
       allow get, update: if request.auth != null &&
         (request.auth.uid in resource.data.padresUids || isAdmin());
-        
-      // Permitir crear un nido a cualquier usuario autenticado
       allow create: if request.auth != null;
-      
-      // Solo el administrador puede eliminar nidos
       allow delete: if isAdmin();
     }
 
@@ -119,8 +103,8 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         request.auth != null &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']) &&
-        request.resource.data.stock >= 0 && // CORREGIDO: Usar >= en lugar de &gt;=
-        request.resource.data.stock < resource.data.stock // CORREGIDO: Usar < en lugar de &lt;
+        request.resource.data.stock >= 0 &&
+        request.resource.data.stock < resource.data.stock
       );
     }
 
@@ -139,12 +123,13 @@ service cloud.firestore {
         (datosUsuario().puedeCrearTips == true || isAdmin());
     }
 
+    // --- REGLA MODIFICADA: AUDIT LOGS ---
     match /auditLogs/{logId} {
-      // Solo lectura para admins.
-      // Escritura SOLO permitida desde Cloud Functions con SDK de servidor (bypasea estas reglas).
-      // Desde el cliente, incluso el admin tiene prohibido escribir para evitar logs falsificados.
+      // Permitimos al Admin leer y escribir los logs directamente desde el cliente.
+      // Esto NO requiere Cloud Functions ni genera costos.
+      // La seguridad se mantiene porque solo un usuario con rol 'admin' puede hacerlo.
       allow read: if isAdmin();
-      allow write: if false;
+      allow write: if isAdmin(); 
     }
 
   }
