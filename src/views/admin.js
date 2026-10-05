@@ -14,6 +14,7 @@ import {
   fetchAdminStats,
   getPendingUsers,
   getAllUsers,
+  getAllNidos, // <--- NUEVA IMPORTACIÓN
   updateUserProfile,
   deleteUserProfile,
   getLatestUsers,
@@ -169,7 +170,22 @@ export async function renderAdminTab(activeTab) {
       </div>
     `;
     loadAllUsersTable();
-  } else if (activeTab === 'admin_tienda') {
+  
+  // --- NUEVA SECCIÓN: NIDOS / FAMILIAS ---
+  } else if (activeTab === 'admin_nidos') {
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Nidos y Familias</h2>
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div id="nidos-table-container" class="overflow-x-auto">
+          <p class="text-center py-8 text-gray-400 italic">Cargando nidos...</p>
+        </div>
+      </div>
+    `;
+    loadAllNidos();
+  }
+  // ----------------------------------------
+
+  else if (activeTab === 'admin_tienda') {
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Tienda & Inventario</h2>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -270,6 +286,124 @@ export async function renderAdminTab(activeTab) {
     renderAdminAllOrders();
   }
 }
+
+// --- FUNCIÓN MEJORADA PARA CARGAR NIDOS ---
+async function loadAllNidos() {
+  const container = document.getElementById('nidos-table-container');
+  if (!container) return;
+
+  try {
+    // 1. Obtener nidos y usuarios en paralelo
+    const [nidos, usuarios] = await Promise.all([
+      getAllNidos(),
+      getAllUsers()
+    ]);
+
+    if (nidos.length === 0) {
+      container.innerHTML = '<p class="text-center py-8 text-gray-400 italic">No hay nidos registrados.</p>';
+      return;
+    }
+
+    // 2. Crear un mapa de UID -> Nombre para búsquedas rápidas
+    const userMap = new Map();
+    usuarios.forEach(u => {
+      userMap.set(u.id, u.nombre || u.email || u.id);
+    });
+
+    // 3. Renderizar la tabla mejorada
+    container.innerHTML = `
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+          <tr>
+            <th class="p-3">ID Nido</th>
+            <th class="p-3">Bebés / Hijos</th>
+            <th class="p-3">Padres / Familia</th>
+            <th class="p-3">Fecha Creación</th>
+            <th class="p-3">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          ${nidos.map(nido => {
+            const hijos = nido.hijos || [];
+            const padresUids = nido.padresUids || [];
+            const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
+
+            return `
+              <tr>
+                <td class="p-3 font-mono text-xs">${nido.id}</td>
+                <td class="p-3 text-xs">
+                  ${hijos.length > 0
+                    ? hijos.map(h => `
+                        <div class="mb-1">
+                          <span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>
+                          ${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}
+                        </div>
+                      `).join('')
+                    : '<span class="text-gray-400 italic">Sin registros</span>'}
+                </td>
+                <td class="p-3 text-xs">
+                  ${nombresPadres.length > 0
+                    ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('')
+                    : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}
+                </td>
+                <td class="p-3 text-xs text-gray-500">
+                  ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleDateString('es-CL') : '---'}
+                </td>
+                <td class="p-3 whitespace-nowrap">
+                  <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">
+                    Ver Detalles
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // 4. Listener para el botón "Ver Detalles"
+    container.querySelectorAll('.btn-view-nido').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nidoId = btn.dataset.id;
+        const nido = nidos.find(n => n.id === nidoId);
+        if (!nido) return;
+
+        // Buscar información de los padres
+        const padresInfo = (nido.padresUids || []).map(uid => {
+          const user = usuarios.find(u => u.id === uid);
+          return user ? `• ${user.nombre} (${user.email})` : `• UID: ${uid}`;
+        }).join('\n');
+
+        // Buscar información de los hijos
+        const hijosInfo = (nido.hijos || []).map(h =>
+          `• ${h.nombre || 'Sin nombre'} ${h.rut ? `(RUT: ${h.rut})` : ''}`
+        ).join('\n');
+
+        // Modal simple con alert (luego podemos mejorarlo a un modal HTML)
+        const mensaje = `
+📋 DETALLES DEL NIDO
+━━━━━━━━━━━━━━━━━━━━
+
+🆔 ID: ${nido.id}
+📅 Creado: ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleString('es-CL') : 'No registrado'}
+
+👶 HIJOS / BEBÉS:
+${hijosInfo || 'No hay hijos registrados'}
+
+👨‍👩‍👧 PADRES / FAMILIA:
+${padresInfo || 'No hay padres vinculados'}
+        `.trim();
+
+        alert(mensaje);
+      });
+    });
+
+  } catch (error) {
+    console.error('Error al cargar nidos:', error);
+    container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando nidos.</p>';
+  }
+}
+// ------------------------------------------
 
 async function renderAdminTipsManagement() {
   const container = document.getElementById('admin-tips-management');

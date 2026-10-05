@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     admin: [
       { label: "Visión General", icon: "👁️", action: "dashboard" },
       { label: "Usuarios", icon: "👥", action: "usuarios" },
+      { label: "Nidos / Familias", icon: "👶", action: "admin_nidos" }, // <--- NUEVA LÍNEA
       { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" },
       { label: "Gestión de Tips", icon: "💡", action: "admin_tips" }
     ]
