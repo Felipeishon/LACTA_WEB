@@ -161,6 +161,20 @@ export async function getAllUsers() {
     }
 }
 
+// --- NUEVA FUNCIÓN AGREGADA ---
+export async function getAllNidos() {
+    try {
+        const snap = await getDocs(collection(db, "nidos"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Ordenar por fecha de creación descendente (el más reciente primero)
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todos los nidos:", error);
+        throw error;
+    }
+}
+// ------------------------------
+
 export async function updateUserProfile(uid, updateData) {
     const adminUid = auth.currentUser?.uid;
     const allowedRoles = ['padre', 'consejera', 'cuidadora', 'admin'];
