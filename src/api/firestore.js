@@ -377,6 +377,7 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
             await setDoc(nuevoNidoRef, {
                 hijos: hijosArray,
                 padresUids: [uidUsuario],
+                estado: 'activo', // <--- NUEVO CAMPO
                 creadoEn: new Date().toISOString()
             });
         } else {
@@ -400,6 +401,65 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
         console.error("Error al vincular el nido familiar:", error);
         throw error;
     }
+}
+
+// --- NUEVA FUNCIÓN: BORRADO LÓGICO DE NIDO ---
+export async function deleteNidoProfile(nidoId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
+        throw new Error('No se pudo identificar al nido.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const nidoRef = doc(db, 'nidos', nidoId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(nidoRef, {
+            estado: 'inactivo',
+            fechaDesactivacion: new Date().toISOString()
+        });
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'DELETE_NIDO',
+            targetType: 'NIDO',
+            targetId: nidoId,
+            reason: 'Desactivado desde el panel de administración.',
+            timestamp: serverTimestamp()
+        });
+    });
+}
+
+// --- NUEVA FUNCIÓN: REACTIVAR NIDO ---
+export async function reactivarNidoProfile(nidoId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
+        throw new Error('No se pudo identificar al nido.');
+    }
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const nidoRef = doc(db, 'nidos', nidoId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(nidoRef, {
+            estado: 'activo',
+            fechaReactivacion: new Date().toISOString()
+        });
+        transaction.set(auditLogRef, {
+            adminUid,
+            action: 'REACTIVATE_NIDO',
+            targetType: 'NIDO',
+            targetId: nidoId,
+            timestamp: serverTimestamp()
+        });
+    });
 }
 
 export async function obtenerDatosNido(nidoId) {

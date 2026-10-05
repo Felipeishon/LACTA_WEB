@@ -14,7 +14,9 @@ import {
   fetchAdminStats,
   getPendingUsers,
   getAllUsers,
-  getAllNidos, // <--- NUEVA IMPORTACIÓN
+  getAllNidos,
+  deleteNidoProfile,
+  reactivarNidoProfile,
   updateUserProfile,
   deleteUserProfile,
   getLatestUsers,
@@ -30,8 +32,8 @@ import {
 import { approveUserWithAudit } from '../api/admin.js';
 import { escapeHTML } from '../utils/html.js';
 import { hasRole } from '../utils/roles.js';
-import { db } from '../firebase.js'; // Importar db desde su origen
-import { doc, updateDoc } from 'firebase/firestore'; // Importar funciones de firestore
+import { db } from '../firebase.js';
+import { doc, updateDoc } from 'firebase/firestore';
 
 function fileToBase64(file) {
   const maxBytes = 200 * 1024;
@@ -293,7 +295,6 @@ async function loadAllNidos() {
   if (!container) return;
 
   try {
-    // 1. Obtener nidos y usuarios en paralelo
     const [nidos, usuarios] = await Promise.all([
       getAllNidos(),
       getAllUsers()
@@ -304,87 +305,141 @@ async function loadAllNidos() {
       return;
     }
 
-    // 2. Crear un mapa de UID -> Nombre para búsquedas rápidas
     const userMap = new Map();
     usuarios.forEach(u => {
       userMap.set(u.id, u.nombre || u.email || u.id);
     });
 
-    // 3. Renderizar la tabla mejorada
-    container.innerHTML = `
-      <table class="w-full text-left text-sm">
-        <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
-          <tr>
-            <th class="p-3">ID Nido</th>
-            <th class="p-3">Bebés / Hijos</th>
-            <th class="p-3">Padres / Familia</th>
-            <th class="p-3">Fecha Creación</th>
-            <th class="p-3">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          ${nidos.map(nido => {
-            const hijos = nido.hijos || [];
-            const padresUids = nido.padresUids || [];
-            const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
+    // Variable de estado para el filtro
+    let mostrarInactivos = false;
 
-            return `
-              <tr>
-                <td class="p-3 font-mono text-xs">${nido.id}</td>
-                <td class="p-3 text-xs">
-                  ${hijos.length > 0
-                    ? hijos.map(h => `
-                        <div class="mb-1">
-                          <span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>
-                          ${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}
-                        </div>
-                      `).join('')
-                    : '<span class="text-gray-400 italic">Sin registros</span>'}
-                </td>
-                <td class="p-3 text-xs">
-                  ${nombresPadres.length > 0
-                    ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('')
-                    : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}
-                </td>
-                <td class="p-3 text-xs text-gray-500">
-                  ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleDateString('es-CL') : '---'}
-                </td>
-                <td class="p-3 whitespace-nowrap">
-                  <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">
-                    Ver Detalles
-                  </button>
-                </td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    `;
+    const renderTabla = () => {
+      const nidosFiltrados = nidos.filter(n => {
+        const estado = n.estado || 'activo'; // Los nidos antiguos sin estado se consideran activos
+        return mostrarInactivos ? estado === 'inactivo' : estado === 'activo';
+      });
 
-    // 4. Listener para el botón "Ver Detalles"
-    container.querySelectorAll('.btn-view-nido').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const nidoId = btn.dataset.id;
-        const nido = nidos.find(n => n.id === nidoId);
-        if (!nido) return;
+      const totalActivos = nidos.filter(n => (n.estado || 'activo') === 'activo').length;
+      const totalInactivos = nidos.filter(n => n.estado === 'inactivo').length;
 
-        // Buscar información de los padres
-        const padresInfo = (nido.padresUids || []).map(uid => {
-          const user = usuarios.find(u => u.id === uid);
-          return user ? `• ${user.nombre} (${user.email})` : `• UID: ${uid}`;
-        }).join('\n');
+      if (nidosFiltrados.length === 0) {
+        container.innerHTML = `
+          <div class="flex items-center gap-3 mb-4">
+            <button id="toggle-nidos-inactivos" class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${mostrarInactivos ? 'bg-[#e87a30] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+              ${mostrarInactivos ? '← Ver Activos' : `Ver Inactivos (${totalInactivos})`}
+            </button>
+          </div>
+          <p class="text-center py-8 text-gray-400 italic">
+            ${mostrarInactivos ? 'No hay nidos desactivados.' : 'No hay nidos activos.'}
+          </p>
+        `;
+        document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
+          mostrarInactivos = !mostrarInactivos;
+          renderTabla();
+        });
+        return;
+      }
 
-        // Buscar información de los hijos
-        const hijosInfo = (nido.hijos || []).map(h =>
-          `• ${h.nombre || 'Sin nombre'} ${h.rut ? `(RUT: ${h.rut})` : ''}`
-        ).join('\n');
+      container.innerHTML = `
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500">
+            Mostrando <strong>${nidosFiltrados.length}</strong> nido(s) ${mostrarInactivos ? 'inactivo(s)' : 'activo(s)'}
+          </p>
+          <button id="toggle-nidos-inactivos" class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${mostrarInactivos ? 'bg-[#e87a30] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+            ${mostrarInactivos ? `← Ver Activos (${totalActivos})` : `Ver Inactivos (${totalInactivos})`}
+          </button>
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+            <tr>
+              <th class="p-3">Estado</th>
+              <th class="p-3">Bebés / Hijos</th>
+              <th class="p-3">Padres / Familia</th>
+              <th class="p-3">Fecha Creación</th>
+              <th class="p-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            ${nidosFiltrados.map(nido => {
+              const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
+              const padresUids = nido.padresUids || [];
+              const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
+              const estadoNido = nido.estado || 'activo';
+              const esActivo = estadoNido === 'activo';
 
-        // Modal simple con alert (luego podemos mejorarlo a un modal HTML)
-        const mensaje = `
+              return `
+                <tr class="${esActivo ? '' : 'bg-red-50/30 opacity-75'}">
+                  <td class="p-3">
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full ${esActivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                      ${esActivo ? '● ACTIVO' : '● INACTIVO'}
+                    </span>
+                  </td>
+                  <td class="p-3 text-xs">
+                    ${hijos.length > 0
+                      ? hijos.map(h => `
+                          <div class="mb-1">
+                            <span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>
+                            ${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}
+                          </div>
+                        `).join('')
+                      : '<span class="text-gray-400 italic">Sin registros</span>'}
+                  </td>
+                  <td class="p-3 text-xs">
+                    ${nombresPadres.length > 0
+                      ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('')
+                      : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}
+                  </td>
+                  <td class="p-3 text-xs text-gray-500">
+                    ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleDateString('es-CL') : '---'}
+                  </td>
+                  <td class="p-3 whitespace-nowrap">
+                    <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">
+                      Ver
+                    </button>
+                    ${esActivo ? `
+                      <button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">
+                        Desactivar
+                      </button>
+                    ` : `
+                      <button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">
+                        Reactivar
+                      </button>
+                    `}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // Listener del toggle
+      document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
+        mostrarInactivos = !mostrarInactivos;
+        renderTabla();
+      });
+
+      // Listener "Ver Detalles"
+      container.querySelectorAll('.btn-view-nido').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const nido = nidos.find(n => n.id === btn.dataset.id);
+          if (!nido) return;
+
+          const padresInfo = (nido.padresUids || []).map(uid => {
+            const user = usuarios.find(u => u.id === uid);
+            return user ? `• ${user.nombre} (${user.email})` : `• UID: ${uid}`;
+          }).join('\n');
+
+          const hijosInfo = (nido.hijos || []).map(h =>
+            `• ${h.nombre || 'Sin nombre'} ${h.rut ? `(RUT: ${h.rut})` : ''}`
+          ).join('\n');
+
+          const mensaje = `
 📋 DETALLES DEL NIDO
 ━━━━━━━━━━━━━━━━━━━━
 
 🆔 ID: ${nido.id}
+📌 Estado: ${(nido.estado || 'activo').toUpperCase()}
 📅 Creado: ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleString('es-CL') : 'No registrado'}
 
 👶 HIJOS / BEBÉS:
@@ -392,12 +447,60 @@ ${hijosInfo || 'No hay hijos registrados'}
 
 👨‍👩‍👧 PADRES / FAMILIA:
 ${padresInfo || 'No hay padres vinculados'}
-        `.trim();
+          `.trim();
 
-        alert(mensaje);
+          alert(mensaje);
+        });
       });
-    });
 
+      // Listener "Desactivar"
+      container.querySelectorAll('.btn-delete-nido').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const nidoId = btn.dataset.id;
+          if (!window.confirm('¿Estás seguro de desactivar este nido? El historial se conservará pero el nido dejará de estar activo.')) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Desactivando...';
+          try {
+            await deleteNidoProfile(nidoId);
+            const nido = nidos.find(n => n.id === nidoId);
+            if (nido) nido.estado = 'inactivo';
+            showToast('Nido desactivado correctamente.', 'success');
+            renderTabla();
+          } catch (error) {
+            console.error('Error al desactivar nido:', error);
+            btn.disabled = false;
+            btn.textContent = 'Desactivar';
+            showToast(error.message || 'Error al desactivar nido.', 'error');
+          }
+        });
+      });
+
+      // Listener "Reactivar"
+      container.querySelectorAll('.btn-reactivate-nido').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const nidoId = btn.dataset.id;
+          if (!window.confirm('¿Reactivar este nido?')) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Reactivando...';
+          try {
+            await reactivarNidoProfile(nidoId);
+            const nido = nidos.find(n => n.id === nidoId);
+            if (nido) nido.estado = 'activo';
+            showToast('Nido reactivado correctamente.', 'success');
+            renderTabla();
+          } catch (error) {
+            console.error('Error al reactivar nido:', error);
+            btn.disabled = false;
+            btn.textContent = 'Reactivar';
+            showToast(error.message || 'Error al reactivar nido.', 'error');
+          }
+        });
+      });
+    };
+
+    renderTabla();
   } catch (error) {
     console.error('Error al cargar nidos:', error);
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando nidos.</p>';
@@ -652,7 +755,6 @@ async function loadPendingUsers() {
       const targetBtn = e.target;
       targetBtn.disabled = true;
       try {
-        // Se reemplaza la llamada directa a la DB por la nueva función auditada.
         await approveUserWithAudit(uid, 'Aprobado desde el panel de administración.');
         showToast('Usuario aprobado con éxito (acción auditada).', 'success');
         emailService.sendApprovalNotification(nombre, email);
@@ -853,11 +955,9 @@ async function loadLatestUsers() {
       const esPrestador = !hasRole(u, 'padre');
       const color = esPrestador ? 'bg-green-500' : 'bg-blue-500';
       
-      // Lógica de fecha robusta para evitar "Invalid Date"
       let fecha = '---';
       if (u.fechaRegistro) {
         const dateObj = new Date(u.fechaRegistro);
-        // Se comprueba si la fecha es un número válido antes de mostrarla
         if (!isNaN(dateObj.getTime())) {
           fecha = dateObj.toLocaleDateString();
         }
