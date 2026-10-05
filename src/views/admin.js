@@ -66,6 +66,26 @@ function formatFirestoreDate(value, includeTime = false) {
   }
 }
 
+/**
+ * Devuelve la fecha en formato YYYY-MM-DD para comparaciones.
+ */
+function toDateInputValue(value) {
+  if (!value) return null;
+  try {
+    let date;
+    if (value instanceof Date) date = value;
+    else if (typeof value === 'string') date = new Date(value);
+    else if (typeof value.toDate === 'function') date = value.toDate();
+    else if (typeof value === 'object' && typeof value.seconds === 'number') date = new Date(value.seconds * 1000);
+    else return null;
+    if (isNaN(date.getTime())) return null;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  } catch { return null; }
+}
+
 const FIELD_LABELS = {
   uidPadre: 'UID Padre',
   nidoId: 'ID Nido',
@@ -100,10 +120,6 @@ const FIELD_LABELS = {
   seguimiento: 'Seguimiento',
 };
 
-/**
- * Modal elegante para ver detalles de bitácoras y fichas.
- * La opción "rawData" fue removida: ya no se muestra el JSON técnico.
- */
 function showInfoModal({ title, subtitle, icon, rows }) {
   const existing = document.getElementById('info-modal-overlay');
   if (existing) existing.remove();
@@ -173,8 +189,6 @@ function getNidoNombreDesdePadre(uidPadre, userMap, nidoMap) {
   return null;
 }
 
-// ══════════════════════════════════════════════════════════════
-
 function fileToBase64(file) {
   const maxBytes = 200 * 1024;
   if (file.size <= maxBytes) {
@@ -197,23 +211,14 @@ function fileToBase64(file) {
       canvas.width = Math.max(1, Math.round(image.width * scale));
       canvas.height = Math.max(1, Math.round(image.height * scale));
       const context = canvas.getContext('2d');
-      if (!context) {
-        reject(new Error('No se pudo preparar la imagen.'));
-        return;
-      }
+      if (!context) { reject(new Error('No se pudo preparar la imagen.')); return; }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
       const compress = (quality, attemptsLeft) => {
         canvas.toBlob(blob => {
-          if (!blob) {
-            reject(new Error('No se pudo comprimir la imagen.'));
-            return;
-          }
+          if (!blob) { reject(new Error('No se pudo comprimir la imagen.')); return; }
           if (blob.size <= maxBytes || attemptsLeft === 0) {
-            if (blob.size > maxBytes) {
-              reject(new Error('La imagen no pudo reducirse por debajo de 200 KB.'));
-              return;
-            }
+            if (blob.size > maxBytes) { reject(new Error('La imagen no pudo reducirse por debajo de 200 KB.')); return; }
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
             reader.onerror = () => reject(new Error('No se pudo leer la imagen comprimida.'));
@@ -226,13 +231,14 @@ function fileToBase64(file) {
 
       compress(0.8, 6);
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('El archivo seleccionado no es una imagen válida.'));
-    };
+    image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('El archivo seleccionado no es una imagen válida.')); };
     image.src = objectUrl;
   });
 }
+
+// ══════════════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ══════════════════════════════════════════════════════════════
 
 export async function renderAdminTab(activeTab) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -435,7 +441,10 @@ export async function renderAdminTab(activeTab) {
   }
 }
 
-// --- REGISTROS GLOBALES ---
+// ══════════════════════════════════════════════════════════════
+// REGISTROS GLOBALES CON FILTROS
+// ══════════════════════════════════════════════════════════════
+
 async function loadAllRegistros() {
   const container = document.getElementById('registros-container');
   if (!container) return;
@@ -457,28 +466,122 @@ async function loadAllRegistros() {
       nidoMap.set(n.id, hijos[0]?.nombre || 'Sin nombre');
     });
 
+    // Estado de la vista y filtros
     let vistaActual = 'bitacoras';
+    const filtros = {
+      bitacoras: { texto: '', desde: '', hasta: '' },
+      fichas: { texto: '', desde: '', hasta: '' }
+    };
+
+    /**
+     * Aplica los filtros a un array de registros según su tipo.
+     */
+    const aplicarFiltros = (registros, tipo) => {
+      const f = filtros[tipo];
+      const search = f.texto.trim().toLowerCase();
+
+      return registros.filter(r => {
+        // 1. Filtro de texto
+        if (search) {
+          let textoBuscable = '';
+          if (tipo === 'bitacoras') {
+            const nombreNido = resolveHistoricalName(r.nidoNombreBebe, () => (r.nidoId ? nidoMap.get(r.nidoId) : null) || getNidoNombreDesdePadre(r.uidPadre, userMap, nidoMap), '');
+            const nombrePrestador = resolveHistoricalName(r.prestadorNombre, () => userMap.get(r.prestadorId)?.nombre, '');
+            textoBuscable = `${nombreNido} ${nombrePrestador} ${r.observaciones || ''} ${r.deposiciones || ''} ${r.sueno || ''}`.toLowerCase();
+          } else {
+            const nombreNido = resolveHistoricalName(r.nidoNombreBebe, () => (r.nidoId ? nidoMap.get(r.nidoId) : null) || getNidoNombreDesdePadre(r.uidPadre, userMap, nidoMap), '');
+            const nombreConsejera = resolveHistoricalName(r.consejeraNombre, () => userMap.get(r.consejeraId)?.nombre, '');
+            textoBuscable = `${nombreNido} ${nombreConsejera} ${r.motivoConsulta || ''} ${r.motivo || ''} ${r.evaluacion || ''} ${r.planAccion || ''}`.toLowerCase();
+          }
+          if (!textoBuscable.includes(search)) return false;
+        }
+
+        // 2. Filtro de fecha
+        const fechaRegistro = tipo === 'bitacoras' 
+          ? toDateInputValue(r.fecha || r.creadoEn)
+          : toDateInputValue(r.fechaAtencion || r.creadoEn);
+
+        if (f.desde && fechaRegistro && fechaRegistro < f.desde) return false;
+        if (f.hasta && fechaRegistro && fechaRegistro > f.hasta) return false;
+        if ((f.desde || f.hasta) && !fechaRegistro) return false;
+
+        return true;
+      });
+    };
 
     const render = () => {
       const totalBitacoras = bitacoras.length;
       const totalFichas = fichas.length;
+      const esBitacoras = vistaActual === 'bitacoras';
+      const filtroActual = esBitacoras ? filtros.bitacoras : filtros.fichas;
+      const registrosBase = esBitacoras ? bitacoras : fichas;
+      const registrosFiltrados = aplicarFiltros(registrosBase, vistaActual);
+      const totalFiltrados = registrosFiltrados.length;
+      const totalBase = registrosBase.length;
+      const hayFiltrosActivos = filtroActual.texto || filtroActual.desde || filtroActual.hasta;
 
       const headerHTML = `
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div class="flex gap-2">
-            <button id="btn-vista-bitacoras" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${vistaActual === 'bitacoras' ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+            <button id="btn-vista-bitacoras" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${esBitacoras ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
               🍼 Bitácoras (${totalBitacoras})
             </button>
-            <button id="btn-vista-fichas" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${vistaActual === 'fichas' ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+            <button id="btn-vista-fichas" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${!esBitacoras ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
               💜 Fichas (${totalFichas})
             </button>
           </div>
+          <div class="text-xs text-gray-500">
+            ${hayFiltrosActivos 
+              ? `Mostrando <strong>${totalFiltrados}</strong> de <strong>${totalBase}</strong> registros`
+              : `Total: <strong>${totalBase}</strong> registros`}
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTROS -->
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Buscar</label>
+              <input 
+                type="search" 
+                id="filtro-texto"
+                value="${escapeHTML(filtroActual.texto)}"
+                placeholder="${esBitacoras ? 'Buscar por nido, prestador, observaciones...' : 'Buscar por nido, consejera, motivo...'}"
+                class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Desde</label>
+              <input 
+                type="date" 
+                id="filtro-desde"
+                value="${filtroActual.desde}"
+                class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Hasta</label>
+              <input 
+                type="date" 
+                id="filtro-hasta"
+                value="${filtroActual.hasta}"
+                class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none"
+              />
+            </div>
+          </div>
+          ${hayFiltrosActivos ? `
+            <div class="mt-3 flex justify-end">
+              <button id="btn-limpiar-filtros" class="text-xs font-bold text-[#e87a30] hover:text-[#d66a20] hover:underline">
+                ✕ Limpiar filtros
+              </button>
+            </div>
+          ` : ''}
         </div>
       `;
 
-      if (vistaActual === 'bitacoras') {
-        if (totalBitacoras === 0) {
-          container.innerHTML = headerHTML + '<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">No hay bitácoras registradas en el sistema.</p>';
+      if (esBitacoras) {
+        if (totalFiltrados === 0) {
+          container.innerHTML = headerHTML + `<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">${hayFiltrosActivos ? 'No hay bitácoras que coincidan con los filtros aplicados.' : 'No hay bitácoras registradas en el sistema.'}</p>`;
         } else {
           container.innerHTML = headerHTML + `
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -495,18 +598,10 @@ async function loadAllRegistros() {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
-                    ${bitacoras.map(b => {
+                    ${registrosFiltrados.map(b => {
                       const fecha = formatFirestoreDate(b.fecha || b.creadoEn) || '---';
-                      const nombreNido = resolveHistoricalName(
-                        b.nidoNombreBebe,
-                        () => (b.nidoId ? nidoMap.get(b.nidoId) : null) || getNidoNombreDesdePadre(b.uidPadre, userMap, nidoMap),
-                        'Sin nido'
-                      );
-                      const nombrePrestador = resolveHistoricalName(
-                        b.prestadorNombre,
-                        () => userMap.get(b.prestadorId)?.nombre,
-                        'Sin nombre'
-                      );
+                      const nombreNido = resolveHistoricalName(b.nidoNombreBebe, () => (b.nidoId ? nidoMap.get(b.nidoId) : null) || getNidoNombreDesdePadre(b.uidPadre, userMap, nidoMap), 'Sin nido');
+                      const nombrePrestador = resolveHistoricalName(b.prestadorNombre, () => userMap.get(b.prestadorId)?.nombre, 'Sin nombre');
                       return `
                         <tr>
                           <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
@@ -527,8 +622,8 @@ async function loadAllRegistros() {
           `;
         }
       } else {
-        if (totalFichas === 0) {
-          container.innerHTML = headerHTML + '<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">No hay fichas de atención registradas en el sistema.</p>';
+        if (totalFiltrados === 0) {
+          container.innerHTML = headerHTML + `<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">${hayFiltrosActivos ? 'No hay fichas que coincidan con los filtros aplicados.' : 'No hay fichas de atención registradas en el sistema.'}</p>`;
         } else {
           container.innerHTML = headerHTML + `
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -544,18 +639,10 @@ async function loadAllRegistros() {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
-                    ${fichas.map(f => {
+                    ${registrosFiltrados.map(f => {
                       const fecha = formatFirestoreDate(f.fechaAtencion || f.creadoEn) || '---';
-                      const nombreNido = resolveHistoricalName(
-                        f.nidoNombreBebe,
-                        () => (f.nidoId ? nidoMap.get(f.nidoId) : null) || getNidoNombreDesdePadre(f.uidPadre, userMap, nidoMap),
-                        'Sin nido'
-                      );
-                      const nombreConsejera = resolveHistoricalName(
-                        f.consejeraNombre,
-                        () => userMap.get(f.consejeraId)?.nombre,
-                        'Sin nombre'
-                      );
+                      const nombreNido = resolveHistoricalName(f.nidoNombreBebe, () => (f.nidoId ? nidoMap.get(f.nidoId) : null) || getNidoNombreDesdePadre(f.uidPadre, userMap, nidoMap), 'Sin nido');
+                      const nombreConsejera = resolveHistoricalName(f.consejeraNombre, () => userMap.get(f.consejeraId)?.nombre, 'Sin nombre');
                       return `
                         <tr>
                           <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
@@ -576,6 +663,7 @@ async function loadAllRegistros() {
         }
       }
 
+      // Listeners de cambio de vista
       document.getElementById('btn-vista-bitacoras')?.addEventListener('click', () => {
         vistaActual = 'bitacoras';
         render();
@@ -585,6 +673,43 @@ async function loadAllRegistros() {
         render();
       });
 
+      // Listeners de filtros (inputs)
+      const inputTexto = document.getElementById('filtro-texto');
+      const inputDesde = document.getElementById('filtro-desde');
+      const inputHasta = document.getElementById('filtro-hasta');
+      const btnLimpiar = document.getElementById('btn-limpiar-filtros');
+
+      let debounceTimer;
+      inputTexto?.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          filtros[vistaActual].texto = e.target.value;
+          const cursorPos = e.target.selectionStart;
+          render();
+          const newInput = document.getElementById('filtro-texto');
+          if (newInput) {
+            newInput.focus();
+            newInput.setSelectionRange(cursorPos, cursorPos);
+          }
+        }, 300);
+      });
+
+      inputDesde?.addEventListener('change', (e) => {
+        filtros[vistaActual].desde = e.target.value;
+        render();
+      });
+
+      inputHasta?.addEventListener('change', (e) => {
+        filtros[vistaActual].hasta = e.target.value;
+        render();
+      });
+
+      btnLimpiar?.addEventListener('click', () => {
+        filtros[vistaActual] = { texto: '', desde: '', hasta: '' };
+        render();
+      });
+
+      // Listeners de "Ver"
       container.querySelectorAll('.btn-ver-bitacora').forEach(btn => {
         btn.addEventListener('click', () => {
           const data = JSON.parse(btn.dataset.json);
@@ -647,26 +772,23 @@ async function loadAllRegistros() {
   }
 }
 
-// --- FUNCIÓN MEJORADA PARA CARGAR NIDOS ---
+// ══════════════════════════════════════════════════════════════
+// RESTO DE FUNCIONES (sin cambios)
+// ══════════════════════════════════════════════════════════════
+
 async function loadAllNidos() {
   const container = document.getElementById('nidos-table-container');
   if (!container) return;
 
   try {
-    const [nidos, usuarios] = await Promise.all([
-      getAllNidos(),
-      getAllUsers()
-    ]);
-
+    const [nidos, usuarios] = await Promise.all([getAllNidos(), getAllUsers()]);
     if (nidos.length === 0) {
       container.innerHTML = '<p class="text-center py-8 text-gray-400 italic">No hay nidos registrados.</p>';
       return;
     }
 
     const userMap = new Map();
-    usuarios.forEach(u => {
-      userMap.set(u.id, u.nombre || u.email || u.id);
-    });
+    usuarios.forEach(u => userMap.set(u.id, u.nombre || u.email || u.id));
 
     let mostrarInactivos = false;
 
@@ -686,9 +808,7 @@ async function loadAllNidos() {
               ${mostrarInactivos ? '← Ver Activos' : `Ver Inactivos (${totalInactivos})`}
             </button>
           </div>
-          <p class="text-center py-8 text-gray-400 italic">
-            ${mostrarInactivos ? 'No hay nidos desactivados.' : 'No hay nidos activos.'}
-          </p>
+          <p class="text-center py-8 text-gray-400 italic">${mostrarInactivos ? 'No hay nidos desactivados.' : 'No hay nidos activos.'}</p>
         `;
         document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
           mostrarInactivos = !mostrarInactivos;
@@ -699,9 +819,7 @@ async function loadAllNidos() {
 
       container.innerHTML = `
         <div class="flex items-center justify-between mb-4">
-          <p class="text-sm text-gray-500">
-            Mostrando <strong>${nidosFiltrados.length}</strong> nido(s) ${mostrarInactivos ? 'inactivo(s)' : 'activo(s)'}
-          </p>
+          <p class="text-sm text-gray-500">Mostrando <strong>${nidosFiltrados.length}</strong> nido(s) ${mostrarInactivos ? 'inactivo(s)' : 'activo(s)'}</p>
           <button id="toggle-nidos-inactivos" class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${mostrarInactivos ? 'bg-[#e87a30] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
             ${mostrarInactivos ? `← Ver Activos (${totalActivos})` : `Ver Inactivos (${totalInactivos})`}
           </button>
@@ -733,28 +851,13 @@ async function loadAllNidos() {
                     </span>
                   </td>
                   <td class="p-3 text-xs">
-                    ${hijos.length > 0
-                      ? hijos.map(h => `
-                          <div class="mb-1">
-                            <span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>
-                            ${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}
-                          </div>
-                        `).join('')
-                      : '<span class="text-gray-400 italic">Sin registros</span>'}
+                    ${hijos.length > 0 ? hijos.map(h => `<div class="mb-1"><span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}</div>`).join('') : '<span class="text-gray-400 italic">Sin registros</span>'}
                   </td>
-                  <td class="p-3 text-xs">
-                    ${nombresPadres.length > 0
-                      ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('')
-                      : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}
-                  </td>
+                  <td class="p-3 text-xs">${nombresPadres.length > 0 ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('') : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}</td>
                   <td class="p-3 text-xs text-gray-500">${escapeHTML(fechaCreacion)}</td>
                   <td class="p-3 whitespace-nowrap">
                     <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">Ver</button>
-                    ${esActivo ? `
-                      <button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">Desactivar</button>
-                    ` : `
-                      <button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">Reactivar</button>
-                    `}
+                    ${esActivo ? `<button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">Desactivar</button>` : `<button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">Reactivar</button>`}
                   </td>
                 </tr>
               `;
@@ -769,15 +872,13 @@ async function loadAllNidos() {
       });
 
       container.querySelectorAll('.btn-view-nido').forEach(btn => {
-        btn.addEventListener('click', () => {
-          renderDetalleNido(btn.dataset.id);
-        });
+        btn.addEventListener('click', () => renderDetalleNido(btn.dataset.id));
       });
 
       container.querySelectorAll('.btn-delete-nido').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nidoId = btn.dataset.id;
-          if (!window.confirm('¿Estás seguro de desactivar este nido? El historial se conservará pero el nido dejará de estar activo.')) return;
+          if (!window.confirm('¿Estás seguro de desactivar este nido?')) return;
           btn.disabled = true;
           btn.textContent = 'Desactivando...';
           try {
@@ -824,7 +925,6 @@ async function loadAllNidos() {
   }
 }
 
-// --- VISTA DE DETALLE DEL NIDO ---
 async function renderDetalleNido(nidoId) {
   const dashboardContent = document.getElementById('dashboard-content');
   if (!dashboardContent) return;
@@ -838,8 +938,7 @@ async function renderDetalleNido(nidoId) {
 
   try {
     const [nidos, usuarios, bitacoras, fichas] = await Promise.all([
-      getAllNidos(),
-      getAllUsers(),
+      getAllNidos(), getAllUsers(),
       fetchFichasCuidadoPorNido(nidoId),
       fetchFichasAtencionPorNido(nidoId)
     ]);
@@ -953,9 +1052,7 @@ async function renderDetalleNido(nidoId) {
       </div>
     `;
 
-    document.getElementById('btn-volver-nidos')?.addEventListener('click', () => {
-      renderAdminTab('admin_nidos');
-    });
+    document.getElementById('btn-volver-nidos')?.addEventListener('click', () => renderAdminTab('admin_nidos'));
 
     dashboardContent.querySelectorAll('.btn-ver-bitacora-detalle').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -967,19 +1064,11 @@ async function renderDetalleNido(nidoId) {
           let display = value;
           if (key === 'fecha' || key === 'fechaHora' || key === 'creadoEn' || key === 'fechaAtencion') {
             display = formatFirestoreDate(value, true) || value;
-          } else if (Array.isArray(value)) {
-            display = value.join(', ');
-          } else if (typeof value === 'object' && value !== null) {
-            display = JSON.stringify(value);
-          }
+          } else if (Array.isArray(value)) display = value.join(', ');
+          else if (typeof value === 'object' && value !== null) display = JSON.stringify(value);
           rows.push([label, display]);
         });
-        showInfoModal({
-          title: 'Bitácora de Cuidado',
-          subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
-          icon: '🍼',
-          rows
-        });
+        showInfoModal({ title: 'Bitácora de Cuidado', subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`, icon: '🍼', rows });
       });
     });
 
@@ -993,19 +1082,11 @@ async function renderDetalleNido(nidoId) {
           let display = value;
           if (key === 'fecha' || key === 'fechaHora' || key === 'creadoEn' || key === 'fechaAtencion') {
             display = formatFirestoreDate(value, true) || value;
-          } else if (Array.isArray(value)) {
-            display = value.join(', ');
-          } else if (typeof value === 'object' && value !== null) {
-            display = JSON.stringify(value);
-          }
+          } else if (Array.isArray(value)) display = value.join(', ');
+          else if (typeof value === 'object' && value !== null) display = JSON.stringify(value);
           rows.push([label, display]);
         });
-        showInfoModal({
-          title: 'Ficha de Atención',
-          subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
-          icon: '💜',
-          rows
-        });
+        showInfoModal({ title: 'Ficha de Atención', subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`, icon: '💜', rows });
       });
     });
 
@@ -1126,7 +1207,6 @@ async function renderAdminInventory() {
         const modal = document.getElementById('modalEdicionProducto');
         const form = document.getElementById('formEdicionProducto');
         if (!product || !modal || !form) return;
-
         form.elements.id.value = product.id;
         form.elements.nombre.value = product.nombre || '';
         form.elements.precio.value = product.precio ?? '';
@@ -1167,7 +1247,6 @@ async function renderAdminInventory() {
           if (imageFile instanceof File && imageFile.size > 0) {
             imagenUrl = await fileToBase64(imageFile);
           }
-
           await updateProduct(formData.get('id'), {
             nombre: formData.get('nombre'),
             precio: Number(formData.get('precio')),
@@ -1365,7 +1444,6 @@ async function loadAllUsersTable() {
           const modal = document.getElementById('modalEdicionUsuario');
           const form = document.getElementById('formEdicionUsuario');
           if (!user || !modal || !form) return;
-
           const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
           form.elements.uid.value = user.id;
           form.elements.nombre.value = user.nombre || '';
@@ -1382,7 +1460,6 @@ async function loadAllUsersTable() {
         button.addEventListener('click', async () => {
           const uid = button.dataset.uid;
           if (!window.confirm('¿Estás seguro de desactivar este usuario?')) return;
-
           button.disabled = true;
           try {
             await deleteUserProfile(uid);
@@ -1412,7 +1489,6 @@ async function loadAllUsersTable() {
           showToast('Selecciona al menos un rol.', 'error');
           return;
         }
-
         try {
           await updateUserProfile(uid, {
             nombre: formData.get('nombre'),
@@ -1420,7 +1496,6 @@ async function loadAllUsersTable() {
             estado: formData.get('estado'),
             rol: roles
           });
-
           const user = users.find(item => item.id === uid);
           if (user) {
             user.nombre = formData.get('nombre');
@@ -1462,7 +1537,6 @@ async function loadLatestUsers() {
       const esPrestador = !hasRole(u, 'padre');
       const color = esPrestador ? 'bg-green-500' : 'bg-blue-500';
       const fecha = formatFirestoreDate(u.fechaRegistro) || '---';
-      
       return `
         <li class="flex items-center justify-between text-sm">
           <span class="flex items-center gap-2">
