@@ -83,12 +83,12 @@ const FIELD_LABELS = {
   horasEfectivas: 'Horas Efectivas',
   observaciones: 'Observaciones',
   prestadorId: 'ID Prestador',
-  prestadorNombre: 'Nombre Prestador (histórico)',
+  prestadorNombre: 'Nombre Prestador',
   prestadorRol: 'Rol Prestador',
   prestadorRut: 'RUT Prestador',
-  nidoNombreBebe: 'Nombre del Bebé (histórico)',
-  nidoRutBebe: 'RUT del Bebé (histórico)',
-  padresNombres: 'Padres (histórico)',
+  nidoNombreBebe: 'Nombre del Bebé',
+  nidoRutBebe: 'RUT del Bebé',
+  padresNombres: 'Padres',
   fechaAtencion: 'Fecha de Atención',
   consejeraId: 'ID Consejera',
   consejeraNombre: 'Nombre Consejera',
@@ -97,9 +97,14 @@ const FIELD_LABELS = {
   planAccion: 'Plan de Acción',
   recomendaciones: 'Recomendaciones',
   evaluacion: 'Evaluación',
+  seguimiento: 'Seguimiento',
 };
 
-function showInfoModal({ title, subtitle, icon, rows, rawData }) {
+/**
+ * Modal elegante para ver detalles de bitácoras y fichas.
+ * La opción "rawData" fue removida: ya no se muestra el JSON técnico.
+ */
+function showInfoModal({ title, subtitle, icon, rows }) {
   const existing = document.getElementById('info-modal-overlay');
   if (existing) existing.remove();
 
@@ -131,12 +136,6 @@ function showInfoModal({ title, subtitle, icon, rows, rawData }) {
       </div>
       <div class="p-5 overflow-y-auto flex-1">
         <dl class="space-y-3">${rowsHTML}</dl>
-        ${rawData ? `
-          <details class="mt-4 pt-4 border-t border-gray-100">
-            <summary class="text-xs font-bold text-gray-400 cursor-pointer hover:text-[#e87a30]">Ver datos técnicos (JSON)</summary>
-            <pre class="mt-2 text-[10px] bg-gray-50 p-3 rounded overflow-x-auto text-gray-600">${escapeHTML(JSON.stringify(rawData, null, 2))}</pre>
-          </details>
-        ` : ''}
       </div>
       <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
         <button id="info-modal-close-btn" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-6 rounded-full transition-colors text-sm">
@@ -156,10 +155,6 @@ function showInfoModal({ title, subtitle, icon, rows, rawData }) {
   });
 }
 
-/**
- * Resuelve el nombre de un registro histórico.
- * Prioridad: 1) Snapshot (inmutable) → 2) Lookup en vivo → 3) Fallback
- */
 function resolveHistoricalName(snapshotValue, lookupFn, fallback = 'Sin nombre') {
   if (snapshotValue && String(snapshotValue).trim() !== '') return snapshotValue;
   try {
@@ -440,7 +435,7 @@ export async function renderAdminTab(activeTab) {
   }
 }
 
-// --- REGISTROS GLOBALES (con prioridad de snapshot) ---
+// --- REGISTROS GLOBALES ---
 async function loadAllRegistros() {
   const container = document.getElementById('registros-container');
   if (!container) return;
@@ -612,8 +607,7 @@ async function loadAllRegistros() {
             title: 'Bitácora de Cuidado',
             subtitle: `Nido: ${btn.dataset.nido} · Prestador: ${btn.dataset.prestador}`,
             icon: '🍼',
-            rows,
-            rawData: data
+            rows
           });
         });
       });
@@ -640,8 +634,7 @@ async function loadAllRegistros() {
             title: 'Ficha de Atención',
             subtitle: `Nido: ${btn.dataset.nido} · Consejera: ${btn.dataset.consejera}`,
             icon: '💜',
-            rows,
-            rawData: data
+            rows
           });
         });
       });
@@ -653,7 +646,6 @@ async function loadAllRegistros() {
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error al cargar los registros.</p>';
   }
 }
-// ------------------------------------------
 
 // --- FUNCIÓN MEJORADA PARA CARGAR NIDOS ---
 async function loadAllNidos() {
@@ -832,7 +824,7 @@ async function loadAllNidos() {
   }
 }
 
-// --- VISTA DE DETALLE DEL NIDO (con prioridad de snapshot) ---
+// --- VISTA DE DETALLE DEL NIDO ---
 async function renderDetalleNido(nidoId) {
   const dashboardContent = document.getElementById('dashboard-content');
   if (!dashboardContent) return;
@@ -868,7 +860,6 @@ async function renderDetalleNido(nidoId) {
 
     const renderBitacora = (b) => {
       const fechaB = formatFirestoreDate(b.fecha || b.creadoEn, true) || 'Sin fecha';
-      // Prioriza snapshot
       const nombrePrestador = b.prestadorNombre || userMap.get(b.prestadorId) || 'Prestador';
       const preview = b.observaciones || b.sueno || 'Sin observaciones';
       return `
@@ -987,8 +978,7 @@ async function renderDetalleNido(nidoId) {
           title: 'Bitácora de Cuidado',
           subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
           icon: '🍼',
-          rows,
-          rawData: data
+          rows
         });
       });
     });
@@ -1014,8 +1004,7 @@ async function renderDetalleNido(nidoId) {
           title: 'Ficha de Atención',
           subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
           icon: '💜',
-          rows,
-          rawData: data
+          rows
         });
       });
     });
