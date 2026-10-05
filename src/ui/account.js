@@ -24,7 +24,6 @@ export async function openPerfilBebeModal(userData) {
       return;
     }
 
-    // 1. Procesamos la lista de hijos
     let listaHijosHtml = '';
     const hijos = nidoData.hijos || (nidoData.rutBebe ? [{ nombre: nidoData.nombreBebe || 'Hijo/a', rut: nidoData.rutBebe }] : []);
 
@@ -41,7 +40,6 @@ export async function openPerfilBebeModal(userData) {
       listaHijosHtml = '<p class="text-xs text-gray-400 italic">No hay hijos registrados en este nido.</p>';
     }
 
-    // 2. Obtenemos los nombres reales de los padres vinculados desde Firestore
     let nombresPadresHtml = '';
     const padresUids = nidoData.padresUids || [userData.uid];
     
@@ -62,7 +60,6 @@ export async function openPerfilBebeModal(userData) {
     const resultadosPadres = await Promise.all(nombresPadresPromises);
     nombresPadresHtml = `<ul class="divide-y divide-gray-100">${resultadosPadres.join('')}</ul>`;
 
-    // 3. Estructura limpia y depurada del modal (eliminando todo el contenido estático anterior)
     const modalBox = modal.querySelector('.modal-box') || modal.querySelector('div.bg-white, div.glass-panel') || modal;
     
     let infoSection = modal.querySelector('#nido-dinamico-info');
@@ -88,7 +85,6 @@ export async function openPerfilBebeModal(userData) {
           ${listaHijosHtml}
         </div>
         
-        <!-- Formulario oculto para añadir hijo desde el modal -->
         <div id="form-add-hijo-container" class="hidden mt-3 p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300">
           <p class="text-xs font-bold text-[#181411] mb-2">Registrar nuevo hijo/a</p>
           <input type="text" id="nuevo-nombre-hijo" placeholder="Nombre hijo/a" class="w-full p-2 mb-2 border border-gray-200 rounded text-xs" />
@@ -106,7 +102,6 @@ export async function openPerfilBebeModal(userData) {
       </div>
     `;
 
-    // Limpiamos también cualquier nodo estático heredado del HTML del modal si existiera
     const contenedoresAntiguos = modal.querySelectorAll('.bg-gray-50, .border-t');
     contenedoresAntiguos.forEach(el => {
       if (el !== infoSection && !infoSection.contains(el) && (el.textContent.includes('DATOS DEL BEBÉ') || el.textContent.includes('Registrado y Seguro') || el.textContent.includes('Información compartida'))) {
@@ -114,7 +109,6 @@ export async function openPerfilBebeModal(userData) {
       }
     });
 
-    // Eventos interactivos internos del modal
     const btnAbrirForm = infoSection.querySelector('#btnAbrirFormAddHijo');
     const formContainer = infoSection.querySelector('#form-add-hijo-container');
     const btnCancelar = infoSection.querySelector('#btnCancelarNuevoHijo');
@@ -192,6 +186,50 @@ export function openFichaCuidadoModal(reservaId, nidoId) {
   modal.showModal();
 }
 
+/**
+ * Captura un snapshot inmutable del nido y los padres al momento de la creación.
+ * Este snapshot queda grabado en el documento histórico y NUNCA cambia,
+ * incluso si después se modifican los datos del nido.
+ */
+async function capturarSnapshotNido(nidoId) {
+  const snapshot = {
+    nidoNombreBebe: null,
+    nidoRutBebe: null,
+    padresNombres: [],
+    padresUids: [],
+  };
+  if (!nidoId) return snapshot;
+
+  try {
+    const nidoData = await obtenerDatosNido(nidoId);
+    if (!nidoData) return snapshot;
+
+    // Nombre y RUT del primer bebé
+    const hijos = nidoData.hijos || (nidoData.rutBebe ? [{ nombre: nidoData.nombreBebe, rut: nidoData.rutBebe }] : []);
+    if (hijos[0]) {
+      snapshot.nidoNombreBebe = hijos[0].nombre || null;
+      snapshot.nidoRutBebe = hijos[0].rut || null;
+    }
+
+    // Nombres de los padres
+    const padresUids = nidoData.padresUids || [];
+    snapshot.padresUids = [...padresUids];
+
+    const nombresPromises = padresUids.map(async (uid) => {
+      try {
+        const pDoc = await getDoc(doc(db, 'usuarios', uid));
+        return pDoc.exists() ? (pDoc.data().nombre || null) : null;
+      } catch { return null; }
+    });
+    const nombres = await Promise.all(nombresPromises);
+    snapshot.padresNombres = nombres.filter(Boolean);
+  } catch (err) {
+    console.warn('No se pudo capturar snapshot del nido:', err);
+  }
+
+  return snapshot;
+}
+
 export function initAccountFormHandlers({ renderContent, getCurrentUserData, getCurrentUserRole }) {
   const fichaCuidadoForm = document.getElementById('fichaCuidadoForm');
   if (fichaCuidadoForm) {
@@ -204,24 +242,9 @@ export function initAccountFormHandlers({ renderContent, getCurrentUserData, get
       }
 
       const fd = new FormData(fichaCuidadoForm);
-      const data = {
-        reservaId: fd.get('reservaId'),
-        nidoId: fd.get('nidoId'),
-        fecha: fd.get('fecha'),
-        horasEfectivas: parseInt(fd.get('horasEfectivas')),
-        tipoAlimentacion: fd.get('tipoAlimentacion'),
-        cantidadOz: parseInt(fd.get('cantidadOz')) || 0,
-        horasSueno: parseFloat(fd.get('horasSueno')) || 0,
-        cantidadPanales: parseInt(fd.get('cantidadPanales')) || 0,
-        observaciones: fd.get('observaciones'),
-        recomendaciones: fd.get('recomendaciones'),
-        seguimiento: fd.get('seguimiento'),
-        prestadorId: auth.currentUser.uid,
-        prestadorNombre: getCurrentUserData()?.nombre || 'Prestador',
-        prestadorRol: getCurrentUserRole()
-      };
+      const nidoId = fd.get('nidoId');
 
-      if (!data.nidoId) {
+      if (!nidoId) {
         showToast('Error: Esta cita no tiene un Nido asociado. Pide a los padres registrar su nido.', 'error');
         if (btn) {
           btn.disabled = false;
@@ -230,6 +253,37 @@ export function initAccountFormHandlers({ renderContent, getCurrentUserData, get
         return;
       }
 
+      // 📸 Snapshot inmutable del nido y padres al momento de crear el registro
+      const snapshotNido = await capturarSnapshotNido(nidoId);
+
+      const currentUser = getCurrentUserData();
+      const data = {
+        reservaId: fd.get('reservaId'),
+        nidoId: nidoId,
+
+        // 📸 SNAPSHOT INMUTABLE DEL NIDO (histórico)
+        nidoNombreBebe: snapshotNido.nidoNombreBebe,
+        nidoRutBebe: snapshotNido.nidoRutBebe,
+        padresNombres: snapshotNido.padresNombres,
+
+        // Datos del formulario
+        fecha: new Date().toISOString(),
+        horasEfectivas: parseInt(fd.get('horasEfectivas')) || 0,
+        tipoAlimentacion: fd.get('tipoAlimentacion') || '',
+        cantidadOz: parseInt(fd.get('cantidadOz')) || 0,
+        horasSueno: parseFloat(fd.get('horasSueno')) || 0,
+        cantidadPanales: parseInt(fd.get('cantidadPanales')) || 0,
+        observaciones: fd.get('observaciones') || '',
+        recomendaciones: fd.get('recomendaciones') || '',
+        seguimiento: fd.get('seguimiento') || '',
+
+        // 📸 SNAPSHOT INMUTABLE DEL PRESTADOR (histórico)
+        prestadorId: auth.currentUser.uid,
+        prestadorNombre: currentUser?.nombre || 'Prestador',
+        prestadorRol: getCurrentUserRole(),
+        prestadorRut: currentUser?.rut || null,
+      };
+
       try {
         await saveFichaCuidado(data);
         showToast('Ficha de cuidado guardada y compartida', 'success');
@@ -237,6 +291,7 @@ export function initAccountFormHandlers({ renderContent, getCurrentUserData, get
         document.getElementById('modalFichaCuidado')?.close();
         renderContent(getCurrentUserRole(), getCurrentUserData());
       } catch (err) {
+        console.error('Error guardando ficha:', err);
         showToast('Error al guardar la bitácora', 'error');
       } finally {
         if (btn) {

@@ -1,14 +1,5 @@
 // Archivo: src/mi-cuenta.js
-// Propósito: Orquestador de la interfaz "Mi Cuenta" — autentica usuario,
-// determina rol y delega renderizado por rol a los módulos en `src/views/`.
-//
-// Notas de refactor:
-// - Renderizado específico por rol fue extraído a `src/views/*.js`:
-//   `padre.js`, `consejera.js`, `cuidadora.js`, `admin.js`.
-// - Handlers compartidos de formularios y modales se movieron a
-//   `src/ui/account.js` (checkout, ficha de cuidado, abrir modales).
-// - Mantener `mi-cuenta.js` como punto de entrada/orquestador simplifica
-//   pruebas y futuras migraciones a frameworks.
+// Propósito: Orquestador de la interfaz "Mi Cuenta"
 
 import '../index.css';
 
@@ -58,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateCartIconIndicator();
 
-  // --- ESTRUCTURA DE NAVEGACIÓN MODIFICADA (SE AGREGÓ 'MIS TARIFAS') ---
   const NAV_CONFIG = {
     padre: [
       { label: "Resumen", icon: "🏠", action: "resumen" },
@@ -72,20 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: "Mis Citas", icon: "🗓️", action: "citas" },
       { label: "Fichas Guardadas", icon: "🤱", action: "historial_fichas" },
       { label: "Mi Horario", icon: "⏱️", action: "horarios" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
+      { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
       { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
     cuidadora: [
       { label: "Turnos", icon: "🌙", action: "dashboard" },
       { label: "Fichas Guardadas", icon: "📋", action: "historial_fichas" },
       { label: "Disponibilidad", icon: "🗓️", action: "disponibilidad" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
+      { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
       { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
     admin: [
       { label: "Visión General", icon: "👁️", action: "dashboard" },
       { label: "Usuarios", icon: "👥", action: "usuarios" },
-      { label: "Nidos / Familias", icon: "👶", action: "admin_nidos" }, // <--- NUEVA LÍNEA
+      { label: "Nidos / Familias", icon: "👶", action: "admin_nidos" },
+      { label: "Registros", icon: "📋", action: "admin_registros" },
       { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" },
       { label: "Gestión de Tips", icon: "💡", action: "admin_tips" }
     ]

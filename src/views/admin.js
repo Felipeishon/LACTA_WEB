@@ -1,12 +1,5 @@
 // Archivo: src/views/admin.js
 // Origen: extraído de src/mi-cuenta.js durante refactor (panel admin)
-// Ubicación original (referencia): lógica admin y handlers de formularios
-// - Funciones movidas aquí: loadPendingUsers, loadLatestUsers,
-//   renderAdminInventory, renderAdminAllOrders y renderAdminTab
-// - Formularios y handlers relacionados con tienda/pedidos se trasladaron
-//   a este módulo para mantener `src/mi-cuenta.js` como orquestador.
-// Revisa src/mi-cuenta.js para el flujo de llamada y src/ui/account.js
-// para handlers de checkout y fichas compartidos.
 
 import { showToast } from '../ui/notifications.js';
 import { emailService } from '../emailService.js';
@@ -30,12 +23,162 @@ import {
   deleteTip,
   fetchFichasCuidadoPorNido,
   fetchFichasAtencionPorNido,
+  fetchAllBitacoras,
+  fetchAllFichasAtencion,
 } from '../api/firestore.js';
 import { approveUserWithAudit } from '../api/admin.js';
 import { escapeHTML } from '../utils/html.js';
 import { hasRole } from '../utils/roles.js';
 import { db } from '../firebase.js';
 import { doc, updateDoc } from 'firebase/firestore';
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+
+function formatFirestoreDate(value, includeTime = false) {
+  if (!value) return null;
+  try {
+    let date;
+    if (value instanceof Date) {
+      date = value;
+    } else if (typeof value === 'string') {
+      date = new Date(value);
+    } else if (typeof value.toDate === 'function') {
+      date = value.toDate();
+    } else if (typeof value === 'object' && typeof value.seconds === 'number') {
+      date = new Date(value.seconds * 1000);
+    } else {
+      return null;
+    }
+    if (isNaN(date.getTime())) return null;
+    if (includeTime) {
+      return date.toLocaleString('es-CL', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+    return date.toLocaleDateString('es-CL', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  } catch {
+    return null;
+  }
+}
+
+const FIELD_LABELS = {
+  uidPadre: 'UID Padre',
+  nidoId: 'ID Nido',
+  reservaId: 'ID Reserva',
+  creadoEn: 'Fecha de Creación',
+  actualizadoEn: 'Última Actualización',
+  fecha: 'Fecha',
+  fechaHora: 'Fecha y Hora',
+  sueno: 'Sueño',
+  deposiciones: 'Deposiciones',
+  tipoAlimentacion: 'Tipo de Alimentación',
+  alimentacion: 'Alimentación',
+  cantidadPanales: 'Cantidad de Pañales',
+  horasSueno: 'Horas de Sueño',
+  horasEfectivas: 'Horas Efectivas',
+  observaciones: 'Observaciones',
+  prestadorId: 'ID Prestador',
+  prestadorNombre: 'Nombre Prestador (histórico)',
+  prestadorRol: 'Rol Prestador',
+  prestadorRut: 'RUT Prestador',
+  nidoNombreBebe: 'Nombre del Bebé (histórico)',
+  nidoRutBebe: 'RUT del Bebé (histórico)',
+  padresNombres: 'Padres (histórico)',
+  fechaAtencion: 'Fecha de Atención',
+  consejeraId: 'ID Consejera',
+  consejeraNombre: 'Nombre Consejera',
+  motivoConsulta: 'Motivo de Consulta',
+  motivo: 'Motivo',
+  planAccion: 'Plan de Acción',
+  recomendaciones: 'Recomendaciones',
+  evaluacion: 'Evaluación',
+};
+
+function showInfoModal({ title, subtitle, icon, rows, rawData }) {
+  const existing = document.getElementById('info-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'info-modal-overlay';
+  overlay.className = 'fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4';
+  
+  const rowsHTML = rows.map(([label, value]) => {
+    const display = (value === null || value === undefined || value === '') 
+      ? '<em class="text-gray-400 not-italic">Sin datos</em>' 
+      : escapeHTML(String(value));
+    return `
+      <div class="border-b border-gray-100 pb-3 last:border-0">
+        <dt class="text-[10px] font-black text-[#e87a30] uppercase tracking-wider mb-1">${escapeHTML(label)}</dt>
+        <dd class="text-sm text-[#181411] break-words">${display}</dd>
+      </div>
+    `;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden border-t-4 border-[#e87a30]">
+      <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-[#f4eade] to-white flex items-center gap-3">
+        <span class="text-3xl">${icon || '📋'}</span>
+        <div class="flex-1">
+          <h3 class="text-lg font-black text-[#181411]">${escapeHTML(title)}</h3>
+          ${subtitle ? `<p class="text-xs text-gray-500 mt-0.5">${escapeHTML(subtitle)}</p>` : ''}
+        </div>
+        <button id="info-modal-close-x" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto flex-1">
+        <dl class="space-y-3">${rowsHTML}</dl>
+        ${rawData ? `
+          <details class="mt-4 pt-4 border-t border-gray-100">
+            <summary class="text-xs font-bold text-gray-400 cursor-pointer hover:text-[#e87a30]">Ver datos técnicos (JSON)</summary>
+            <pre class="mt-2 text-[10px] bg-gray-50 p-3 rounded overflow-x-auto text-gray-600">${escapeHTML(JSON.stringify(rawData, null, 2))}</pre>
+          </details>
+        ` : ''}
+      </div>
+      <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+        <button id="info-modal-close-btn" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-6 rounded-full transition-colors text-sm">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  document.getElementById('info-modal-close-x').addEventListener('click', close);
+  document.getElementById('info-modal-close-btn').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
+  });
+}
+
+/**
+ * Resuelve el nombre de un registro histórico.
+ * Prioridad: 1) Snapshot (inmutable) → 2) Lookup en vivo → 3) Fallback
+ */
+function resolveHistoricalName(snapshotValue, lookupFn, fallback = 'Sin nombre') {
+  if (snapshotValue && String(snapshotValue).trim() !== '') return snapshotValue;
+  try {
+    const live = lookupFn();
+    if (live) return live;
+  } catch {}
+  return fallback;
+}
+
+function getNidoNombreDesdePadre(uidPadre, userMap, nidoMap) {
+  if (!uidPadre) return null;
+  const padre = userMap.get(uidPadre);
+  if (padre && padre.nidoId) {
+    return nidoMap.get(padre.nidoId) || null;
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════
 
 function fileToBase64(file) {
   const maxBytes = 200 * 1024;
@@ -175,7 +318,6 @@ export async function renderAdminTab(activeTab) {
     `;
     loadAllUsersTable();
   
-  // --- NUEVA SECCIÓN: NIDOS / FAMILIAS ---
   } else if (activeTab === 'admin_nidos') {
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Nidos y Familias</h2>
@@ -186,10 +328,17 @@ export async function renderAdminTab(activeTab) {
       </div>
     `;
     loadAllNidos();
-  }
-  // ----------------------------------------
+  
+  } else if (activeTab === 'admin_registros') {
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">📋 Registros del Sistema</h2>
+      <div id="registros-container">
+        <p class="text-center py-8 text-gray-400 italic">Cargando registros...</p>
+      </div>
+    `;
+    loadAllRegistros();
 
-  else if (activeTab === 'admin_tienda') {
+  } else if (activeTab === 'admin_tienda') {
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Tienda & Inventario</h2>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -291,6 +440,221 @@ export async function renderAdminTab(activeTab) {
   }
 }
 
+// --- REGISTROS GLOBALES (con prioridad de snapshot) ---
+async function loadAllRegistros() {
+  const container = document.getElementById('registros-container');
+  if (!container) return;
+
+  try {
+    const [bitacoras, fichas, usuarios, nidos] = await Promise.all([
+      fetchAllBitacoras(),
+      fetchAllFichasAtencion(),
+      getAllUsers(),
+      getAllNidos()
+    ]);
+
+    const userMap = new Map();
+    usuarios.forEach(u => userMap.set(u.id, { ...u, nombre: u.nombre || u.email || u.id }));
+
+    const nidoMap = new Map();
+    nidos.forEach(n => {
+      const hijos = n.hijos || [];
+      nidoMap.set(n.id, hijos[0]?.nombre || 'Sin nombre');
+    });
+
+    let vistaActual = 'bitacoras';
+
+    const render = () => {
+      const totalBitacoras = bitacoras.length;
+      const totalFichas = fichas.length;
+
+      const headerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex gap-2">
+            <button id="btn-vista-bitacoras" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${vistaActual === 'bitacoras' ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+              🍼 Bitácoras (${totalBitacoras})
+            </button>
+            <button id="btn-vista-fichas" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${vistaActual === 'fichas' ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+              💜 Fichas (${totalFichas})
+            </button>
+          </div>
+        </div>
+      `;
+
+      if (vistaActual === 'bitacoras') {
+        if (totalBitacoras === 0) {
+          container.innerHTML = headerHTML + '<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">No hay bitácoras registradas en el sistema.</p>';
+        } else {
+          container.innerHTML = headerHTML + `
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                    <tr>
+                      <th class="p-3">Fecha</th>
+                      <th class="p-3">Nido / Bebé</th>
+                      <th class="p-3">Prestador</th>
+                      <th class="p-3">Sueño</th>
+                      <th class="p-3">Deposiciones</th>
+                      <th class="p-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    ${bitacoras.map(b => {
+                      const fecha = formatFirestoreDate(b.fecha || b.creadoEn) || '---';
+                      const nombreNido = resolveHistoricalName(
+                        b.nidoNombreBebe,
+                        () => (b.nidoId ? nidoMap.get(b.nidoId) : null) || getNidoNombreDesdePadre(b.uidPadre, userMap, nidoMap),
+                        'Sin nido'
+                      );
+                      const nombrePrestador = resolveHistoricalName(
+                        b.prestadorNombre,
+                        () => userMap.get(b.prestadorId)?.nombre,
+                        'Sin nombre'
+                      );
+                      return `
+                        <tr>
+                          <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
+                          <td class="p-3 text-xs font-bold">${escapeHTML(nombreNido)}</td>
+                          <td class="p-3 text-xs">${escapeHTML(nombrePrestador)}</td>
+                          <td class="p-3 text-xs">${escapeHTML((b.sueno || '---').toString().substring(0, 40))}</td>
+                          <td class="p-3 text-xs">${escapeHTML((b.deposiciones || '---').toString().substring(0, 40))}</td>
+                          <td class="p-3 whitespace-nowrap">
+                            <button type="button" class="btn-ver-bitacora text-blue-600 hover:text-blue-800 text-xs font-bold" data-json='${escapeHTML(JSON.stringify(b))}' data-nido='${escapeHTML(nombreNido)}' data-prestador='${escapeHTML(nombrePrestador)}'>Ver</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } else {
+        if (totalFichas === 0) {
+          container.innerHTML = headerHTML + '<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">No hay fichas de atención registradas en el sistema.</p>';
+        } else {
+          container.innerHTML = headerHTML + `
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                    <tr>
+                      <th class="p-3">Fecha Atención</th>
+                      <th class="p-3">Nido / Bebé</th>
+                      <th class="p-3">Consejera</th>
+                      <th class="p-3">Motivo</th>
+                      <th class="p-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    ${fichas.map(f => {
+                      const fecha = formatFirestoreDate(f.fechaAtencion || f.creadoEn) || '---';
+                      const nombreNido = resolveHistoricalName(
+                        f.nidoNombreBebe,
+                        () => (f.nidoId ? nidoMap.get(f.nidoId) : null) || getNidoNombreDesdePadre(f.uidPadre, userMap, nidoMap),
+                        'Sin nido'
+                      );
+                      const nombreConsejera = resolveHistoricalName(
+                        f.consejeraNombre,
+                        () => userMap.get(f.consejeraId)?.nombre,
+                        'Sin nombre'
+                      );
+                      return `
+                        <tr>
+                          <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
+                          <td class="p-3 text-xs font-bold">${escapeHTML(nombreNido)}</td>
+                          <td class="p-3 text-xs">${escapeHTML(nombreConsejera)}</td>
+                          <td class="p-3 text-xs">${escapeHTML((f.motivoConsulta || f.motivo || '---').substring(0, 50))}</td>
+                          <td class="p-3 whitespace-nowrap">
+                            <button type="button" class="btn-ver-ficha-global text-blue-600 hover:text-blue-800 text-xs font-bold" data-json='${escapeHTML(JSON.stringify(f))}' data-nido='${escapeHTML(nombreNido)}' data-consejera='${escapeHTML(nombreConsejera)}'>Ver</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      document.getElementById('btn-vista-bitacoras')?.addEventListener('click', () => {
+        vistaActual = 'bitacoras';
+        render();
+      });
+      document.getElementById('btn-vista-fichas')?.addEventListener('click', () => {
+        vistaActual = 'fichas';
+        render();
+      });
+
+      container.querySelectorAll('.btn-ver-bitacora').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const data = JSON.parse(btn.dataset.json);
+          const rows = [];
+          Object.entries(data).forEach(([key, value]) => {
+            if (key === 'id') return;
+            const label = FIELD_LABELS[key] || key;
+            let display = value;
+            if (key === 'fecha' || key === 'fechaHora' || key === 'creadoEn' || key === 'actualizadoEn' || key === 'fechaAtencion') {
+              display = formatFirestoreDate(value, true) || value;
+            } else if (Array.isArray(value)) {
+              display = value.join(', ');
+            } else if (typeof value === 'object' && value !== null) {
+              display = JSON.stringify(value);
+            }
+            rows.push([label, display]);
+          });
+
+          showInfoModal({
+            title: 'Bitácora de Cuidado',
+            subtitle: `Nido: ${btn.dataset.nido} · Prestador: ${btn.dataset.prestador}`,
+            icon: '🍼',
+            rows,
+            rawData: data
+          });
+        });
+      });
+
+      container.querySelectorAll('.btn-ver-ficha-global').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const data = JSON.parse(btn.dataset.json);
+          const rows = [];
+          Object.entries(data).forEach(([key, value]) => {
+            if (key === 'id') return;
+            const label = FIELD_LABELS[key] || key;
+            let display = value;
+            if (key === 'fechaAtencion' || key === 'fecha' || key === 'creadoEn' || key === 'actualizadoEn') {
+              display = formatFirestoreDate(value, true) || value;
+            } else if (Array.isArray(value)) {
+              display = value.join(', ');
+            } else if (typeof value === 'object' && value !== null) {
+              display = JSON.stringify(value);
+            }
+            rows.push([label, display]);
+          });
+
+          showInfoModal({
+            title: 'Ficha de Atención',
+            subtitle: `Nido: ${btn.dataset.nido} · Consejera: ${btn.dataset.consejera}`,
+            icon: '💜',
+            rows,
+            rawData: data
+          });
+        });
+      });
+    };
+
+    render();
+  } catch (error) {
+    console.error('Error al cargar registros globales:', error);
+    container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error al cargar los registros.</p>';
+  }
+}
+// ------------------------------------------
+
 // --- FUNCIÓN MEJORADA PARA CARGAR NIDOS ---
 async function loadAllNidos() {
   const container = document.getElementById('nidos-table-container');
@@ -312,7 +676,6 @@ async function loadAllNidos() {
       userMap.set(u.id, u.nombre || u.email || u.id);
     });
 
-    // Variable de estado para el filtro
     let mostrarInactivos = false;
 
     const renderTabla = () => {
@@ -368,6 +731,7 @@ async function loadAllNidos() {
               const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
               const estadoNido = nido.estado || 'activo';
               const esActivo = estadoNido === 'activo';
+              const fechaCreacion = formatFirestoreDate(nido.creadoEn) || '---';
 
               return `
                 <tr class="${esActivo ? '' : 'bg-red-50/30 opacity-75'}">
@@ -391,21 +755,13 @@ async function loadAllNidos() {
                       ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('')
                       : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}
                   </td>
-                  <td class="p-3 text-xs text-gray-500">
-                    ${nido.creadoEn ? new Date(nido.creadoEn).toLocaleDateString('es-CL') : '---'}
-                  </td>
+                  <td class="p-3 text-xs text-gray-500">${escapeHTML(fechaCreacion)}</td>
                   <td class="p-3 whitespace-nowrap">
-                    <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">
-                      Ver
-                    </button>
+                    <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">Ver</button>
                     ${esActivo ? `
-                      <button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">
-                        Desactivar
-                      </button>
+                      <button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">Desactivar</button>
                     ` : `
-                      <button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">
-                        Reactivar
-                      </button>
+                      <button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">Reactivar</button>
                     `}
                   </td>
                 </tr>
@@ -415,25 +771,21 @@ async function loadAllNidos() {
         </table>
       `;
 
-      // Listener del toggle
       document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
         mostrarInactivos = !mostrarInactivos;
         renderTabla();
       });
 
-      // Listener "Ver" -> Ahora llama a renderDetalleNido
       container.querySelectorAll('.btn-view-nido').forEach(btn => {
         btn.addEventListener('click', () => {
           renderDetalleNido(btn.dataset.id);
         });
       });
 
-      // Listener "Desactivar"
       container.querySelectorAll('.btn-delete-nido').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nidoId = btn.dataset.id;
           if (!window.confirm('¿Estás seguro de desactivar este nido? El historial se conservará pero el nido dejará de estar activo.')) return;
-
           btn.disabled = true;
           btn.textContent = 'Desactivando...';
           try {
@@ -451,12 +803,10 @@ async function loadAllNidos() {
         });
       });
 
-      // Listener "Reactivar"
       container.querySelectorAll('.btn-reactivate-nido').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nidoId = btn.dataset.id;
           if (!window.confirm('¿Reactivar este nido?')) return;
-
           btn.disabled = true;
           btn.textContent = 'Reactivando...';
           try {
@@ -482,7 +832,7 @@ async function loadAllNidos() {
   }
 }
 
-// --- NUEVA FUNCIÓN: VISTA DE DETALLE DEL NIDO ---
+// --- VISTA DE DETALLE DEL NIDO (con prioridad de snapshot) ---
 async function renderDetalleNido(nidoId) {
   const dashboardContent = document.getElementById('dashboard-content');
   if (!dashboardContent) return;
@@ -514,42 +864,48 @@ async function renderDetalleNido(nidoId) {
     const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
     const padresUids = nido.padresUids || [];
     const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
+    const fechaCreacion = formatFirestoreDate(nido.creadoEn, true) || 'No registrada';
 
-    const renderBitacora = (b) => `
-      <div class="border rounded-lg p-4 mb-3 bg-white shadow-sm">
-        <div class="flex justify-between items-start mb-2">
-          <div>
-            <p class="font-bold text-sm text-[#181411]">Bitácora de Cuidado</p>
-            <p class="text-xs text-gray-500">${b.creadoEn ? new Date(b.creadoEn).toLocaleString('es-CL') : 'Sin fecha'}</p>
+    const renderBitacora = (b) => {
+      const fechaB = formatFirestoreDate(b.fecha || b.creadoEn, true) || 'Sin fecha';
+      // Prioriza snapshot
+      const nombrePrestador = b.prestadorNombre || userMap.get(b.prestadorId) || 'Prestador';
+      const preview = b.observaciones || b.sueno || 'Sin observaciones';
+      return `
+        <div class="border border-gray-100 rounded-lg p-4 mb-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <p class="font-bold text-sm text-[#181411]">Bitácora de Cuidado</p>
+              <p class="text-xs text-gray-500">${escapeHTML(fechaB)}</p>
+              <p class="text-xs text-[#e87a30] font-semibold mt-0.5">${escapeHTML(nombrePrestador)}</p>
+            </div>
+            <span class="text-[10px] bg-[#f4eade] text-[#e87a30] px-2 py-1 rounded-full font-bold">🍼</span>
           </div>
-          <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold">${escapeHTML(b.prestadorNombre || 'Cuidadora')}</span>
+          <p class="text-xs text-gray-600 line-clamp-2">${escapeHTML(preview.substring(0, 120))}</p>
+          <button type="button" class="btn-ver-bitacora-detalle text-[#e87a30] hover:text-[#d66a20] text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(b))}'>Ver detalle completo →</button>
         </div>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <div><span class="font-bold">Alimentación:</span> ${escapeHTML(b.tipoAlimentacion || '---')}</div>
-          <div><span class="font-bold">Horas de sueño:</span> ${b.horasSueno || '---'}</div>
-          <div><span class="font-bold">Pañales:</span> ${b.cantidadPanales || '---'}</div>
-          <div><span class="font-bold">Horas efectivas:</span> ${b.horasEfectivas || '---'}</div>
-        </div>
-        ${b.observaciones ? `<p class="text-xs mt-2 text-gray-600 italic">"${escapeHTML(b.observaciones)}"</p>` : ''}
-        <button type="button" class="btn-ver-bitacora-completa text-blue-600 text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(b))}'>Ver detalle completo</button>
-      </div>
-    `;
+      `;
+    };
 
-    const renderFicha = (f) => `
-      <div class="border rounded-lg p-4 mb-3 bg-white shadow-sm">
-        <div class="flex justify-between items-start mb-2">
-          <div>
-            <p class="font-bold text-sm text-[#181411]">Ficha de Atención</p>
-            <p class="text-xs text-gray-500">${f.creadoEn ? new Date(f.creadoEn).toLocaleString('es-CL') : 'Sin fecha'}</p>
+    const renderFicha = (f) => {
+      const fechaF = formatFirestoreDate(f.fechaAtencion || f.creadoEn, true) || 'Sin fecha';
+      const nombreConsejera = f.consejeraNombre || userMap.get(f.consejeraId) || 'Consejera';
+      const preview = f.motivoConsulta || f.motivo || f.planAccion || 'Sin detalles';
+      return `
+        <div class="border border-gray-100 rounded-lg p-4 mb-3 bg-white shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <p class="font-bold text-sm text-[#181411]">Ficha de Atención</p>
+              <p class="text-xs text-gray-500">${escapeHTML(fechaF)}</p>
+              <p class="text-xs text-purple-600 font-semibold mt-0.5">${escapeHTML(nombreConsejera)}</p>
+            </div>
+            <span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">💜</span>
           </div>
-          <span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">${escapeHTML(f.consejeraNombre || 'Consejera')}</span>
+          <p class="text-xs text-gray-600 line-clamp-2">${escapeHTML(preview.substring(0, 120))}</p>
+          <button type="button" class="btn-ver-ficha-detalle text-[#e87a30] hover:text-[#d66a20] text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(f))}'>Ver detalle completo →</button>
         </div>
-        ${f.motivo ? `<p class="text-xs mb-1"><span class="font-bold">Motivo:</span> ${escapeHTML(f.motivo)}</p>` : ''}
-        ${f.observaciones ? `<p class="text-xs mb-1"><span class="font-bold">Observaciones:</span> ${escapeHTML(f.observaciones)}</p>` : ''}
-        ${f.recomendaciones ? `<p class="text-xs mb-1"><span class="font-bold">Recomendaciones:</span> ${escapeHTML(f.recomendaciones)}</p>` : ''}
-        <button type="button" class="btn-ver-ficha-completa text-blue-600 text-[10px] font-bold mt-2" data-json='${escapeHTML(JSON.stringify(f))}'>Ver detalle completo</button>
-      </div>
-    `;
+      `;
+    };
 
     dashboardContent.innerHTML = `
       <div class="mb-6">
@@ -559,7 +915,6 @@ async function renderDetalleNido(nidoId) {
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Columna Izquierda: Información General -->
         <div class="lg:col-span-1 space-y-6">
           <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 class="font-bold text-lg mb-4 border-b pb-2">Información del Nido</h3>
@@ -578,7 +933,7 @@ async function renderDetalleNido(nidoId) {
             </div>
             <div>
               <p class="text-xs font-bold text-gray-500 mb-1">📅 FECHA DE CREACIÓN</p>
-              <p class="text-sm">${nido.creadoEn ? new Date(nido.creadoEn).toLocaleString('es-CL') : 'No registrada'}</p>
+              <p class="text-sm">${escapeHTML(fechaCreacion)}</p>
             </div>
             <div class="mt-4">
               <p class="text-xs font-bold text-gray-500 mb-1">📌 ESTADO</p>
@@ -589,7 +944,6 @@ async function renderDetalleNido(nidoId) {
           </div>
         </div>
 
-        <!-- Columna Derecha: Bitácoras y Fichas -->
         <div class="lg:col-span-2 space-y-6">
           <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 class="font-bold text-lg mb-4 border-b pb-2">📋 Bitácoras de Cuidado (${bitacoras.length})</h3>
@@ -608,31 +962,61 @@ async function renderDetalleNido(nidoId) {
       </div>
     `;
 
-    // Botón Volver
     document.getElementById('btn-volver-nidos')?.addEventListener('click', () => {
       renderAdminTab('admin_nidos');
     });
 
-    // Listeners para ver detalle completo (JSON)
-    dashboardContent.querySelectorAll('.btn-ver-bitacora-completa').forEach(btn => {
+    dashboardContent.querySelectorAll('.btn-ver-bitacora-detalle').forEach(btn => {
       btn.addEventListener('click', () => {
         const data = JSON.parse(btn.dataset.json);
-        const mensaje = Object.entries(data)
-          .filter(([key]) => !['id', 'nidoId'].includes(key))
-          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-          .join('\n');
-        alert(`📋 DETALLE COMPLETO DE BITÁCORA\n━━━━━━━━━━━━━━━━━━━━\n\n${mensaje}`);
+        const rows = [];
+        Object.entries(data).forEach(([key, value]) => {
+          if (key === 'id') return;
+          const label = FIELD_LABELS[key] || key;
+          let display = value;
+          if (key === 'fecha' || key === 'fechaHora' || key === 'creadoEn' || key === 'fechaAtencion') {
+            display = formatFirestoreDate(value, true) || value;
+          } else if (Array.isArray(value)) {
+            display = value.join(', ');
+          } else if (typeof value === 'object' && value !== null) {
+            display = JSON.stringify(value);
+          }
+          rows.push([label, display]);
+        });
+        showInfoModal({
+          title: 'Bitácora de Cuidado',
+          subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
+          icon: '🍼',
+          rows,
+          rawData: data
+        });
       });
     });
 
-    dashboardContent.querySelectorAll('.btn-ver-ficha-completa').forEach(btn => {
+    dashboardContent.querySelectorAll('.btn-ver-ficha-detalle').forEach(btn => {
       btn.addEventListener('click', () => {
         const data = JSON.parse(btn.dataset.json);
-        const mensaje = Object.entries(data)
-          .filter(([key]) => !['id', 'nidoId'].includes(key))
-          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-          .join('\n');
-        alert(`💜 DETALLE COMPLETO DE FICHA\n━━━━━━━━━━━━━━━━━━━━\n\n${mensaje}`);
+        const rows = [];
+        Object.entries(data).forEach(([key, value]) => {
+          if (key === 'id') return;
+          const label = FIELD_LABELS[key] || key;
+          let display = value;
+          if (key === 'fecha' || key === 'fechaHora' || key === 'creadoEn' || key === 'fechaAtencion') {
+            display = formatFirestoreDate(value, true) || value;
+          } else if (Array.isArray(value)) {
+            display = value.join(', ');
+          } else if (typeof value === 'object' && value !== null) {
+            display = JSON.stringify(value);
+          }
+          rows.push([label, display]);
+        });
+        showInfoModal({
+          title: 'Ficha de Atención',
+          subtitle: `Nido: ${hijos[0]?.nombre || 'Sin nombre'}`,
+          icon: '💜',
+          rows,
+          rawData: data
+        });
       });
     });
 
@@ -641,7 +1025,6 @@ async function renderDetalleNido(nidoId) {
     dashboardContent.innerHTML = '<p class="text-center py-8 text-red-500">Error al cargar los detalles del nido.</p>';
   }
 }
-// ------------------------------------------
 
 async function renderAdminTipsManagement() {
   const container = document.getElementById('admin-tips-management');
@@ -850,7 +1233,7 @@ async function renderAdminAllOrders() {
               <td class="p-3 text-xs">${escapeHTML(o.direccion || 'No ingresada')}</td>
               <td class="p-3 text-xs">${o.productos.map(p => `${escapeHTML(p.nombre)} x${p.cantidad}`).join(', ')}</td>
               <td class="p-3 font-bold text-[#e87a30]">$${o.total.toLocaleString('cl-CL')}</td>
-              <td class="p-3 text-xs text-gray-400">${new Date(o.creadoEn).toLocaleDateString()}</td>
+              <td class="p-3 text-xs text-gray-400">${formatFirestoreDate(o.creadoEn) || '---'}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -950,7 +1333,7 @@ async function loadAllUsersTable() {
           <tbody class="divide-y divide-gray-100">
             ${filteredUsers.map(user => {
               const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
-              const fecha = user.fechaRegistro ? new Date(user.fechaRegistro).toLocaleDateString() : '---';
+              const fecha = formatFirestoreDate(user.fechaRegistro) || '---';
               const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
               return `
                 <tr>
@@ -1089,14 +1472,7 @@ async function loadLatestUsers() {
     container.innerHTML = users.map(u => {
       const esPrestador = !hasRole(u, 'padre');
       const color = esPrestador ? 'bg-green-500' : 'bg-blue-500';
-      
-      let fecha = '---';
-      if (u.fechaRegistro) {
-        const dateObj = new Date(u.fechaRegistro);
-        if (!isNaN(dateObj.getTime())) {
-          fecha = dateObj.toLocaleDateString();
-        }
-      }
+      const fecha = formatFirestoreDate(u.fechaRegistro) || '---';
       
       return `
         <li class="flex items-center justify-between text-sm">

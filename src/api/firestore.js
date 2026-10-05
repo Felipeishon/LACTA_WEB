@@ -161,7 +161,6 @@ export async function getAllUsers() {
     }
 }
 
-// --- NUEVA FUNCIÓN AGREGADA ---
 export async function getAllNidos() {
     try {
         const snap = await getDocs(collection(db, "nidos"));
@@ -172,7 +171,6 @@ export async function getAllNidos() {
         throw error;
     }
 }
-// ------------------------------
 
 export async function updateUserProfile(uid, updateData) {
     const adminUid = auth.currentUser?.uid;
@@ -402,7 +400,6 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
     }
 }
 
-// --- NUEVA FUNCIÓN: BORRADO LÓGICO DE NIDO ---
 export async function deleteNidoProfile(nidoId) {
     const adminUid = auth.currentUser?.uid;
     if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
@@ -432,7 +429,6 @@ export async function deleteNidoProfile(nidoId) {
     });
 }
 
-// --- NUEVA FUNCIÓN: REACTIVAR NIDO ---
 export async function reactivarNidoProfile(nidoId) {
     const adminUid = auth.currentUser?.uid;
     if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
@@ -521,7 +517,6 @@ export async function fetchFichasCuidadoPorPrestador(prestadorId) {
     }
 }
 
-// --- NUEVA FUNCIÓN: FICHAS DE ATENCIÓN (CONSEJERÍA) ---
 export async function fetchFichasAtencionPorNido(nidoId) {
     try {
         const q = query(collection(db, "fichas_atencion"), where("nidoId", "==", nidoId));
@@ -533,6 +528,30 @@ export async function fetchFichasAtencionPorNido(nidoId) {
         throw error;
     }
 }
+
+// --- NUEVAS FUNCIONES: REGISTROS GLOBALES ---
+export async function fetchAllBitacoras() {
+    try {
+        const snap = await getDocs(collection(db, "bitacoras"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todas las bitácoras:", error);
+        throw error;
+    }
+}
+
+export async function fetchAllFichasAtencion() {
+    try {
+        const snap = await getDocs(collection(db, "fichas_atencion"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todas las fichas de atención:", error);
+        throw error;
+    }
+}
+// --------------------------------------------
 
 export async function fetchActiveProducts() {
     try {
