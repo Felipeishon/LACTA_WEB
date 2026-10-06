@@ -1,15 +1,21 @@
 import { db, auth } from './firebase.js';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { getActiveProfessionals, getAvailableHoursForProfessional } from './api/firestore.js';
 import { showToast } from './ui/notifications.js';
 import { formatRut } from './rut.js';
 import { initAuthHandlers } from './auth.js';
+import { calcularCostoServicio } from './utils/pricing.js';
 
 export function initFormularios() {
   const formReserva = document.getElementById('reservaForm');
   const servicio = document.getElementById('servicio') || document.getElementById('servicioAnon');
   const fechaInput = document.getElementById('fecha') || document.getElementById('fechaAnon');
   const hora = document.getElementById('horaCita') || document.getElementById('hora') || document.getElementById('horaAnon');
+  
+  // Nuevos campos opcionales o esperados para fecha/hora de término
+  const fechaFinInput = document.getElementById('fechaFin') || document.getElementById('fechaFinAnon');
+  const horaFinInput = document.getElementById('horaFin') || document.getElementById('horaFinAnon');
+  
   const aviso = document.getElementById('avisoHorario') || document.getElementById('avisoHorarioAnon');
   const avisoReserva = document.getElementById('avisoReserva') || document.getElementById('avisoReservaAnon');
   const modalAgendarCita = document.getElementById('modalAgendarCita');
@@ -17,7 +23,12 @@ export function initFormularios() {
   const profesionalSelect = document.getElementById('profesionalId') || document.getElementById('profesionalIdAnon') || document.getElementById('profesional');
   const labelProfesional = document.getElementById('labelProfesional') || document.getElementById('labelProfesionalAnon');
 
-  // Inicializa los manejadores de formularios de autenticación
+  // Contenedor visual para el resumen del precio estimado en el modal
+  const resumenPrecioDiv = document.getElementById('resumenPrecio');
+  const spanPrecioTotal = document.getElementById('precioTotal');
+  const spanPrecioDesglose = document.getElementById('precioDesglose');
+  let profesionalTarifasCache = null;
+
   initAuthHandlers();
 
   if (servicio && profesionalSelect) {
@@ -27,19 +38,17 @@ export function initFormularios() {
         labelProfesional.classList.add('hidden');
         profesionalSelect.disabled = true;
         profesionalSelect.innerHTML = '<option value="">Selecciona profesional...</option>';
-        // also reset downstream controls
         if (fechaInput) { fechaInput.value = ''; fechaInput.disabled = true; }
         if (hora) { hora.innerHTML = '<option value="">Selecciona fecha y profesional primero</option>'; hora.disabled = true; }
         return;
       }
-      // valores esperados: 'cuidadora' o 'consejera'
+      
       const rolStr = selectedService;
       profesionalSelect.innerHTML = '<option value="">Cargando profesionales...</option>';
       labelProfesional.classList.remove('hidden');
       profesionalSelect.disabled = true;
       
       try {
-        // Intentamos obtener profesionales con un reintento simple
         let profesionales = [];
         let lastErr = null;
         for (let attempt = 0; attempt < 2; attempt++) {
@@ -49,20 +58,16 @@ export function initFormularios() {
             break;
           } catch (err) {
             lastErr = err;
-            console.warn(`Intento ${attempt + 1} fallido al cargar profesionales:`, err);
-            // pequeña espera antes de reintentar
             await new Promise(r => setTimeout(r, 300));
           }
         }
 
         profesionalSelect.innerHTML = '<option value="">Selecciona profesional...</option>';
         if (lastErr) {
-          console.error('Error al obtener profesionales después de reintentos:', lastErr);
           profesionalSelect.innerHTML = '<option value="">Error al cargar profesionales</option>';
           profesionalSelect.disabled = true;
           labelProfesional.classList.remove('hidden');
-          if (typeof showToast === 'function') showToast('No se pudieron cargar los profesionales. Revisa la consola.', 'error');
-          // reset downstream controls
+          if (typeof showToast === 'function') showToast('No se pudieron cargar los profesionales.', 'error');
           if (fechaInput) { fechaInput.value = ''; fechaInput.disabled = true; }
           if (hora) { hora.innerHTML = '<option value="">Selecciona fecha y profesional primero</option>'; hora.disabled = true; }
           return;
@@ -75,52 +80,58 @@ export function initFormularios() {
           profesionales.forEach(p => {
              const opt = document.createElement('option');
              opt.value = p.id;
-             // Agregamos data-nombre para guardarlo en la reserva y no solo el ID
              opt.dataset.nombre = p.nombre;
              opt.textContent = p.nombre;
              profesionalSelect.appendChild(opt);
           });
           profesionalSelect.disabled = false;
-          // reset downstream controls until user picks profesional
           if (fechaInput) { fechaInput.value = ''; fechaInput.disabled = true; }
           if (hora) { hora.innerHTML = '<option value="">Selecciona fecha y profesional primero</option>'; hora.disabled = true; }
         }
       } catch (errOuter) {
-        console.error('Error inesperado al cargar profesionales:', errOuter);
         profesionalSelect.innerHTML = '<option value="">Error al cargar profesionales</option>';
         profesionalSelect.disabled = true;
-        if (typeof showToast === 'function') showToast('Error al cargar profesionales. Revisa la consola.', 'error');
       }
     });
   }
 
-  // Cuando se selecciona profesional, habilitamos la fecha
-  if (profesionalSelect && fechaInput) {
-    profesionalSelect.addEventListener('change', (e) => {
+  // Al seleccionar profesional, precargamos sus tarifas desde Firestore
+  if (profesionalSelect) {
+    profesionalSelect.addEventListener('change', async (e) => {
       const profId = e.target.value;
+      profesionalTarifasCache = null; 
+      if (resumenPrecioDiv) resumenPrecioDiv.classList.add('hidden');
+
       if (!profId) {
-        fechaInput.value = '';
-        fechaInput.disabled = true;
+        if (fechaInput) { fechaInput.value = ''; fechaInput.disabled = true; }
         if (hora) { hora.innerHTML = '<option value="">Selecciona fecha y profesional primero</option>'; hora.disabled = true; }
         return;
       }
-      // Habilitar la fecha y fijar 'min' a hoy para evitar fechas pasadas
+
       fechaInput.disabled = false;
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       fechaInput.min = `${yyyy}-${mm}-${dd}`;
-      // Clear previous date/hour
       fechaInput.value = '';
       if (hora) { hora.innerHTML = '<option value="">Selecciona fecha y profesional primero</option>'; hora.disabled = true; }
+
+      // Obtener tarifas del profesional seleccionado
+      try {
+        const docSnap = await getDoc(doc(db, 'usuarios', profId));
+        if (docSnap.exists() && docSnap.data().tarifas) {
+           profesionalTarifasCache = docSnap.data().tarifas;
+        }
+      } catch(err) {
+        console.error("Error al cargar tarifas del profesional:", err);
+      }
     });
   }
 
-  // Al cambiar la fecha, consultamos disponibilidad y llenamos horas
   if (fechaInput && hora && profesionalSelect) {
     fechaInput.addEventListener('change', async (e) => {
-      const fechaVal = e.target.value; // formato YYYY-MM-DD
+      const fechaVal = e.target.value;
       const profId = profesionalSelect.value;
       hora.innerHTML = '<option value="">Cargando horarios...</option>';
       hora.disabled = true;
@@ -130,7 +141,6 @@ export function initFormularios() {
       }
 
       try {
-        // Llamamos a la función que consulta la disponibilidad real en Firestore
         const available = await getAvailableHoursForProfessional(profId, fechaVal);
         if (!available || available.length === 0) {
           hora.innerHTML = '<option value="">No hay horarios disponibles</option>';
@@ -138,19 +148,17 @@ export function initFormularios() {
           hora.innerHTML = '<option value="">Selecciona horario...</option>';
           available.forEach(h => {
             const opt = document.createElement('option');
-            opt.value = h; // formato 'HH:MM'
+            opt.value = h;
             opt.textContent = h;
             hora.appendChild(opt);
           });
           hora.disabled = false;
         }
       } catch (err) {
-        console.error(err);
         hora.innerHTML = '<option value="">Error al obtener horarios</option>';
       }
     });
   }
-
 
   document.querySelectorAll('.input-rut').forEach(input => {
     input.addEventListener('input', (e) => {
@@ -168,7 +176,6 @@ export function initFormularios() {
     if (avisoReserva) avisoReserva.textContent = '';
 
     if (tipo === 'cuidadora') {
-      aviso.textContent = 'Las cuidadoras están disponibles 24/7.';
       return true;
     }
 
@@ -181,7 +188,6 @@ export function initFormularios() {
         aviso.textContent = 'Las consejeras no atienden los domingos.';
         return false;
       }
-      // límites por día: L-V 08:00-18:00, Sáb 09:00-17:00
       if (horaVal) {
         const [hh] = horaVal.split(':');
         const hour = parseInt(hh, 10);
@@ -195,21 +201,74 @@ export function initFormularios() {
     return true;
   }
 
-  if (servicio) servicio.addEventListener('change', validarHorario);
-  if (fechaInput) fechaInput.addEventListener('change', validarHorario);
-  if (hora) hora.addEventListener('change', validarHorario);
+  function procesarCalculoCita() {
+    const esValido = validarHorario(); 
+    if (!esValido) {
+      if (resumenPrecioDiv) resumenPrecioDiv.classList.add('hidden');
+      return false;
+    }
+
+    // Si el HTML no tiene implementados inputs de fin, estimamos por defecto 1 hora para cálculo en vivo
+    const fFinVal = fechaFinInput?.value || fechaInput?.value;
+    const hFinVal = horaFinInput?.value || (hora?.value ? `${parseInt(hora.value.split(':')[0]) + 1}:00`.padStart(5, '0') : null);
+
+    if (!fechaInput?.value || !hora?.value || !fFinVal || !hFinVal || !profesionalTarifasCache) {
+      if (resumenPrecioDiv) resumenPrecioDiv.classList.add('hidden');
+      return true;
+    }
+
+    const dateInicio = new Date(`${fechaInput.value}T${hora.value}:00`);
+    const dateFin = new Date(`${fFinVal}T${hFinVal}:00`);
+
+    if (dateFin <= dateInicio) {
+       aviso.textContent = 'La fecha/hora de fin debe ser posterior a la de inicio.';
+       if (resumenPrecioDiv) resumenPrecioDiv.classList.add('hidden');
+       return false;
+    }
+
+    const tipo = servicio?.value;
+    let tarifasAplicables = { baseHora: 0, finDeSemanaHora: 0, festivoHora: 0 };
+    
+    if (tipo === 'cuidadora') {
+       tarifasAplicables = {
+         baseHora: profesionalTarifasCache.cuidadoraBase || 0,
+         finDeSemanaHora: profesionalTarifasCache.cuidadoraFinde || 0,
+         festivoHora: profesionalTarifasCache.cuidadoraFinde || 0
+       };
+    } else if (tipo === 'consejera') {
+       tarifasAplicables = {
+         baseHora: profesionalTarifasCache.consejeraPresencialBase || 0,
+         finDeSemanaHora: profesionalTarifasCache.consejeraPresencialFinde || 0,
+         festivoHora: profesionalTarifasCache.consejeraPresencialFinde || 0
+       };
+    }
+
+    const cotizacion = calcularCostoServicio(dateInicio, dateFin, tarifasAplicables);
+
+    if (resumenPrecioDiv && spanPrecioTotal && spanPrecioDesglose) {
+       spanPrecioTotal.textContent = `$${cotizacion.total.toLocaleString('cl-CL')}`;
+       spanPrecioDesglose.textContent = cotizacion.desglose;
+       resumenPrecioDiv.classList.remove('hidden');
+    }
+
+    return true;
+  }
+
+  if (servicio) servicio.addEventListener('change', procesarCalculoCita);
+  if (fechaInput) fechaInput.addEventListener('change', procesarCalculoCita);
+  if (hora) hora.addEventListener('change', procesarCalculoCita);
+  if (fechaFinInput) fechaFinInput.addEventListener('change', procesarCalculoCita);
+  if (horaFinInput) horaFinInput.addEventListener('change', procesarCalculoCita);
 
   if (formReserva) {
     formReserva.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      // Validar horario antes de enviar
-      if (!validarHorario()) {
+      if (!procesarCalculoCita()) {
         if (avisoReserva) avisoReserva.textContent = "Por favor, corrige el horario seleccionado.";
         return;
       }
 
-      // Validación para asegurar que se ha seleccionado un profesional
       if (profesionalSelect && !profesionalSelect.disabled && !profesionalSelect.value) {
         showToast('Debes seleccionar un profesional para continuar.', 'warning');
         if (avisoReserva) avisoReserva.textContent = "Por favor, selecciona un profesional.";
@@ -222,11 +281,31 @@ export function initFormularios() {
       const data = Object.fromEntries(new FormData(formReserva).entries());
       const currentUser = auth.currentUser;
 
-      // Capturar explícitamente el ID y nombre del profesional para asegurar que se guarde.
       if (profesionalSelect && profesionalSelect.value) {
          const selectedOption = profesionalSelect.options[profesionalSelect.selectedIndex];
          data.profesionalId = profesionalSelect.value;
          data.profesionalNombre = selectedOption.dataset.nombre || selectedOption.textContent;
+      }
+
+      // Calcular costo final para asegurar que se guarde correctamente en la base de datos
+      let costoFinalGuardado = 0;
+      if (fechaInput?.value && hora?.value && profesionalTarifasCache) {
+          const fFinVal = fechaFinInput?.value || fechaInput.value;
+          const hFinVal = horaFinInput?.value || `${parseInt(hora.value.split(':')[0]) + 1}:00`.padStart(5, '0');
+          
+          const start = new Date(`${fechaInput.value}T${hora.value}:00`);
+          const end = new Date(`${fFinVal}T${hFinVal}:00`);
+          const rolVal = servicio.value;
+          
+          let objTarifas = {};
+          if (rolVal === 'cuidadora') {
+            objTarifas = { baseHora: profesionalTarifasCache.cuidadoraBase || 0, finDeSemanaHora: profesionalTarifasCache.cuidadoraFinde || 0, festivoHora: profesionalTarifasCache.cuidadoraFinde || 0 };
+          } else if (rolVal === 'consejera') {
+            objTarifas = { baseHora: profesionalTarifasCache.consejeraPresencialBase || 0, finDeSemanaHora: profesionalTarifasCache.consejeraPresencialFinde || 0, festivoHora: profesionalTarifasCache.consejeraPresencialFinde || 0 };
+          }
+          
+          const costo = calcularCostoServicio(start, end, objTarifas);
+          costoFinalGuardado = costo.total;
       }
 
       btnSubmit.textContent = 'Enviando...';
@@ -235,10 +314,9 @@ export function initFormularios() {
       try {
         await addDoc(collection(db, "reservas"), {
           ...data,
-          // Si el usuario está logueado, vinculamos la cita a su cuenta
           uid: currentUser ? currentUser.uid : null,
-          // Si está logueado usamos su email de auth, si no, el del formulario
           email: currentUser ? currentUser.email : (data.email || 'Anónimo'),
+          costoTotal: costoFinalGuardado,
           creadoEn: new Date().toISOString(),
           estado: 'pendiente'
         });

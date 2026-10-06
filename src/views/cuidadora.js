@@ -1,8 +1,8 @@
 import { showToast } from '../ui/notifications.js';
-// IMPORTANTE: Asegúrate de que `saveUserTarifas` se agregue en el import de firestore.js
-import { getAvailabilitySlots, addAvailabilitySlot, removeAvailabilitySlot, addCaregiverBlockedDay, removeCaregiverBlockedDay, getCaregiverBlockedDays, fetchServiceAppointments, saveUserTarifas } from '../api/firestore.js';
+import { getAvailabilitySlots, addAvailabilitySlot, removeAvailabilitySlot, fetchServiceAppointments, updateAppointmentDateTime } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
+import { renderTarifasForm } from './shared/tarifas.js';
 
 export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoModal) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -10,8 +10,7 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
 
   const uid = userData?.uid || userData?.id;
   if (!uid || uid === 'undefined') {
-    console.error("renderCuidadoraTab fue llamado sin un UID de usuario válido.", { userData });
-    dashboardContent.innerHTML = `<div class="text-center p-8"><p class="text-red-500 font-bold">Error Crítico</p><p class="text-gray-600">No se pudo identificar la cuenta del usuario (UID faltante). Por favor, recarga la página.</p></div>`;
+    dashboardContent.innerHTML = `<div class="text-center p-8"><p class="text-red-500 font-bold">Error Crítico</p><p class="text-gray-600">No se pudo identificar la cuenta del usuario.</p></div>`;
     return;
   }
 
@@ -21,20 +20,28 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
       <div class="glass-panel p-8 rounded-2xl border-t-4 border-[#887263] mb-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 class="text-2xl font-black text-[#181411]">Hola ${escapeHTML(userData.nombre)} 🍼</h2>
-            <p class="text-[#887263]">Gestiona tus turnos asignados de cuidado infantil.</p>
+            <h2 class="text-2xl font-black text-[#181411]">Mis Atenciones (Cuidadora) 🌙</h2>
+            <p class="text-[#887263]">Gestiona y modifica la programación de tus turnos asignados.</p>
           </div>
         </div>
       </div>
-      <h3 class="font-bold text-lg mb-4">Turnos de Cuidado Asignados</h3>
       <div class="space-y-4" id="cuidadora-turnos-list">
         ${appointments.length > 0 ? appointments.map(app => `
           <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between flex-wrap gap-4">
             <div>
               <h4 class="font-bold text-lg">${escapeHTML(app.nombre)}</h4>
-              <p class="text-xs text-gray-500">Fecha: ${escapeHTML(app.fecha)} • Hora: ${escapeHTML(app.hora)} • Duración: ${app.duracion} hrs</p>
-              <p class="text-sm text-gray-600 mt-1">${escapeHTML(app.email)}</p>
+              <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${escapeHTML(app.fecha)}</span> • Hora: ${escapeHTML(app.hora)} • Duración: ${app.duracion} hrs</p>
+              <p class="text-sm text-gray-600 mt-1">Cliente: ${escapeHTML(app.email)}</p>
             </div>
+            
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-center gap-2">
+              <div>
+                <input type="date" value="${escapeHTML(app.fecha)}" class="edit-fecha p-1 border rounded text-xs block mb-1" data-id="${app.id}" />
+                <input type="time" value="${escapeHTML(app.hora)}" class="edit-hora p-1 border rounded text-xs block" data-id="${app.id}" />
+              </div>
+              <button data-id="${app.id}" class="btn-guardar-cambio-cita bg-gray-800 hover:bg-[#e87a30] text-white text-xs font-bold px-3 py-2 rounded transition">Actualizar</button>
+            </div>
+
             <div>
               ${app.estado === 'completada' ? `
                 <span class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-bold">Bitácora Guardada ✅</span>
@@ -51,6 +58,32 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
       </div>
     `;
 
+    dashboardContent.querySelectorAll('.btn-guardar-cambio-cita').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        const container = btn.closest('div.bg-gray-50');
+        const nuevaFecha = container.querySelector('.edit-fecha').value;
+        const nuevaHora = container.querySelector('.edit-hora').value;
+
+        if (!nuevaFecha || !nuevaHora) {
+          showToast('Selecciona fecha y hora', 'warning');
+          return;
+        }
+
+        try {
+          btn.disabled = true;
+          btn.textContent = '...';
+          await updateAppointmentDateTime(id, nuevaFecha, nuevaHora);
+          showToast('Turno actualizado con éxito', 'success');
+          renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
+        } catch (e) {
+          showToast('Error al actualizar turno', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Actualizar';
+        }
+      };
+    });
+
     dashboardContent.querySelectorAll('.btn-abrir-ficha').forEach(btn => {
       btn.onclick = () => {
         const { id, nid } = btn.dataset;
@@ -60,9 +93,34 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
 
   } else if (activeTab === 'historial_fichas') {
     dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-6">📋 Historial de Bitácoras Entregadas</h2>
+      <h2 class="text-2xl font-black text-[#181411] mb-6">📋 Mis Bitácoras</h2>
       <div class="space-y-4" id="prestador-fichas-list">
-        <p class="text-center py-10 text-gray-400 italic">Cargando fichas...</p>
+        <p class="text-center py-10 text-gray-400 italic">Cargando bitácoras...</p>
+      </div>
+    `;
+    renderPrestadorFichas(uid);
+
+  } else if (activeTab === 'fichas_cuidado') {
+    // Validar si tiene servicios o citas con nidos asignados para habilitar esta sección
+    const appointments = await fetchServiceAppointments('Cuidador', uid);
+    const tieneServiciosValidos = appointments.some(app => app.nidoId);
+
+    if (!tieneServiciosValidos) {
+      dashboardContent.innerHTML = `
+        <div class="glass-panel p-10 rounded-2xl text-center max-w-lg mx-auto mt-10 border-t-4 border-amber-500">
+          <span class="text-4xl mb-3 block">🔒</span>
+          <h3 class="font-bold text-xl text-[#181411] mb-2">Sección No Habilitada</h3>
+          <p class="text-sm text-gray-600">Las Fichas de Cuidado solo se habilitan una vez que hayas realizado un servicio de cuidado efectivo asociado a una familia/nido.</p>
+        </div>
+      `;
+      return;
+    }
+
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">📝 Registro y Creación de Fichas</h2>
+      <p class="text-sm text-gray-600 mb-4">Aquí puedes consultar las fichas de los servicios realizados a tus nidos asignados.</p>
+      <div class="space-y-4" id="prestador-fichas-list">
+        <p class="text-center py-10 text-gray-400 italic">Cargando fichas de nidos...</p>
       </div>
     `;
     renderPrestadorFichas(uid);
@@ -71,7 +129,7 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     dashboardContent.innerHTML = `
       <div class="space-y-8">
         <div>
-          <h3 class="font-bold text-xl mb-2">Mis Turnos Disponibles</h3>
+          <h3 class="font-bold text-xl mb-2">Mi Disponibilidad (Turnos)</h3>
           <p class="text-sm text-gray-500 mb-4">Declara los turnos en los que estás disponible para recibir reservas.</p>
           <div class="bg-white border border-gray-200 rounded-xl p-4">
             <button id="btnOpenAddSlotModal" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-indigo-700 transition shadow-sm">
@@ -79,26 +137,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
             </button>
             <h4 class="font-bold text-sm text-gray-800 mt-6 mb-2">Turnos Activos:</h4>
             <ul class="space-y-2" id="caregiver-availability-slots-list"></ul>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="font-bold text-xl mb-2">Bloqueo de Días Completos</h3>
-          <p class="text-sm text-gray-500 mb-4">Ingresa fechas específicas que deseas bloquear por vacaciones o descanso.</p>
-          <div class="bg-white border border-gray-200 rounded-xl p-4">
-            <div class="flex flex-col md:flex-row gap-4 items-end mb-6">
-              <div class="flex-1 w-full">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Fecha a bloquear</label>
-                <input type="date" id="bloqueo-date" class="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-              </div>
-              <div class="flex-1 w-full">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Motivo (Opcional)</label>
-                <input type="text" id="bloqueo-motivo" placeholder="Ej. Cumpleaños, Descanso..." class="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-              </div>
-              <button id="btnAñadirBloqueo" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors w-full md:w-auto h-[38px]">Añadir Bloqueo</button>
-            </div>
-            <h4 class="font-bold text-sm text-gray-800 mb-2">Bloqueos Activos:</h4>
-            <ul class="space-y-2" id="caregiver-blocked-days-list"></ul>
           </div>
         </div>
       </div>
@@ -129,97 +167,18 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     `;
     setupAvailabilityHandlers(uid);
 
-  // --- NUEVA PESTAÑA: MIS TARIFAS ---
   } else if (activeTab === 'tarifas') {
-    const tarifas = userData.tarifas || { baseHora: '', finDeSemanaHora: '', festivoHora: '' };
-    
-    dashboardContent.innerHTML = `
-      <h3 class="font-bold text-2xl mb-2 text-[#181411]">Mis Tarifas 💰</h3>
-      <p class="text-sm text-[#887263] mb-6">Configura el valor por hora de tus servicios para los padres.</p>
-      
-      <div class="glass-panel p-6 rounded-2xl max-w-lg border-t-4 border-[#e87a30]">
-        <form id="form-tarifas" class="space-y-5">
-          
-          <div>
-            <label class="block text-sm font-bold text-[#181411] mb-1">Tarifa Base (Lunes a Viernes)</label>
-            <div class="relative">
-              <span class="absolute left-3 top-2 text-gray-500 font-bold">$</span>
-              <input type="number" id="tarifa-base" value="${tarifas.baseHora || ''}" required min="0" 
-                class="w-full pl-8 p-2 border border-[#e5dfdc] rounded-lg text-sm focus:ring-[#e87a30] focus:border-[#e87a30]" 
-                placeholder="15000">
-            </div>
-            <p class="text-xs text-gray-400 mt-1">Valor por cada hora en días hábiles.</p>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-bold text-[#181411] mb-1">Tarifa Fin de Semana (Sáb y Dom)</label>
-            <div class="relative">
-              <span class="absolute left-3 top-2 text-gray-500 font-bold">$</span>
-              <input type="number" id="tarifa-finde" value="${tarifas.finDeSemanaHora || ''}" required min="0" 
-                class="w-full pl-8 p-2 border border-[#e5dfdc] rounded-lg text-sm focus:ring-[#e87a30] focus:border-[#e87a30]" 
-                placeholder="20000">
-            </div>
-          </div>
-          
-          <div>
-            <label class="block text-sm font-bold text-[#181411] mb-1">Tarifa Días Festivos</label>
-            <div class="relative">
-              <span class="absolute left-3 top-2 text-gray-500 font-bold">$</span>
-              <input type="number" id="tarifa-festivo" value="${tarifas.festivoHora || ''}" required min="0" 
-                class="w-full pl-8 p-2 border border-[#e5dfdc] rounded-lg text-sm focus:ring-[#e87a30] focus:border-[#e87a30]" 
-                placeholder="25000">
-            </div>
-          </div>
-          
-          <div class="pt-4">
-            <button type="submit" id="btnGuardarTarifas" 
-              class="w-full bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-3 rounded-xl text-sm transition-all shadow-md">
-              Guardar Mis Tarifas
-            </button>
-          </div>
-
-        </form>
-      </div>
-    `;
-
-    document.getElementById('form-tarifas').onsubmit = async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btnGuardarTarifas');
-      btn.disabled = true;
-      btn.textContent = 'Guardando...';
-      
-      try {
-        const nuevasTarifas = {
-          baseHora: parseInt(document.getElementById('tarifa-base').value),
-          finDeSemanaHora: parseInt(document.getElementById('tarifa-finde').value),
-          festivoHora: parseInt(document.getElementById('tarifa-festivo').value)
-        };
-        
-        await saveUserTarifas(uid, nuevasTarifas);
-        
-        showToast('Tarifas guardadas exitosamente', 'success');
-        userData.tarifas = nuevasTarifas; // Actualiza los datos en memoria local
-      } catch (error) {
-        showToast('Error al guardar las tarifas', 'error');
-        console.error(error);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Guardar Mis Tarifas';
-      }
-    };
+    renderTarifasForm(dashboardContent, userData, uid, 'cuidadora');
   }
 }
 
-// --- FUNCIONES AUXILIARES DE CUIDADORA ---
 function setupAvailabilityHandlers(uid) {
   if (!uid || uid === 'undefined') {
-    console.error("setupAvailabilityHandlers fue llamado sin un UID válido. Abortando.");
     showToast('Error de sesión, no se puede gestionar la disponibilidad.', 'error');
     return;
   }
 
   loadCaregiverAvailabilitySlots(uid);
-  loadCaregiverBlockedDays(uid);
 
   const addSlotModal = document.getElementById('addSlotModal');
   const btnOpenModal = document.getElementById('btnOpenAddSlotModal');
@@ -273,32 +232,9 @@ function setupAvailabilityHandlers(uid) {
       loadCaregiverAvailabilitySlots(uid);
     } catch (error) {
       showToast('Error al guardar el turno.', 'error');
-      console.error(error);
     } finally {
       btnSave.disabled = false;
       btnSave.textContent = 'Guardar Turno';
-    }
-  };
-
-  const btnBloqueo = document.getElementById('btnAñadirBloqueo');
-  btnBloqueo.onclick = async () => {
-    const dInput = document.getElementById('bloqueo-date');
-    const mInput = document.getElementById('bloqueo-motivo');
-    if (!dInput.value) {
-      showToast('Selecciona una fecha', 'warning');
-      return;
-    }
-    btnBloqueo.disabled = true;
-    try {
-      await addCaregiverBlockedDay(uid, dInput.value, mInput.value);
-      showToast('Fecha bloqueada con éxito', 'success');
-      dInput.value = '';
-      mInput.value = '';
-      loadCaregiverBlockedDays(uid);
-    } catch (e) {
-      showToast('Error al bloquear fecha', 'error');
-    } finally {
-      btnBloqueo.disabled = false;
     }
   };
 }
@@ -306,10 +242,6 @@ function setupAvailabilityHandlers(uid) {
 async function loadCaregiverAvailabilitySlots(uid) {
   const slotsList = document.getElementById('caregiver-availability-slots-list');
   if (!slotsList) return;
-  if (!uid || uid === 'undefined') {
-    slotsList.innerHTML = '<li class="p-2 text-center text-red-500 italic">Error: ID de usuario no encontrado.</li>';
-    return;
-  }
 
   slotsList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">Cargando turnos...</li>';
 
@@ -362,58 +294,5 @@ function formatDateRange(start, end) {
   const startDate = start.toDate();
   const endDate = end.toDate();
   const options = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
-  
-  const startStr = startDate.toLocaleDateString('es-CL', options);
-  const endStr = endDate.toLocaleDateString('es-CL', options);
-
-  return `${startStr} → ${endStr}`;
-}
-
-async function loadCaregiverBlockedDays(uid) {
-  const blockedDaysList = document.getElementById('caregiver-blocked-days-list');
-  if (!blockedDaysList) return;
-  if (!uid || uid === 'undefined') {
-    blockedDaysList.innerHTML = '<li class="p-2 text-center text-red-500 italic">Error: ID de usuario no encontrado.</li>';
-    return;
-  }
-
-  blockedDaysList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">Cargando bloqueos...</li>';
-  
-  let bloqueos = [];
-  try {
-    bloqueos = await getCaregiverBlockedDays(uid);
-  } catch (e) {
-    console.warn("No se pudieron cargar los bloqueos. Asumiendo lista vacía.", e);
-  }
-
-  if (bloqueos.length === 0) {
-    blockedDaysList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">No tienes días bloqueados.</li>';
-  } else {
-    blockedDaysList.innerHTML = bloqueos.map(data => `
-      <li class="flex items-center justify-between bg-red-50 p-2.5 rounded-lg border border-red-100">
-        <div class="flex items-center gap-3">
-          <span class="text-sm">⛔</span>
-          <div>
-            <p class="font-bold text-red-800 text-sm">${escapeHTML(data.date)}</p>
-            <p class="text-xs text-red-600">${escapeHTML(data.motivo || 'Sin motivo')}</p>
-          </div>
-        </div>
-        <button data-id="${escapeHTML(data.id)}" class="btn-delete-block text-red-400 hover:text-red-700 text-xs font-semibold">Eliminar</button>
-      </li>
-    `).join('');
-
-    blockedDaysList.querySelectorAll('.btn-delete-block').forEach(btn => {
-      btn.onclick = async () => {
-        if (confirm('¿Seguro que quieres eliminar este bloqueo?')) {
-          try {
-            await removeCaregiverBlockedDay(uid, btn.dataset.id);
-            showToast('Bloqueo eliminado', 'success');
-            loadCaregiverBlockedDays(uid);
-          } catch(e) {
-            showToast('Error al eliminar bloqueo', 'error');
-          }
-        }
-      };
-    });
-  }
+  return `${startDate.toLocaleDateString('es-CL', options)} → ${endDate.toLocaleDateString('es-CL', options)}`;
 }

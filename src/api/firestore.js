@@ -529,7 +529,6 @@ export async function fetchFichasAtencionPorNido(nidoId) {
     }
 }
 
-// --- NUEVAS FUNCIONES: REGISTROS GLOBALES ---
 export async function fetchAllBitacoras() {
     try {
         const snap = await getDocs(collection(db, "bitacoras"));
@@ -551,7 +550,6 @@ export async function fetchAllFichasAtencion() {
         throw error;
     }
 }
-// --------------------------------------------
 
 export async function fetchActiveProducts() {
     try {
@@ -778,4 +776,17 @@ export async function approveTip(tipId) {
             timestamp: serverTimestamp()
         });
     });
+}
+
+export async function updateAppointmentDateTime(reservaId, nuevaFecha, nuevaHora) {
+    try {
+        const reservaRef = doc(db, 'reservas', reservaId);
+        await updateDoc(reservaRef, {
+            fecha: nuevaFecha,
+            hora: nuevaHora
+        });
+    } catch (error) {
+        console.error("Error al actualizar la fecha y hora de la cita:", error);
+        throw error;
+    }
 }

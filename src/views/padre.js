@@ -1,355 +1,331 @@
-import { formatRut, validarRut } from '../rut.js';
-import { addToCart } from '../ui/cart.js';
-import { showToast } from '../ui/notifications.js';
-import { fetchUserAppointments, fetchActiveProducts, fetchPedidosUsuario, vincularNidoFamiliar, fetchFichasCuidadoPorNido } from '../api/firestore.js';
+import { fetchFichasCuidadoPorNido, fetchFichasAtencionPorNido, fetchUserAppointments, obtenerDatosNido, fetchActiveProducts, createPedido, fetchPedidosUsuario } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
+import { openCartModal, getCartQuantity } from '../ui/cart.js';
+import { showToast } from '../ui/notifications.js';
 
 export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, switchTab) {
   const dashboardContent = document.getElementById('dashboard-content');
   if (!dashboardContent) return;
 
+  const nidoId = userData?.nidoId;
+
   if (activeTab === 'resumen') {
+    const appointments = await fetchUserAppointments(userData.uid);
+    let nidoData = null;
+    if (nidoId) {
+      nidoData = await obtenerDatosNido(nidoId);
+    }
+
     dashboardContent.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 slide-up mb-8">
-        <div class="col-span-1 md:col-span-2 glass-panel p-8 rounded-2xl border-l-4 border-[#e87a30] relative overflow-hidden group">
-          <div class="absolute -right-10 -top-10 text-[#e87a30] opacity-10 text-9xl transition-transform group-hover:scale-110">🍼</div>
-          <h2 class="text-3xl font-black text-[#181411] mb-2">¡Hola, ${escapeHTML(userData?.nombre?.split(' ')[0] || 'Bienvenido/a')}! 👋</h2>
-          <p class="text-[#887263] mb-6">Gestiona el cuidado y bienestar de tu familia desde aquí.</p>
-          
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="glass-panel p-8 rounded-2xl border-t-4 border-[#e87a30] lg:col-span-2 relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <span class="text-xs font-bold bg-[#f4eade] text-[#e87a30] px-3 py-1 rounded-full uppercase tracking-wider">Panel Familiar</span>
+            <h2 class="text-3xl font-black text-[#181411] mt-2 mb-2">¡Hola, ${escapeHTML(userData.nombre || 'Familia')}! 👋</h2>
+            <p class="text-[#887263] text-sm mb-6">Gestiona el cuidado y bienestar de tu familia desde aquí.</p>
+          </div>
           <div class="flex flex-wrap gap-3">
-              <button id="btnNuevaCita" class="bg-[#e87a30] text-white font-bold rounded-full py-2 px-6 hover:bg-[#d66a20] transition-colors shadow-md flex items-center gap-2">
-                <span class="text-xl leading-none">+</span> Agendar Nueva Cita
-              </button>
-              <button id="btnIrTienda" class="bg-white border border-[#e5dfdc] text-[#181411] font-bold rounded-full py-2 px-6 hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2">
-                🛍️ Tienda de Bebé
-              </button>
+            <button id="btnAgendarCitaResumen" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-md flex items-center gap-2">
+              <span>+ Agendar Nueva Cita</span>
+            </button>
+            <button id="btnIrTiendaResumen" class="bg-white border border-gray-200 hover:bg-gray-50 text-[#181411] font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+              <span>🛍️ Tienda de Bebé</span>
+            </button>
           </div>
         </div>
-        
-        <div class="glass-panel p-6 rounded-2xl flex flex-col justify-center items-center text-center">
-           <div class="w-16 h-16 bg-[#f4eade] rounded-full flex items-center justify-center text-2xl mb-4 shadow-inner">
-             👶
-           </div>
-           <h3 class="font-bold text-lg">Mi Nido Familiar</h3>
-           ${userData.nidoId ? `
-             <p class="text-sm text-green-600 font-bold mb-1">¡Nido vinculado!</p>
-             <p class="text-xs text-gray-500 mb-4">Compartiendo el cuidado en familia</p>
-             <button id="btnVerPerfilBebe" class="w-full bg-[#f4f2f0] hover:bg-[#e5dfdc] text-[#181411] py-2 rounded-lg text-sm font-semibold transition-colors">Ver Perfil del Nido</button>
-           ` : `
-             <p class="text-xs text-red-500 mb-2 font-bold">No has registrado a tus hijos</p>
-             <p class="text-[10px] text-gray-500 mb-3 leading-tight">Registra a tu hijo/a (o múltiples si son gemelos/mellizos). Si tu pareja ya los registró, usa el mismo RUT para unirte automáticamente.</p>
-             
-             <form id="formVincularNido" class="flex flex-col gap-2 w-full mt-2">
-               <div id="hijos-inputs-container" class="space-y-2 w-full">
-                 <div class="hijo-row flex gap-1">
-                   <input type="text" name="nombreBebe[]" placeholder="Nombre hijo/a" required class="p-2 border border-gray-200 rounded text-xs w-1/2" />
-                   <input type="text" name="rutBebe[]" placeholder="RUT hijo/a" maxlength="12" required class="input-rut p-2 border border-gray-200 rounded text-xs w-1/2" />
-                 </div>
-               </div>
-               <button type="button" id="btnAddOtroHijo" class="text-xs text-[#e87a30] font-bold self-start mt-1 hover:underline">+ Añadir otro hijo/a (gemelos/mellizos)</button>
-               <button type="submit" class="w-full bg-[#e87a30] text-white py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-[#d66a20] mt-2">Vincular / Crear Nido</button>
-             </form>
-           `}
+
+        <div class="glass-panel p-6 rounded-2xl border-t-4 border-[#887263] flex flex-col justify-between text-center">
+          <div>
+            <div class="w-12 h-12 bg-[#f4eade] rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">👶</div>
+            <h3 class="font-bold text-lg text-[#181411]">Mi Nido Familiar</h3>
+            <p class="text-xs text-[#887263] mt-1">${nidoData ? '¡Nido vinculado!' : 'Sin nido vinculado aún'}</p>
+          </div>
+          <button id="btnAbrirPerfilNido" class="mt-4 w-full bg-[#f4eade] hover:bg-[#e8dcd0] text-[#181411] font-bold py-2 px-4 rounded-xl text-xs transition">
+            Ver Perfil del Nido
+          </button>
         </div>
       </div>
 
-      <div class="w-full slide-up">
-        <h3 class="font-bold text-xl mb-4 text-[#181411]">Tus Citas Recientes</h3>
-        <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] overflow-hidden">
-          <table class="w-full text-left text-sm" id="parent-appointments-table">
-            <thead class="bg-[#fbf9f8] border-b border-[#e5dfdc] text-[#887263]">
-              <tr>
-                <th class="p-4 font-medium">Servicio</th>
-                <th class="p-4 font-medium">Profesional</th>
-                <th class="p-4 font-medium">Fecha</th>
-                <th class="p-4 font-medium">Estado</th>
+      <div class="glass-panel p-6 rounded-2xl">
+        <h3 class="text-xl font-black text-[#181411] mb-4">Tus Citas Recientes</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b text-[#887263]">
+                <th class="p-3">Servicio</th>
+                <th class="p-3">Profesional</th>
+                <th class="p-3">Fecha</th>
+                <th class="p-3">Estado</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-[#e5dfdc]">
+            <tbody>
+              ${appointments.length > 0 ? appointments.map(app => `
+                <tr class="border-b hover:bg-gray-50/50">
+                  <td class="p-3 font-bold">${escapeHTML(app.servicio)}</td>
+                  <td class="p-3">${escapeHTML(app.profesionalNombre || 'Asignado')}</td>
+                  <td class="p-3">${escapeHTML(app.fecha)}${escapeHTML(app.hora || '')}</td>
+                  <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">${escapeHTML(app.estado)}</span></td>
+                </tr>
+              `).join('') : `
+                <tr><td colspan="4" class="p-6 text-center text-gray-400 italic">No tienes citas agendadas aún.</td></tr>
+              `}
             </tbody>
           </table>
         </div>
       </div>
     `;
 
-    const btnNuevaCita = document.getElementById('btnNuevaCita');
-    if (btnNuevaCita) {
-      btnNuevaCita.onclick = () => document.getElementById('modalAgendarCita')?.showModal();
-    }
-    const btnIrTienda = document.getElementById('btnIrTienda');
-    if (btnIrTienda) {
-      btnIrTienda.onclick = () => switchTab('tienda');
-    }
-    const btnVerPerfil = document.getElementById('btnVerPerfilBebe');
-    if (btnVerPerfil) {
-      btnVerPerfil.onclick = () => openPerfilBebeModal(userData);
-    }
+    document.getElementById('btnAgendarCitaResumen')?.addEventListener('click', () => {
+      const btnCalendario = document.getElementById('btnAbrirCalendarioModal') || document.querySelector('[data-action="calendario"]');
+      if (btnCalendario) btnCalendario.click();
+      else showToast('Usa el calendario principal para agendar', 'info');
+    });
 
-    const formVincular = document.getElementById('formVincularNido');
-    if (formVincular) {
-      const btnAddOtro = document.getElementById('btnAddOtroHijo');
-      const containerHijos = document.getElementById('hijos-inputs-container');
+    document.getElementById('btnIrTiendaResumen')?.addEventListener('click', () => {
+      switchTab('tienda', 'padre', userData);
+    });
 
-      if (btnAddOtro && containerHijos) {
-        btnAddOtro.onclick = () => {
-          const row = document.createElement('div');
-          row.className = 'hijo-row flex gap-1 mt-2';
-          row.innerHTML = `
-            <input type="text" name="nombreBebe[]" placeholder="Nombre hijo/a" required class="p-2 border border-gray-200 rounded text-xs w-1/2" />
-            <input type="text" name="rutBebe[]" placeholder="RUT hijo/a" maxlength="12" required class="input-rut p-2 border border-gray-200 rounded text-xs w-1/2" />
-            <button type="button" class="btn-eliminar-hijo text-red-500 font-bold px-2 text-xs">✕</button>
-          `;
-          containerHijos.appendChild(row);
+    document.getElementById('btnAbrirPerfilNido')?.addEventListener('click', () => {
+      openPerfilBebeModal(userData);
+    });
 
-          row.querySelector('.input-rut').addEventListener('input', (e) => {
-            e.target.value = formatRut(e.target.value);
-          });
+  } else if (activeTab === 'historial_bebe') {
+    dashboardContent.innerHTML = `
+      <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-[#181411]">📜 Historial del Bebé</h2>
+          <p class="text-sm text-[#887263]">Consulta unificada de fichas de atención y bitácoras de cuidado.</p>
+        </div>
+      </div>
 
-          row.querySelector('.btn-eliminar-hijo').onclick = () => row.remove();
-        };
+      <!-- Filtros de Búsqueda -->
+      <div class="glass-panel p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Buscar (Prestador / Nido)</label>
+          <input type="text" id="filtro-texto" placeholder="🔍 Texto..." class="w-full p-2 border rounded-lg text-xs bg-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de Registro</label>
+          <select id="filtro-tipo" class="w-full p-2 border rounded-lg text-xs bg-white">
+            <option value="todos">Todos los registros</option>
+            <option value="ficha">Fichas de Atención</option>
+            <option value="bitacora">Bitácoras de Cuidado</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Fecha Desde</label>
+          <input type="date" id="filtro-fecha-desde" class="w-full p-2 border rounded-lg text-xs bg-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Fecha Hasta</label>
+          <input type="date" id="filtro-fecha-hasta" class="w-full p-2 border rounded-lg text-xs bg-white" />
+        </div>
+      </div>
+
+      <div class="space-y-4" id="lista-historial-unificado">
+        <p class="text-center py-10 text-gray-400 italic">Cargando historial...</p>
+      </div>
+    `;
+
+    try {
+      let fichasAtencion = [];
+      let bitacoras = [];
+
+      if (nidoId) {
+        [fichasAtencion, bitacoras] = await Promise.all([
+          fetchFichasAtencionPorNido(nidoId),
+          fetchFichasCuidadoPorNido(nidoId)
+        ]);
       }
 
-      formVincular.querySelectorAll('.input-rut').forEach(input => {
-        input.addEventListener('input', (e) => {
-          e.target.value = formatRut(e.target.value);
-        });
+      // Función auxiliar para parsear fechas de Firestore de forma segura
+      const parsearFecha = (rawDate) => {
+        if (!rawDate) return null;
+        if (typeof rawDate.toDate === 'function') {
+          return rawDate.toDate();
+        }
+        if (rawDate.seconds) {
+          return new Date(rawDate.seconds * 1000);
+        }
+        const parsed = new Date(rawDate);
+        return !isNaN(parsed.getTime()) ? parsed : null;
+      };
+
+      const historialCombinado = [
+        ...fichasAtencion.map(f => ({ ...f, tipoRegistro: 'ficha', fechaObj: parsearFecha(f.creadoEn || f.fecha || f.timestamp) })),
+        ...bitacoras.map(b => ({ ...b, tipoRegistro: 'bitacora', fechaObj: parsearFecha(b.creadoEn || b.fecha || b.timestamp) }))
+      ].sort((a, b) => {
+        const tA = a.fechaObj ? a.fechaObj.getTime() : 0;
+        const tB = b.fechaObj ? b.fechaObj.getTime() : 0;
+        return tB - tA;
       });
 
-      formVincular.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = formVincular.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = 'Procesando Nido...';
+      const contenedorLista = document.getElementById('lista-historial-unificado');
+      const inputTexto = document.getElementById('filtro-texto');
+      const selectTipo = document.getElementById('filtro-tipo');
+      const inputDesde = document.getElementById('filtro-fecha-desde');
+      const inputHasta = document.getElementById('filtro-fecha-hasta');
 
-        const nombres = formVincular.querySelectorAll('input[name="nombreBebe[]"]');
-        const ruts = formVincular.querySelectorAll('input[name="rutBebe[]"]');
-        
-        let hijosList = [];
-        let rutInvalido = false;
-
-        for (let i = 0; i < nombres.length; i++) {
-          const nombre = nombres[i].value.trim();
-          const rut = ruts[i].value.trim();
-
-          if (!validarRut(rut)) {
-            rutInvalido = true;
-            break;
-          }
-          hijosList.push({ nombre, rut });
-        }
-
-        if (rutInvalido) {
-          showToast('Uno o más RUTs ingresados no son válidos.', 'warning');
-          btn.disabled = false;
-          btn.textContent = 'Vincular / Crear Nido';
+      const renderRegistros = (items) => {
+        if (!contenedorLista) return;
+        if (items.length === 0) {
+          contenedorLista.innerHTML = '<div class="glass-panel p-8 text-center text-gray-400 italic rounded-xl">No se encontraron registros en el historial con los filtros seleccionados.</div>';
           return;
         }
 
-        try {
-          await vincularNidoFamiliar(userData.uid, hijosList);
-          showToast('¡Nido familiar configurado con éxito!', 'success');
-          setTimeout(() => location.reload(), 1500);
-        } catch (error) {
-          showToast('Error al configurar el nido', 'error');
-          btn.disabled = false;
-          btn.textContent = 'Vincular / Crear Nido';
-        }
-      });
-    }
+        contenedorLista.innerHTML = items.map(reg => {
+          const esFicha = reg.tipoRegistro === 'ficha';
+          
+          let fechaStr = 'Fecha no especificada';
+          if (reg.fechaObj) {
+            fechaStr = reg.fechaObj.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          }
 
-    const tableBody = document.querySelector('#parent-appointments-table tbody');
-    if (tableBody) {
-      tableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400 italic">Cargando citas...</td></tr>';
-      const appointments = await fetchUserAppointments(userData.uid);
-      if (appointments.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400 italic">No tienes citas agendadas aún.</td></tr>';
-      } else {
-        tableBody.innerHTML = appointments.map(app => `
-          <tr>
-            <td class="p-4 font-medium">${escapeHTML(app.servicio)}</td>
-            <td class="p-4 text-gray-600">${escapeHTML(app.profesionalNombre || 'Por asignar')}</td>
-            <td class="p-4">${escapeHTML(app.fecha)} ${escapeHTML(app.hora)}</td>
-            <td class="p-4">
-              <span class="px-2 py-1 rounded-full text-xs font-bold ${
-                app.estado === 'completada' ? 'bg-green-100 text-green-700' :
-                app.estado === 'activo' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
-              }">${escapeHTML(app.estado)}</span>
-            </td>
-          </tr>
-        `).join('');
+          const badgeClass = esFicha ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700';
+          const badgeLabel = esFicha ? '🤱 Ficha de Atención' : '🍼 Bitácora de Cuidado';
+
+          return `
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative pl-6 border-l-4 ${esFicha ? 'border-indigo-500' : 'border-emerald-500'}">
+              <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+                <div>
+                  <span class="text-xs text-gray-400 font-bold block">${escapeHTML(fechaStr)}</span>
+                  <h4 class="font-bold text-base text-[#181411]">${escapeHTML(reg.titulo || (esFicha ? 'Atención de Consejería' : 'Reporte de Cuidado'))}</h4>
+                  <p class="text-xs text-[#887263]">Prestador: ${escapeHTML(reg.prestadorNombre || reg.consejeraNombre || 'Profesional')}</p>
+                </div>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${badgeClass}">${badgeLabel}</span>
+              </div>
+              <div class="text-sm text-gray-600 mt-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                ${escapeHTML(reg.observaciones || reg.diagnostico || reg.resumen || 'Sin observaciones detalladas.')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      const aplicarFiltros = () => {
+        const texto = (inputTexto?.value || '').toLowerCase();
+        const tipo = selectTipo?.value || 'todos';
+        const desde = inputDesde?.value ? new Date(inputDesde.value) : null;
+        const hasta = inputHasta?.value ? new Date(inputHasta.value) : null;
+        if (hasta) hasta.setHours(23, 59, 59);
+
+        const filtrados = historialCombinado.filter(item => {
+          const matchTipo = tipo === 'todos' || item.tipoRegistro === tipo;
+          const prestador = (item.prestadorNombre || item.consejeraNombre || '').toLowerCase();
+          const notas = (item.observaciones || item.diagnostico || item.resumen || '').toLowerCase();
+          const matchTexto = prestador.includes(texto) || notas.includes(texto) || texto === '';
+
+          let matchFecha = true;
+          if (item.fechaObj) {
+            if (desde && item.fechaObj < desde) matchFecha = false;
+            if (hasta && item.fechaObj > hasta) matchFecha = false;
+          }
+
+          return matchTipo && matchTexto && matchFecha;
+        });
+
+        renderRegistros(filtrados);
+      };
+
+      renderRegistros(historialCombinado);
+
+      inputTexto?.addEventListener('input', aplicarFiltros);
+      selectTipo?.addEventListener('change', aplicarFiltros);
+      inputDesde?.addEventListener('change', aplicarFiltros);
+      inputHasta?.addEventListener('change', aplicarFiltros);
+
+    } catch (e) {
+      console.error("Error al cargar historial unificado:", e);
+      const contenedorLista = document.getElementById('lista-historial-unificado');
+      if (contenedorLista) {
+        contenedorLista.innerHTML = '<div class="text-center py-10 text-red-500 italic">Error al cargar el historial del bebé.</div>';
       }
     }
 
   } else if (activeTab === 'tienda') {
     dashboardContent.innerHTML = `
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-black text-[#181411]">🛍️ Tienda de Bebés</h2>
-        <div class="flex gap-2">
-          <button class="btn-categoria bg-[#e87a30] text-white px-3 py-1.5 rounded-full text-xs font-bold" data-cat="Todos">Todos</button>
-          <button class="btn-categoria bg-white border border-[#e5dfdc] text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold" data-cat="Lactancia">Lactancia</button>
-          <button class="btn-categoria bg-white border border-[#e5dfdc] text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold" data-cat="Higiene">Higiene</button>
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-2xl font-black text-[#181411]">Tienda Bebé 🛍️</h2>
+          <p class="text-sm text-[#887263]">Encuentra productos especializados para el cuidado y lactancia.</p>
         </div>
+        <button id="btnVerCarritoTienda" class="bg-[#e87a30] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#d66a20] transition">
+          🛒 Ver Carrito (${getCartQuantity()})
+        </button>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tienda-productos-grid">
-        <p class="col-span-full text-center text-gray-400 py-10 italic">Cargando productos...</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="grid-productos-tienda">
+        <p class="col-span-full text-center py-10 text-gray-400 italic">Cargando productos...</p>
       </div>
     `;
 
-    renderTiendaProductos('Todos');
+    document.getElementById('btnVerCarritoTienda')?.addEventListener('click', openCartModal);
 
-    dashboardContent.querySelectorAll('.btn-categoria').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        dashboardContent.querySelectorAll('.btn-categoria').forEach(b => {
-          b.className = "btn-categoria bg-white border border-[#e5dfdc] text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold";
-        });
-        e.target.className = "btn-categoria bg-[#e87a30] text-white px-3 py-1.5 rounded-full text-xs font-bold";
-        renderTiendaProductos(e.target.dataset.cat);
-      });
-    });
+    try {
+      const productos = await fetchActiveProducts();
+      const grid = document.getElementById('grid-productos-tienda');
+      if (grid) {
+        if (productos.length === 0) {
+          grid.innerHTML = '<p class="col-span-full text-center py-10 text-gray-400 italic">No hay productos disponibles por el momento.</p>';
+        } else {
+          grid.innerHTML = productos.map(prod => `
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+              <div>
+                ${prod.imagenUrl ? `<img src="${escapeHTML(prod.imagenUrl)}" alt="${escapeHTML(prod.nombre)}" class="w-full h-40 object-cover rounded-xl mb-3" />` : ''}
+                <span class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-bold">${escapeHTML(prod.categoria || 'General')}</span>
+                <h4 class="font-bold text-lg mt-2 text-[#181411]">${escapeHTML(prod.nombre)}</h4>
+                <p class="text-xs text-gray-500 mt-1">Stock: ${prod.stock || 0} disponibles</p>
+              </div>
+              <div class="mt-4 flex items-center justify-between">
+                <span class="text-lg font-black text-[#e87a30]">$${Number(prod.precio || 0).toLocaleString('es-CL')}</span>
+                <button class="btn-agregar-carrito bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition" data-id="${prod.id}" data-nombre="${escapeHTML(prod.nombre)}" data-precio="${prod.precio}">
+                  Agregar 🛒
+                </button>
+              </div>
+            </div>
+          `).join('');
+
+          grid.querySelectorAll('.btn-agregar-carrito').forEach(btn => {
+            btn.onclick = () => {
+              const { id, nombre, precio } = btn.dataset;
+              showToast(`Añadido al carrito: ${nombre}`, 'success');
+            };
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Error al cargar productos:", e);
+    }
 
   } else if (activeTab === 'pedidos') {
     dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-6">📦 Historial de Pedidos</h2>
-      <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] overflow-hidden" id="pedidos-container">
-        <p class="text-center py-10 text-gray-400 italic">Cargando historial...</p>
+      <h2 class="text-2xl font-black text-[#181411] mb-6">Mis Pedidos 📦</h2>
+      <div class="space-y-4" id="lista-pedidos-padre">
+        <p class="text-center py-10 text-gray-400 italic">Cargando pedidos...</p>
       </div>
     `;
-    renderMisPedidos(userData.uid);
-
-  } else if (activeTab === 'bitacora') {
-    dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-2">🍼 Historial del Bebé</h2>
-      <p class="text-sm text-gray-500 mb-6">Información e indicaciones ingresadas por las cuidadoras y consejeras de LactaNido.</p>
-      <div class="space-y-6" id="bitacora-timeline">
-        <p class="text-center py-10 text-gray-400 italic">Cargando bitácoras y fichas...</p>
-      </div>
-    `;
-    renderBitacoraTimeline(userData.nidoId);
-  }
-}
-
-async function renderTiendaProductos(categoria) {
-  const grid = document.getElementById('tienda-productos-grid');
-  if (!grid) return;
-  try {
-    const products = await fetchActiveProducts();
-    const filtered = categoria === 'Todos' ? products : products.filter(p => p.categoria === categoria);
-    
-    if (filtered.length === 0) {
-      grid.innerHTML = '<p class="col-span-full text-center text-gray-400 py-10 italic">No hay productos disponibles en esta categoría.</p>';
-      return;
-    }
-
-    grid.innerHTML = filtered.map(p => `
-      <div class="bg-white rounded-xl shadow-sm border border-[#e5dfdc] p-5 flex flex-col items-center hover:shadow-md transition-all">
-        <img src="${escapeHTML(p.imagenUrl || 'https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=300&q=80')}" alt="${escapeHTML(p.nombre)}" class="w-full h-32 object-cover rounded-lg mb-4" />
-        <h4 class="font-bold text-[#181411] text-center mb-1 line-clamp-2 h-10">${escapeHTML(p.nombre)}</h4>
-        <p class="text-[#e87a30] font-black text-xl mb-1">$${p.precio.toLocaleString('cl-CL')}</p>
-        <p class="text-xs text-gray-400 mb-4">Stock disponible: ${p.stock}</p>
-        <button data-id="${escapeHTML(p.id)}" data-nombre="${escapeHTML(p.nombre)}" data-precio="${p.precio}" data-stock="${p.stock}" class="btn-agregar-carrito w-full bg-[#181411] text-white py-2 rounded-lg text-sm font-bold hover:bg-[#e87a30] transition-colors flex items-center justify-center gap-2">
-          Agregar 🛒
-        </button>
-      </div>
-    `).join('');
-
-    grid.querySelectorAll('.btn-agregar-carrito').forEach(btn => {
-      btn.onclick = () => {
-        const { id, nombre, precio, stock } = btn.dataset;
-        addToCart({ productoId: id, nombre, precio, stock });
-      };
-    });
-
-  } catch (e) {
-    grid.innerHTML = '<p class="col-span-full text-center text-red-500 py-10 italic">Error al cargar productos.</p>';
-  }
-}
-
-async function renderMisPedidos(uid) {
-  const container = document.getElementById('pedidos-container');
-  if (!container) return;
-  try {
-    const pedidos = await fetchPedidosUsuario(uid);
-    if (pedidos.length === 0) {
-      container.innerHTML = '<p class="text-center py-10 text-gray-400 italic">No tienes compras registradas en tu cuenta.</p>';
-      return;
-    }
-
-    container.innerHTML = `
-      <table class="w-full text-left text-sm">
-        <thead class="bg-[#fbf9f8] border-b border-[#e5dfdc] text-[#887263]">
-          <tr>
-            <th class="p-4 font-medium">Pedido ID</th>
-            <th class="p-4 font-medium">Productos</th>
-            <th class="p-4 font-medium">Total</th>
-            <th class="p-4 font-medium">Fecha</th>
-            <th class="p-4 font-medium">Despacho</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[#e5dfdc]">
-          ${pedidos.map(p => `
-            <tr>
-              <td class="p-4 font-mono text-xs">${escapeHTML(p.id.slice(0, 8))}...</td>
-              <td class="p-4 text-gray-700">
-                ${p.productos.map(item => `${escapeHTML(item.nombre)} x${item.cantidad}`).join(', ')}
-              </td>
-              <td class="p-4 font-bold text-[#e87a30]">$${p.total.toLocaleString('cl-CL')}</td>
-              <td class="p-4 text-gray-500 text-xs">${new Date(p.creadoEn).toLocaleDateString()}</td>
-              <td class="p-4">
-                <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Recibido</span>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-
-  } catch (e) {
-    container.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error al cargar pedidos.</p>';
-  }
-}
-
-async function renderBitacoraTimeline(nidoId) {
-  const timeline = document.getElementById('bitacora-timeline');
-  if (!timeline) return;
-  if (!nidoId) {
-    timeline.innerHTML = '<p class="text-center py-10 text-red-500 italic font-semibold">Debes vincular tu Nido familiar para ver las bitácoras del bebé.</p>';
-    return;
-  }
-
-  try {
-    const fichas = await fetchFichasCuidadoPorNido(nidoId);
-
-    if (fichas.length === 0) {
-      timeline.innerHTML = '<p class="text-center py-10 text-gray-400 italic">No hay registros de cuidado cargados todavía.</p>';
-      return;
-    }
-
-    timeline.innerHTML = fichas.map(reg => {
-      const fechaObj = reg.creadoEn ? new Date(reg.creadoEn) : new Date(0);
-      const fechaLegible = fechaObj.toLocaleDateString('es-CL');
-      const horaLegible = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      return `
-        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative pl-8 border-l-4 border-emerald-500 slide-up">
-          <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
-            <div>
-              <span class="text-xs text-gray-400 font-bold block">${fechaLegible} a las ${horaLegible} hrs</span>
-              <h4 class="font-bold text-lg text-[#181411]">Reporte de Cuidado</h4>
-              <p class="text-xs text-[#887263]">Registrado por: ${escapeHTML(reg.prestadorNombre || 'Prestador')} • Turno efectivo: ${reg.horasEfectivas || 0} hrs</p>
+    try {
+      const pedidos = await fetchPedidosUsuario(userData.uid);
+      const container = document.getElementById('lista-pedidos-padre');
+      if (container) {
+        if (pedidos.length === 0) {
+          container.innerHTML = '<p class="text-center py-10 text-gray-400 italic">No has realizado ningún pedido todavía.</p>';
+        } else {
+          container.innerHTML = pedidos.map(ped => `
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center flex-wrap gap-4">
+              <div>
+                <span class="text-xs text-gray-400 font-bold">Pedido ID: ${escapeHTML(ped.id)}</span>
+                <h4 class="font-bold text-base text-[#181411]">Total: $${Number(ped.total || 0).toLocaleString('es-CL')}</h4>
+                <p class="text-xs text-gray-600 mt-1">Dirección: ${escapeHTML(ped.direccion || 'N/A')}</p>
+              </div>
+              <div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 uppercase">${escapeHTML(ped.estado)}</span>
+              </div>
             </div>
-            <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full uppercase tracking-wider">🍼 ${escapeHTML(reg.prestadorRol || 'Cuidadora')}</span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100 text-xs">
-            <div><strong>🥛 Alimentación:</strong> ${escapeHTML(reg.tipoAlimentacion || 'N/A')}</div>
-            <div><strong>😴 Horas Sueño:</strong> ${reg.horasSueno || 0}</div>
-            <div><strong>🧻 Pañales:</strong> ${reg.cantidadPanales || 0}</div>
-          </div>
-          <div class="text-sm text-gray-600">${escapeHTML(reg.observaciones || 'Sin observaciones')}</div>
-        </div>
-      `;
-    }).join('');
-  } catch (e) {
-    console.error('Error cargando bitácoras:', e);
-    timeline.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error cargando bitácoras.</p>';
+          `).join('');
+        }
+      }
+    } catch (e) {
+      console.error("Error cargando pedidos:", e);
+    }
   }
 }

@@ -52,23 +52,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const NAV_CONFIG = {
     padre: [
       { label: "Resumen", icon: "🏠", action: "resumen" },
-      { label: "Tienda Bebé 🛍️", action: "tienda", icon: "🧸" },
-      { label: "Mis Pedidos 📦", action: "pedidos", icon: "🚚" },
-      { label: "Bitácoras Bebé 📋", action: "bitacora", icon: "🍼" },
-      { label: "Perfil Nido", action: "modalPerfilBebe", icon: "👶", isModal: true }
+      { label: "Tienda Bebé 🛍️", icon: "🧸", action: "tienda" },
+      { label: "Mis Pedidos 📦", icon: "🚚", action: "pedidos" },
+      { label: "Historial del Bebé", icon: "📜", action: "historial_bebe" }
     ],
     consejera: [
-      { label: "Dashboard", icon: "📊", action: "dashboard" },
-      { label: "Mis Citas", icon: "🗓️", action: "citas" },
-      { label: "Fichas Guardadas", icon: "🤱", action: "historial_fichas" },
-      { label: "Mi Horario", icon: "⏱️", action: "horarios" },
+      { label: "Mis Atenciones", icon: "🗓️", action: "dashboard" },
+      { label: "Mis Fichas", icon: "🤱", action: "historial_fichas" },
+      { label: "Bitácoras", icon: "📋", action: "bitacoras" },
+      { label: "Mi Disponibilidad", icon: "⏱️", action: "horarios" },
       { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
       { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
     cuidadora: [
-      { label: "Turnos", icon: "🌙", action: "dashboard" },
-      { label: "Fichas Guardadas", icon: "📋", action: "historial_fichas" },
-      { label: "Disponibilidad", icon: "🗓️", action: "disponibilidad" },
+      { label: "Mis Atenciones", icon: "🌙", action: "dashboard" },
+      { label: "Mis Bitácoras", icon: "📋", action: "historial_fichas" },
+      { label: "Fichas", icon: "📝", action: "fichas_cuidado" },
+      { label: "Mi Disponibilidad", icon: "🗓️", action: "disponibilidad" },
       { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
       { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
     ],
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { label: "Usuarios", icon: "👥", action: "usuarios" },
       { label: "Nidos / Familias", icon: "👶", action: "admin_nidos" },
       { label: "Registros", icon: "📋", action: "admin_registros" },
-      { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" },
+      { label: "Pedidos / Tienda", icon: "🛍️️", action: "admin_tienda" },
       { label: "Gestión de Tips", icon: "💡", action: "admin_tips" }
     ]
   };
