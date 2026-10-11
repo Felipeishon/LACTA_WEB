@@ -1,5 +1,5 @@
 import { showToast } from '../ui/notifications.js';
-import { getAvailabilitySlots, addAvailabilitySlot, removeAvailabilitySlot, fetchServiceAppointments, updateAppointmentDateTime } from '../api/firestore.js';
+import { getAvailabilitySlots, addAvailabilitySlot, removeAvailabilitySlot, fetchServiceAppointments, updateAppointmentDateTime, actualizarEstadoCita } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
@@ -21,43 +21,89 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 class="text-2xl font-black text-[#181411]">Mis Atenciones (Cuidadora) 🌙</h2>
-            <p class="text-[#887263]">Gestiona y modifica la programación de tus turnos asignados.</p>
+            <p class="text-[#887263]">Gestiona la aprobación y modificación de tus turnos asignados.</p>
           </div>
         </div>
       </div>
       <div class="space-y-4" id="cuidadora-turnos-list">
-        ${appointments.length > 0 ? appointments.map(app => `
+        ${appointments.length > 0 ? appointments.map(app => {
+          const estado = app.estado || 'Pendiente';
+          // CORRECCIÓN: Forzamos minúsculas
+          const estadoNormalizado = estado.toLowerCase().trim();
+          
+          const slotDataId = app.slotId || app.slotAsignado || '';
+          const profDataId = app.profesionalId || app.prestadorId || app.cuidadoraId || '';
+          const nidoDataId = app.nidoId || '';
+          
+          const appIdSafe = escapeHTML(app.id || '');
+          const nidoIdSafe = escapeHTML(nidoDataId);
+          const horaSafe = escapeHTML(app.hora || '');
+          const nombreSafe = escapeHTML(app.nombre || '');
+          const fechaSafe = escapeHTML(app.fecha || '');
+          const emailSafe = escapeHTML(app.email || '');
+
+          // Traductor de Fechas
+          let dateInputVal = fechaSafe;
+          const fParts = fechaSafe.split('-');
+          if (fParts.length === 3 && fParts[0].length === 2) {
+              dateInputVal = `${fParts[2]}-${fParts[1]}-${fParts[0]}`;
+          }
+
+          // Traductor de Horas
+          let timeInputVal = '';
+          const tMatch = horaSafe.match(/\d{2}:\d{2}/);
+          if (tMatch) timeInputVal = tMatch[0];
+
+          let actionButtons = '';
+
+          // Control Inteligente de Botones
+          if (estadoNormalizado === 'pendiente') {
+            actionButtons = `
+              <div class="flex gap-2">
+                <button data-id="${appIdSafe}" data-slot="${slotDataId}" data-prof="${profDataId}" class="btn-rechazar-cita bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-3 rounded-lg text-xs transition">Rechazar</button>
+                <button data-id="${appIdSafe}" class="btn-aprobar-cita bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs transition">Aprobar Turno</button>
+              </div>
+            `;
+          } else if (estadoNormalizado === 'aprobado') {
+            actionButtons = `
+              <button data-id="${appIdSafe}" data-nid="${nidoIdSafe}" class="btn-abrir-ficha bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-xs transition">
+                Completar Bitácora 📝
+              </button>
+            `;
+          } else if (estadoNormalizado === 'completada') {
+            actionButtons = `<span class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-bold">Bitácora Guardada ✅</span>`;
+          } else {
+            actionButtons = `<span class="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider">${estado}</span>`;
+          }
+
+          return `
           <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h4 class="font-bold text-lg">${escapeHTML(app.nombre)}</h4>
-              <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${escapeHTML(app.fecha)}</span> • Hora: ${escapeHTML(app.hora)} • Duración: ${app.duracion} hrs</p>
-              <p class="text-sm text-gray-600 mt-1">Cliente: ${escapeHTML(app.email)}</p>
+              <h4 class="font-bold text-lg">${nombreSafe}</h4>
+              <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${fechaSafe}</span> • Hora: ${horaSafe}</p>
+              <p class="text-sm text-gray-600 mt-1">Cliente: ${emailSafe}</p>
             </div>
             
             <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-center gap-2">
               <div>
-                <input type="date" value="${escapeHTML(app.fecha)}" class="edit-fecha p-1 border rounded text-xs block mb-1" data-id="${app.id}" />
-                <input type="time" value="${escapeHTML(app.hora)}" class="edit-hora p-1 border rounded text-xs block" data-id="${app.id}" />
+                <input type="date" value="${dateInputVal}" class="edit-fecha p-1 border rounded text-xs block mb-1" data-id="${appIdSafe}" />
+                <input type="time" value="${timeInputVal}" class="edit-hora p-1 border rounded text-xs block" data-id="${appIdSafe}" />
               </div>
-              <button data-id="${app.id}" class="btn-guardar-cambio-cita bg-gray-800 hover:bg-[#e87a30] text-white text-xs font-bold px-3 py-2 rounded transition">Actualizar</button>
+              <button data-id="${appIdSafe}" class="btn-guardar-cambio-cita bg-gray-800 hover:bg-[#e87a30] text-white text-xs font-bold px-3 py-2 rounded transition">Actualizar</button>
             </div>
 
             <div>
-              ${app.estado === 'completada' ? `
-                <span class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-bold">Bitácora Guardada ✅</span>
-              ` : `
-                <button data-id="${escapeHTML(app.id)}" data-nid="${escapeHTML(app.nidoId || '')}" class="btn-abrir-ficha bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-xs transition">
-                  Completar Bitácora 📝
-                </button>
-              `}
+              ${actionButtons}
             </div>
           </div>
-        `).join('') : `
+          `;
+        }).join('') : `
           <p class="text-center py-10 text-gray-400 italic">No tienes turnos programados en el sistema.</p>
         `}
       </div>
     `;
 
+    // Handler para Modificar Fecha
     dashboardContent.querySelectorAll('.btn-guardar-cambio-cita').forEach(btn => {
       btn.onclick = async () => {
         const id = btn.dataset.id;
@@ -70,10 +116,18 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           return;
         }
 
+        let fechaParaGuardar = nuevaFecha;
+        if (nuevaFecha.includes('-')) {
+            const parts = nuevaFecha.split('-');
+            if (parts[0].length === 4) {
+                fechaParaGuardar = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+
         try {
           btn.disabled = true;
           btn.textContent = '...';
-          await updateAppointmentDateTime(id, nuevaFecha, nuevaHora);
+          await updateAppointmentDateTime(id, fechaParaGuardar, nuevaHora);
           showToast('Turno actualizado con éxito', 'success');
           renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
         } catch (e) {
@@ -84,6 +138,41 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
       };
     });
 
+    // Handler para Aprobar
+    dashboardContent.querySelectorAll('.btn-aprobar-cita').forEach(btn => {
+      btn.onclick = async () => {
+        try {
+          btn.textContent = 'Aprobando...';
+          btn.disabled = true;
+          await actualizarEstadoCita(btn.dataset.id, 'Aprobado');
+          showToast('Cita aprobada correctamente', 'success');
+          renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
+        } catch (e) {
+          showToast('Error al aprobar', 'error');
+          btn.disabled = false;
+        }
+      };
+    });
+
+    // Handler para Rechazar
+    dashboardContent.querySelectorAll('.btn-rechazar-cita').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('¿Segura que deseas rechazar este turno? El horario se volverá a liberar para otros padres.')) return;
+        try {
+          btn.textContent = 'Rechazando...';
+          btn.disabled = true;
+          const { id, slot, prof } = btn.dataset;
+          await actualizarEstadoCita(id, 'Rechazada', slot, prof);
+          showToast('Turno rechazado y horario liberado', 'success');
+          renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
+        } catch (e) {
+          showToast('Error al rechazar', 'error');
+          btn.disabled = false;
+        }
+      };
+    });
+
+    // Handler para Completar Bitácora
     dashboardContent.querySelectorAll('.btn-abrir-ficha').forEach(btn => {
       btn.onclick = () => {
         const { id, nid } = btn.dataset;
@@ -101,7 +190,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     renderPrestadorFichas(uid);
 
   } else if (activeTab === 'fichas_cuidado') {
-    // Validar si tiene servicios o citas con nidos asignados para habilitar esta sección
     const appointments = await fetchServiceAppointments('Cuidador', uid);
     const tieneServiciosValidos = appointments.some(app => app.nidoId);
 
@@ -153,10 +241,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
               <label class="block text-xs font-bold text-gray-700 mb-1">Fecha y Hora de Fin</label>
               <input type="datetime-local" id="slot-end-date" required class="w-full p-2 border border-gray-300 rounded-lg text-sm">
             </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-700 mb-1">Zona de Atención</label>
-              <input type="text" id="slot-zona" placeholder="Ej: Las Condes, Providencia" required class="w-full p-2 border border-gray-300 rounded-lg text-sm">
-            </div>
             <div class="flex justify-end gap-4 pt-4">
               <button type="button" id="btnCloseAddSlotModal" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg text-sm">Cancelar</button>
               <button type="submit" id="btnSaveSlot" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Guardar Turno</button>
@@ -206,7 +290,6 @@ function setupAvailabilityHandlers(uid) {
     e.preventDefault();
     const startDate = document.getElementById('slot-start-date').value;
     const endDate = document.getElementById('slot-end-date').value;
-    const zona = document.getElementById('slot-zona').value;
 
     if (new Date(endDate) <= new Date(startDate)) {
       showToast('La fecha de fin debe ser posterior a la de inicio.', 'error');
@@ -222,7 +305,6 @@ function setupAvailabilityHandlers(uid) {
         servicio: 'cuidado',
         fechaInicio: new Date(startDate),
         fechaFin: new Date(endDate),
-        zona: zona,
       });
       showToast('Turno disponible agregado con éxito', 'success');
       
@@ -259,7 +341,6 @@ async function loadCaregiverAvailabilitySlots(uid) {
           <li class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
             <div>
               <p class="font-bold text-gray-800 text-sm">${formatDateRange(slot.fechaInicio, slot.fechaFin)}</p>
-              <p class="text-xs text-gray-500">📍 ${escapeHTML(slot.zona)}</p>
             </div>
             <div class="flex items-center gap-4">
               <span class="text-xs font-bold px-2 py-1 rounded-full ${statusClass}">${statusText}</span>

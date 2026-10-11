@@ -8,18 +8,14 @@ export async function getUserProfileWithSubcollections(uid) {
         if (!userSnap.exists()) {
             return null;
         }
-
         const userData = { id: userSnap.id, ...userSnap.data() };
-
         const [caregiverResult, counselorResult] = await Promise.allSettled([
             getDocs(collection(db, 'usuarios', uid, 'caregiverProfile')),
             getDocs(collection(db, 'usuarios', uid, 'counselorProfile'))
         ]);
-
         const userRoles = userData.rol?.map(r => r.toLowerCase()) || [];
         const hasCaregiverRole = userRoles.includes('cuidadora') || userRoles.includes('caregiver');
         const hasCounselorRole = userRoles.includes('consejera') || userRoles.includes('counselor');
-
         if (hasCaregiverRole && caregiverResult.status === 'rejected') {
             console.error('Error crítico al leer subcolección de cuidadora:', caregiverResult.reason);
             throw new Error('No se pudo cargar el perfil de cuidadora. Verifica las reglas de seguridad de Firestore.');
@@ -28,7 +24,6 @@ export async function getUserProfileWithSubcollections(uid) {
             const docSnap = caregiverResult.value.docs[0];
             userData.caregiverProfile = { id: docSnap.id, ...docSnap.data() };
         }
-
         if (hasCounselorRole && counselorResult.status === 'rejected') {
             console.error('Error crítico al leer subcolección de consejera:', counselorResult.reason);
             throw new Error('No se pudo cargar el perfil de consejera. Verifica las reglas de seguridad de Firestore.');
@@ -37,7 +32,6 @@ export async function getUserProfileWithSubcollections(uid) {
             const docSnap = counselorResult.value.docs[0];
             userData.counselorProfile = { id: docSnap.id, ...docSnap.data() };
         }
-
         return userData;
     } catch (error) {
         console.error('Error al obtener perfil del usuario con subcolecciones:', error);
@@ -50,10 +44,8 @@ export async function fetchAdminStats() {
         const activeUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo")));
         const pendingUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente")));
         const activeAppointmentsSnap = await getDocs(query(collection(db, "reservas"), where("estado", "==", "pendiente")));
-        
         const consejerasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera")));
         const cuidadorasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora")));
-        
         return {
             totalUsers: activeUsersSnap.size + pendingUsersSnap.size,
             activeAppointments: activeAppointmentsSnap.size,
@@ -68,10 +60,15 @@ export async function fetchAdminStats() {
 
 export async function fetchUserAppointments(uid) {
     try {
-        const q = query(collection(db, "reservas"), where("uid", "==", uid));
-        const snap = await getDocs(q);
-        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+        const snap = await getDocs(collection(db, "reservas"));
+        const docs = snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(r => r.uid === uid || r.userId === uid || r.usuarioId === uid || r.clienteId === uid);
+        return docs.sort((a, b) => {
+            const tA = a.creadoEn?.toDate ? a.creadoEn.toDate().getTime() : new Date(a.creadoEn || 0).getTime();
+            const tB = b.creadoEn?.toDate ? b.creadoEn.toDate().getTime() : new Date(b.creadoEn || 0).getTime();
+            return tB - tA;
+        });
     } catch (error) {
         console.error("Error al obtener citas del usuario:", error);
         throw error;
@@ -80,16 +77,13 @@ export async function fetchUserAppointments(uid) {
 
 export async function fetchServiceAppointments(servicio, uid) {
     try {
-        let q;
-        if (uid) {
-            q = query(collection(db, "reservas"), where("profesionalId", "==", uid));
-        } else {
-            q = query(collection(db, "reservas"), where("servicio", "==", servicio));
-        }
-        const snap = await getDocs(q);
+        const snap = await getDocs(collection(db, "reservas"));
         const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         if (uid) {
-            return all.filter(a => a.servicio === servicio || !servicio);
+            return all.filter(a => {
+                const pId = a.profesionalId || a.prestadorId || a.consejeraId || a.cuidadoraId;
+                return pId === uid;
+            });
         }
         return all;
     } catch (error) {
@@ -127,11 +121,7 @@ export async function getPendingPrestadores() {
 
 export async function getActiveProfessionals(rolStr) {
     try {
-        const q = query(
-            collection(db, "usuarios"), 
-            where("estado", "==", "activo"),
-            where("rol", "array-contains", rolStr)
-        );
+        const q = query(collection(db, "usuarios"), where("estado", "==", "activo"), where("rol", "array-contains", rolStr));
         const snap = await getDocs(q);
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
@@ -183,14 +173,9 @@ export async function updateUserProfile(uid, updateData) {
         estado: updateData.estado,
         rol: roles
     };
-
     if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
-    if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) {
-        throw new Error('Los datos del usuario no son válidos.');
-    }
-    if (roles.length === 0 || roles.some(role => !allowedRoles.includes(role))) {
-        throw new Error('Los roles del usuario no son válidos.');
-    }
+    if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) throw new Error('Los datos del usuario no son válidos.');
+    if (roles.length === 0 || roles.some(role => !allowedRoles.includes(role))) throw new Error('Los roles del usuario no son válidos.');
 
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
@@ -202,12 +187,7 @@ export async function updateUserProfile(uid, updateData) {
         }
         transaction.update(userRef, changes);
         transaction.set(auditLogRef, {
-            adminUid,
-            action: 'UPDATE_USER',
-            targetType: 'USER',
-            targetId: uid,
-            changes,
-            timestamp: serverTimestamp()
+            adminUid, action: 'UPDATE_USER', targetType: 'USER', targetId: uid, changes, timestamp: serverTimestamp()
         });
     });
 }
@@ -227,12 +207,7 @@ export async function deleteUserProfile(uid) {
         }
         transaction.update(userRef, { estado: 'inactivo' });
         transaction.set(auditLogRef, {
-            adminUid,
-            action: 'DELETE_USER',
-            targetType: 'USER',
-            targetId: uid,
-            reason: 'Desactivado desde el panel de administración.',
-            timestamp: serverTimestamp()
+            adminUid, action: 'DELETE_USER', targetType: 'USER', targetId: uid, reason: 'Desactivado desde el panel de administración.', timestamp: serverTimestamp()
         });
     });
 }
@@ -250,11 +225,7 @@ export async function getCaregiverBlockedDays(uid) {
 
 export async function addCaregiverBlockedDay(uid, date, motivo) {
     try {
-        const docRef = await addDoc(collection(db, `usuarios/${uid}/bloqueos`), {
-            date,
-            motivo,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, `usuarios/${uid}/bloqueos`), { date, motivo, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error agregando bloqueo:", error);
@@ -348,51 +319,32 @@ export async function removeAvailabilitySlot(uid, slotId) {
 
 export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
     try {
-        if (!Array.isArray(hijosArray) || hijosArray.length === 0) {
-            throw new Error("Debe ingresar al menos un hijo/bebé.");
-        }
-
+        if (!Array.isArray(hijosArray) || hijosArray.length === 0) throw new Error("Debe ingresar al menos un hijo/bebé.");
         let nidoId = null;
         const nidosSnap = await getDocs(collection(db, "nidos"));
         let nidoExistenteDoc = null;
-
         for (const nidoDoc of nidosSnap.docs) {
             const data = nidoDoc.data();
             const hijosRegistrados = data.hijos || [];
             const matchHijosArray = hijosRegistrados.some(h => hijosArray.some(nuevo => nuevo.rut === h.rut));
             const matchAntiguo = data.rutBebe && hijosArray.some(nuevo => nuevo.rut === data.rutBebe);
-
-            if (matchHijosArray || matchAntiguo) {
-                nidoExistenteDoc = nidoDoc;
-                break;
-            }
+            if (matchHijosArray || matchAntiguo) { nidoExistenteDoc = nidoDoc; break; }
         }
-
         if (!nidoExistenteDoc) {
             const nuevoNidoRef = doc(collection(db, "nidos"));
             nidoId = nuevoNidoRef.id;
             await setDoc(nuevoNidoRef, {
-                hijos: hijosArray,
-                padresUids: [uidUsuario],
-                estado: 'activo',
-                creadoEn: new Date().toISOString()
+                hijos: hijosArray, padresUids: [uidUsuario], estado: 'activo', creadoEn: new Date().toISOString()
             });
         } else {
             nidoId = nidoExistenteDoc.id;
             const datosNido = nidoExistenteDoc.data();
             const padresActuales = datosNido.padresUids || [];
-            
             if (!padresActuales.includes(uidUsuario)) {
-                await updateDoc(doc(db, "nidos", nidoId), {
-                    padresUids: [...padresActuales, uidUsuario]
-                });
+                await updateDoc(doc(db, "nidos", nidoId), { padresUids: [...padresActuales, uidUsuario] });
             }
         }
-
-        await updateDoc(doc(db, "usuarios", uidUsuario), {
-            nidoId: nidoId
-        });
-
+        await updateDoc(doc(db, "usuarios", uidUsuario), { nidoId: nidoId });
         return nidoId;
     } catch (error) {
         console.error("Error al vincular el nido familiar:", error);
@@ -402,10 +354,7 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
 
 export async function deleteNidoProfile(nidoId) {
     const adminUid = auth.currentUser?.uid;
-    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
-        throw new Error('No se pudo identificar al nido.');
-    }
-
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) throw new Error('No se pudo identificar al nido.');
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
         const nidoRef = doc(db, 'nidos', nidoId);
@@ -414,27 +363,14 @@ export async function deleteNidoProfile(nidoId) {
         if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
             throw new Error('La cuenta actual no tiene permisos de administrador.');
         }
-        transaction.update(nidoRef, {
-            estado: 'inactivo',
-            fechaDesactivacion: new Date().toISOString()
-        });
-        transaction.set(auditLogRef, {
-            adminUid,
-            action: 'DELETE_NIDO',
-            targetType: 'NIDO',
-            targetId: nidoId,
-            reason: 'Desactivado desde el panel de administración.',
-            timestamp: serverTimestamp()
-        });
+        transaction.update(nidoRef, { estado: 'inactivo', fechaDesactivacion: new Date().toISOString() });
+        transaction.set(auditLogRef, { adminUid, action: 'DELETE_NIDO', targetType: 'NIDO', targetId: nidoId, reason: 'Desactivado desde el panel de administración.', timestamp: serverTimestamp() });
     });
 }
 
 export async function reactivarNidoProfile(nidoId) {
     const adminUid = auth.currentUser?.uid;
-    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) {
-        throw new Error('No se pudo identificar al nido.');
-    }
-
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) throw new Error('No se pudo identificar al nido.');
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
         const nidoRef = doc(db, 'nidos', nidoId);
@@ -443,17 +379,8 @@ export async function reactivarNidoProfile(nidoId) {
         if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
             throw new Error('La cuenta actual no tiene permisos de administrador.');
         }
-        transaction.update(nidoRef, {
-            estado: 'activo',
-            fechaReactivacion: new Date().toISOString()
-        });
-        transaction.set(auditLogRef, {
-            adminUid,
-            action: 'REACTIVATE_NIDO',
-            targetType: 'NIDO',
-            targetId: nidoId,
-            timestamp: serverTimestamp()
-        });
+        transaction.update(nidoRef, { estado: 'activo', fechaReactivacion: new Date().toISOString() });
+        transaction.set(auditLogRef, { adminUid, action: 'REACTIVATE_NIDO', targetType: 'NIDO', targetId: nidoId, timestamp: serverTimestamp() });
     });
 }
 
@@ -461,9 +388,7 @@ export async function obtenerDatosNido(nidoId) {
     if (!nidoId) return null;
     try {
         const docSnap = await getDoc(doc(db, "nidos", nidoId));
-        if (docSnap.exists()) {
-            return { id: docSnap.id, ...docSnap.data() };
-        }
+        if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
         return null;
     } catch (error) {
         console.error("Error al obtener datos del nido:", error);
@@ -473,14 +398,9 @@ export async function obtenerDatosNido(nidoId) {
 
 export async function saveFichaCuidado(fichaData) {
     try {
-        const docRef = await addDoc(collection(db, "bitacoras"), {
-            ...fichaData,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, "bitacoras"), { ...fichaData, creadoEn: new Date().toISOString() });
         if (fichaData.reservaId) {
-            await updateDoc(doc(db, "reservas", fichaData.reservaId), {
-                estado: 'completada'
-            });
+            await updateDoc(doc(db, "reservas", fichaData.reservaId), { estado: 'completada' });
         }
         return docRef.id;
     } catch (error) {
@@ -502,10 +422,7 @@ export async function fetchFichasCuidadoPorNido(nidoId) {
 }
 
 export async function fetchFichasCuidadoPorPrestador(prestadorId) {
-    if (!prestadorId) {
-        console.warn("fetchFichasCuidadoPorPrestador fue llamado sin un prestadorId.");
-        return [];
-    }
+    if (!prestadorId) return [];
     try {
         const q = query(collection(db, "bitacoras"), where("prestadorId", "==", prestadorId));
         const snap = await getDocs(q);
@@ -564,11 +481,7 @@ export async function fetchActiveProducts() {
 
 export async function createProduct(productData) {
     try {
-        const docRef = await addDoc(collection(db, "productos"), {
-            ...productData,
-            activo: true,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, "productos"), { ...productData, activo: true, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error al crear producto:", error);
@@ -580,23 +493,13 @@ export async function updateProduct(productId, productData) {
     const adminUid = auth.currentUser?.uid;
     const allowedCategories = ['Lactancia', 'Higiene', 'Accesorios'];
     const changes = {
-        nombre: String(productData.nombre || '').trim(),
-        precio: Number(productData.precio),
-        stock: Number(productData.stock),
-        categoria: productData.categoria,
-        imagenUrl: String(productData.imagenUrl || '').trim()
+        nombre: String(productData.nombre || '').trim(), precio: Number(productData.precio),
+        stock: Number(productData.stock), categoria: productData.categoria, imagenUrl: String(productData.imagenUrl || '').trim()
     };
-
     if (!adminUid || typeof productId !== 'string' || !productId.trim()) throw new Error('No se pudo identificar el producto.');
-    if (!changes.nombre || !Number.isFinite(changes.precio) || changes.precio < 0) {
-        throw new Error('El nombre o precio del producto no son válidos.');
-    }
-    if (!Number.isInteger(changes.stock) || changes.stock < 0) {
-        throw new Error('El stock del producto no es válido.');
-    }
-    if (!allowedCategories.includes(changes.categoria)) {
-        throw new Error('La categoría del producto no es válida.');
-    }
+    if (!changes.nombre || !Number.isFinite(changes.precio) || changes.precio < 0) throw new Error('El nombre o precio del producto no son válidos.');
+    if (!Number.isInteger(changes.stock) || changes.stock < 0) throw new Error('El stock del producto no es válido.');
+    if (!allowedCategories.includes(changes.categoria)) throw new Error('La categoría del producto no es válida.');
 
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
@@ -607,22 +510,13 @@ export async function updateProduct(productId, productData) {
             throw new Error('La cuenta actual no tiene permisos de administrador.');
         }
         transaction.update(productRef, changes);
-        transaction.set(auditLogRef, {
-            adminUid,
-            action: 'UPDATE_PRODUCT',
-            targetType: 'PRODUCT',
-            targetId: productId,
-            changes,
-            timestamp: serverTimestamp()
-        });
+        transaction.set(auditLogRef, { adminUid, action: 'UPDATE_PRODUCT', targetType: 'PRODUCT', targetId: productId, changes, timestamp: serverTimestamp() });
     });
 }
 
 export async function deleteProduct(productId) {
     try {
-        await updateDoc(doc(db, "productos", productId), {
-            activo: false
-        });
+        await updateDoc(doc(db, "productos", productId), { activo: false });
     } catch (error) {
         console.error("Error al eliminar producto:", error);
         throw error;
@@ -634,44 +528,22 @@ export async function createPedido(pedidoData) {
         await runTransaction(db, async (transaction) => {
             let totalCalculado = 0;
             const productosVerificados = [];
-
             for (const item of pedidoData.productos) {
                 const prodRef = doc(db, "productos", item.productoId);
                 const prodDoc = await transaction.get(prodRef);
-                if (!prodDoc.exists()) {
-                    throw new Error(`Producto no existe.`);
-                }
+                if (!prodDoc.exists()) throw new Error(`Producto no existe.`);
                 const dbData = prodDoc.data();
                 const actualStock = dbData.stock || 0;
-                if (actualStock < item.cantidad) {
-                    throw new Error(`Stock insuficiente. Stock actual: ${actualStock}`);
-                }
-                
+                if (actualStock < item.cantidad) throw new Error(`Stock insuficiente. Stock actual: ${actualStock}`);
                 const precioReal = dbData.precio || 0;
                 totalCalculado += precioReal * item.cantidad;
-
-                productosVerificados.push({
-                    productoId: item.productoId,
-                    nombre: dbData.nombre || item.nombre,
-                    precio: precioReal,
-                    cantidad: item.cantidad
-                });
-
-                transaction.update(prodRef, {
-                    stock: actualStock - item.cantidad
-                });
+                productosVerificados.push({ productoId: item.productoId, nombre: dbData.nombre || item.nombre, precio: precioReal, cantidad: item.cantidad });
+                transaction.update(prodRef, { stock: actualStock - item.cantidad });
             }
-            
             const nuevoPedidoRef = doc(collection(db, "pedidos"));
             transaction.set(nuevoPedidoRef, {
-                compradorUid: pedidoData.compradorUid,
-                nidoId: pedidoData.nidoId || null,
-                direccion: pedidoData.direccion || '',
-                telefono: pedidoData.telefono || '',
-                productos: productosVerificados,
-                total: totalCalculado,
-                estado: pedidoData.estado || 'pagado',
-                creadoEn: new Date().toISOString()
+                compradorUid: pedidoData.compradorUid, nidoId: pedidoData.nidoId || null, direccion: pedidoData.direccion || '',
+                telefono: pedidoData.telefono || '', productos: productosVerificados, total: totalCalculado, estado: pedidoData.estado || 'pagado', creadoEn: new Date().toISOString()
             });
         });
     } catch (error) {
@@ -716,10 +588,7 @@ export async function fetchAllTips() {
 
 export async function createTip(tipData) {
     try {
-        const docRef = await addDoc(collection(db, "tips"), {
-            ...tipData,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, "tips"), { ...tipData, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error al crear el tip:", error);
@@ -729,10 +598,7 @@ export async function createTip(tipData) {
 
 export async function deleteTip(tipId) {
     const adminUid = auth.currentUser?.uid;
-    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) {
-        throw new Error('No se pudo identificar el tip.');
-    }
-
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) throw new Error('No se pudo identificar el tip.');
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
         const tipRef = doc(db, 'tips', tipId);
@@ -742,23 +608,13 @@ export async function deleteTip(tipId) {
             throw new Error('La cuenta actual no tiene permisos de administrador.');
         }
         transaction.delete(tipRef);
-        transaction.set(auditLogRef, {
-            adminUid,
-            action: 'DELETE_TIP',
-            targetType: 'TIP',
-            targetId: tipId,
-            reason: 'Moderado desde el panel de administración.',
-            timestamp: serverTimestamp()
-        });
+        transaction.set(auditLogRef, { adminUid, action: 'DELETE_TIP', targetType: 'TIP', targetId: tipId, reason: 'Moderado desde el panel de administración.', timestamp: serverTimestamp() });
     });
 }
 
 export async function approveTip(tipId) {
     const adminUid = auth.currentUser?.uid;
-    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) {
-        throw new Error('No se pudo identificar el tip.');
-    }
-
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) throw new Error('No se pudo identificar el tip.');
     await runTransaction(db, async transaction => {
         const adminRef = doc(db, 'usuarios', adminUid);
         const tipRef = doc(db, 'tips', tipId);
@@ -768,25 +624,42 @@ export async function approveTip(tipId) {
             throw new Error('La cuenta actual no tiene permisos de administrador.');
         }
         transaction.update(tipRef, { estado: 'aprobado' });
-        transaction.set(auditLogRef, {
-            adminUid,
-            action: 'APPROVE_TIP',
-            targetType: 'TIP',
-            targetId: tipId,
-            timestamp: serverTimestamp()
-        });
+        transaction.set(auditLogRef, { adminUid, action: 'APPROVE_TIP', targetType: 'TIP', targetId: tipId, timestamp: serverTimestamp() });
     });
 }
 
 export async function updateAppointmentDateTime(reservaId, nuevaFecha, nuevaHora) {
     try {
         const reservaRef = doc(db, 'reservas', reservaId);
-        await updateDoc(reservaRef, {
-            fecha: nuevaFecha,
-            hora: nuevaHora
-        });
+        await updateDoc(reservaRef, { fecha: nuevaFecha, hora: nuevaHora });
     } catch (error) {
         console.error("Error al actualizar la fecha y hora de la cita:", error);
+        throw error;
+    }
+}
+
+// -----------------------------------------------------------
+// NUEVO: FUNCION PARA APROBAR, RECHAZAR O ANULAR CITAS
+// Y LIBERAR EL TURNO EN CASO DE RECHAZO O ANULACIÓN
+// -----------------------------------------------------------
+export async function actualizarEstadoCita(reservaId, nuevoEstado, slotId = null, profesionalId = null) {
+    try {
+        const reservaRef = doc(db, 'reservas', reservaId);
+        await updateDoc(reservaRef, { estado: nuevoEstado });
+
+        // Si se cancela o rechaza, devolver la disponibilidad del bloque al calendario
+        if ((nuevoEstado === 'Cancelada' || nuevoEstado === 'Rechazada') && slotId && profesionalId) {
+            const slotRef = doc(db, `usuarios/${profesionalId}/disponibilidad`, slotId);
+            const slotSnap = await getDoc(slotRef);
+            if (slotSnap.exists()) {
+                await updateDoc(slotRef, {
+                    reservado: false,
+                    disponible: true
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error al actualizar el estado de la cita:", error);
         throw error;
     }
 }

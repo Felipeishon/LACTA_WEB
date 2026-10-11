@@ -1,5 +1,7 @@
+import { db } from '../firebase.js';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { showToast } from '../ui/notifications.js';
-import { fetchServiceAppointments, saveConsejeraSchedule, updateAppointmentDateTime, fetchAllBitacoras } from '../api/firestore.js';
+import { fetchServiceAppointments, saveConsejeraSchedule, updateAppointmentDateTime, fetchAllBitacoras, actualizarEstadoCita } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
@@ -41,37 +43,90 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-2xl font-black text-[#181411]">Mis Atenciones (Consejería) 🗓️</h2>
-          <p class="text-gray-500 text-sm">Listado informativo de agendas tomadas y gestión de fechas/horarios.</p>
+          <p class="text-gray-500 text-sm">Gestiona la aprobación y atención de las consejerías agendadas.</p>
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-atenciones-consejera">
-        ${appointments.length > 0 ? appointments.map(app => `
+        ${appointments.length > 0 ? appointments.map(app => {
+          const estado = app.estado || 'Pendiente';
+          // ESTA ES LA CORRECCIÓN: Forzamos a minúsculas para evitar errores de tipeo en la BD
+          const estadoNormalizado = estado.toLowerCase().trim();
+          
+          const slotDataId = app.slotId || app.slotAsignado || '';
+          const profDataId = app.profesionalId || app.prestadorId || app.consejeraId || '';
+          const nidoDataId = app.nidoId || '';
+          
+          const appIdSafe = escapeHTML(app.id || '');
+          const nidoIdSafe = escapeHTML(nidoDataId);
+          const horaSafe = escapeHTML(app.hora || '');
+          const nombreSafe = escapeHTML(app.nombre || '');
+          const fechaSafe = escapeHTML(app.fecha || '');
+          const emailSafe = escapeHTML(app.email || '');
+
+          // Traductor de Fechas
+          let dateInputVal = fechaSafe;
+          const fParts = fechaSafe.split('-');
+          if (fParts.length === 3 && fParts[0].length === 2) {
+              dateInputVal = `${fParts[2]}-${fParts[1]}-${fParts[0]}`;
+          }
+
+          // Traductor de Horas
+          let timeInputVal = '';
+          const tMatch = horaSafe.match(/\d{2}:\d{2}/);
+          if (tMatch) timeInputVal = tMatch[0];
+
+          let actionButtons = '';
+
+          if (estadoNormalizado === 'pendiente') {
+            actionButtons = `
+              <div class="flex gap-2 w-full mt-2">
+                <button data-id="${appIdSafe}" data-slot="${slotDataId}" data-prof="${profDataId}" class="btn-rechazar-cita flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 rounded text-[11px] transition">Rechazar</button>
+                <button data-id="${appIdSafe}" class="btn-aprobar-cita flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded text-[11px] transition">Aprobar</button>
+              </div>
+            `;
+          } else if (estadoNormalizado === 'aprobado') {
+            actionButtons = `
+              <button data-id="${appIdSafe}" data-nid="${nidoIdSafe}" class="btn-abrir-ficha w-full mt-2 bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 rounded text-xs transition">
+                Completar Ficha 📝
+              </button>
+            `;
+          } else if (estadoNormalizado === 'completada') {
+            actionButtons = `<div class="mt-2 text-center text-[11px] bg-green-100 text-green-700 py-1.5 rounded font-bold">Ficha Guardada ✅</div>`;
+          } else {
+            actionButtons = `<div class="mt-2 text-center text-[11px] bg-gray-100 text-gray-500 py-1.5 rounded font-bold uppercase tracking-wider">${estado}</div>`;
+          }
+
+          return `
           <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div>
-              <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${escapeHTML(app.hora)}</span>
-              <h4 class="font-bold text-lg mt-2">${escapeHTML(app.nombre)}</h4>
-              <p class="text-xs text-gray-500 mb-1">Fecha actual: <span class="font-bold text-gray-700">${escapeHTML(app.fecha)}</span></p>
-              <p class="text-xs text-gray-500 mb-3">Cliente: ${escapeHTML(app.email)}</p>
+              <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${horaSafe}</span>
+              <h4 class="font-bold text-lg mt-2">${nombreSafe}</h4>
+              <p class="text-xs text-gray-500 mb-1">Fecha actual: <span class="font-bold text-gray-700">${fechaSafe}</span></p>
+              <p class="text-xs text-gray-500 mb-3">Cliente: ${emailSafe}</p>
               
-              <!-- Formulario rápido para editar fecha y hora -->
               <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100 mb-3 space-y-2">
-                <p class="text-[11px] font-bold text-gray-600 uppercase">Modificar fecha/hora:</p>
-                <input type="date" value="${escapeHTML(app.fecha)}" class="edit-fecha w-full p-1.5 border rounded text-xs" data-id="${app.id}" />
-                <input type="time" value="${escapeHTML(app.hora)}" class="edit-hora w-full p-1.5 border rounded text-xs" data-id="${app.id}" />
-                <button data-id="${app.id}" class="btn-guardar-cambio-cita w-full bg-gray-800 text-white text-xs font-bold py-1.5 rounded hover:bg-[#e87a30] transition">Actualizar Cita</button>
+                <p class="text-[10px] font-bold text-gray-500 uppercase">Modificar fecha/hora:</p>
+                <input type="date" value="${dateInputVal}" class="edit-fecha w-full p-1.5 border rounded text-xs" data-id="${appIdSafe}" />
+                <input type="time" value="${timeInputVal}" class="edit-hora w-full p-1.5 border rounded text-xs" data-id="${appIdSafe}" />
+                <button data-id="${appIdSafe}" class="btn-guardar-cambio-cita w-full bg-gray-800 text-white text-[11px] font-bold py-1.5 rounded hover:bg-[#e87a30] transition">Actualizar Cita</button>
               </div>
             </div>
+            <div>
+              ${actionButtons}
+            </div>
           </div>
-        `).join('') : `
+          `;
+        }).join('') : `
           <div class="col-span-full p-8 text-center text-gray-400 italic">No tienes atenciones agendadas actualmente.</div>
         `}
       </div>
     `;
 
+    // Handler para Modificar Fecha
     dashboardContent.querySelectorAll('.btn-guardar-cambio-cita').forEach(btn => {
       btn.onclick = async () => {
         const id = btn.dataset.id;
-        const card = btn.closest('div');
+        const card = btn.closest('div.bg-gray-50');
         const nuevaFecha = card.querySelector('.edit-fecha').value;
         const nuevaHora = card.querySelector('.edit-hora').value;
 
@@ -80,10 +135,18 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
           return;
         }
 
+        let fechaParaGuardar = nuevaFecha;
+        if (nuevaFecha.includes('-')) {
+            const parts = nuevaFecha.split('-');
+            if (parts[0].length === 4) { 
+                fechaParaGuardar = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+
         try {
           btn.disabled = true;
           btn.textContent = 'Guardando...';
-          await updateAppointmentDateTime(id, nuevaFecha, nuevaHora);
+          await updateAppointmentDateTime(id, fechaParaGuardar, nuevaHora);
           showToast('Fecha y horario actualizados con éxito', 'success');
           renderConsejeraTab('dashboard', userData, openFichaCuidadoModal);
         } catch (e) {
@@ -91,6 +154,48 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
           btn.disabled = false;
           btn.textContent = 'Actualizar Cita';
         }
+      };
+    });
+
+    // Handler para Aprobar
+    dashboardContent.querySelectorAll('.btn-aprobar-cita').forEach(btn => {
+      btn.onclick = async () => {
+        try {
+          btn.textContent = '...';
+          btn.disabled = true;
+          await actualizarEstadoCita(btn.dataset.id, 'Aprobado');
+          showToast('Consejería aprobada correctamente', 'success');
+          renderConsejeraTab('dashboard', userData, openFichaCuidadoModal);
+        } catch (e) {
+          showToast('Error al aprobar', 'error');
+          btn.disabled = false;
+        }
+      };
+    });
+
+    // Handler para Rechazar
+    dashboardContent.querySelectorAll('.btn-rechazar-cita').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('¿Segura que deseas rechazar esta consejería? El bloque horario quedará libre.')) return;
+        try {
+          btn.textContent = '...';
+          btn.disabled = true;
+          const { id, slot, prof } = btn.dataset;
+          await actualizarEstadoCita(id, 'Rechazada', slot, prof);
+          showToast('Cita rechazada y horario liberado', 'success');
+          renderConsejeraTab('dashboard', userData, openFichaCuidadoModal);
+        } catch (e) {
+          showToast('Error al rechazar', 'error');
+          btn.disabled = false;
+        }
+      };
+    });
+
+    // Handler para Completar Bitácora/Ficha Directo
+    dashboardContent.querySelectorAll('.btn-abrir-ficha').forEach(btn => {
+      btn.onclick = () => {
+        const { id, nid } = btn.dataset;
+        openFichaCuidadoModal(id, nid);
       };
     });
 
@@ -141,22 +246,32 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
 
         listContainer.innerHTML = items.map(reg => {
           const fechaObj = reg.creadoEn ? new Date(reg.creadoEn) : new Date(0);
+          const dateStr = fechaObj.toLocaleDateString('es-CL');
+          const timeStr = fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          const nidoNameSafe = escapeHTML(reg.nidoNombreBebe || (reg.nidoId ? reg.nidoId.slice(0, 8) : 'N/A'));
+          const prestadorNameSafe = escapeHTML(reg.prestadorNombre || 'Prestador');
+          const nidoRutSafe = escapeHTML(reg.nidoRutBebe || 'N/A');
+          const prestadorRolSafe = escapeHTML(reg.prestadorRol || 'Cuidadora');
+          const tipoAlimentacionSafe = escapeHTML(reg.tipoAlimentacion || 'N/A');
+          const observacionesSafe = escapeHTML(reg.observaciones || 'Sin observaciones');
+
           return `
             <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative pl-8 border-l-4 border-emerald-500 slide-up">
               <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
                 <div>
-                  <span class="text-xs text-gray-400 font-bold block">${fechaObj.toLocaleDateString('es-CL')} a las ${fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hrs</span>
-                  <h4 class="font-bold text-lg text-[#181411]">Bitácora de Cuidado - Nido: ${escapeHTML(reg.nidoNombreBebe || reg.nidoId?.slice(0, 8) || 'N/A')}</h4>
-                  <p class="text-xs text-[#887263]">Registrado por: ${escapeHTML(reg.prestadorNombre || 'Prestador')} • RUT Bebé: ${escapeHTML(reg.nidoRutBebe || 'N/A')}</p>
+                  <span class="text-xs text-gray-400 font-bold block">${dateStr} a las ${timeStr} hrs</span>
+                  <h4 class="font-bold text-lg text-[#181411]">Bitácora de Cuidado - Nido: ${nidoNameSafe}</h4>
+                  <p class="text-xs text-[#887263]">Registrado por: ${prestadorNameSafe} • RUT Bebé: ${nidoRutSafe}</p>
                 </div>
-                <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full uppercase tracking-wider">🍼 ${escapeHTML(reg.prestadorRol || 'Cuidadora')}</span>
+                <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full uppercase tracking-wider">🍼 ${prestadorRolSafe}</span>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100 text-xs">
-                <div><strong>🥛 Alimentación:</strong> ${escapeHTML(reg.tipoAlimentacion || 'N/A')}</div>
+                <div><strong>🥛 Alimentación:</strong> ${tipoAlimentacionSafe}</div>
                 <div><strong>😴 Horas Sueño:</strong> ${reg.horasSueno || 0}</div>
                 <div><strong>🧻 Pañales:</strong> ${reg.cantidadPanales || 0}</div>
               </div>
-              <div class="text-sm text-gray-600">${escapeHTML(reg.observaciones || 'Sin observaciones')}</div>
+              <div class="text-sm text-gray-600">${observacionesSafe}</div>
             </div>
           `;
         }).join('');
@@ -302,9 +417,79 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
 
       try {
         await saveConsejeraSchedule(uid, horariosGuardados);
+        
+        const [yyyy, mm, dd] = semanaSeleccionada.split('-').map(Number);
+        const monday = new Date(yyyy, mm - 1, dd);
+        
+        const startOfWeek = new Date(monday);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(monday);
+        endOfWeek.setDate(monday.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const daysMap = { 'Lunes': 0, 'Martes': 1, 'Miercoles': 2, 'Jueves': 3, 'Viernes': 4, 'Sabado': 5, 'Domingo': 6 };
+        const newSlots = [];
+
+        for (const day in horarioSemanaActual) {
+          for (const block in horarioSemanaActual[day]) {
+            if (horarioSemanaActual[day][block]) { 
+              const exactDate = new Date(monday);
+              exactDate.setDate(monday.getDate() + daysMap[day]);
+              
+              const [horaInicioStr, horaFinStr] = block.split('-');
+              
+              const fechaInicio = new Date(exactDate);
+              const [hI, mI] = horaInicioStr.split(':');
+              fechaInicio.setHours(hI, mI, 0, 0);
+
+              const fechaFin = new Date(exactDate);
+              const [hF, mF] = horaFinStr.split(':');
+              fechaFin.setHours(hF, mF, 0, 0);
+
+              newSlots.push({
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                horaInicio: horaInicioStr,
+                horaFin: horaFinStr,
+                disponible: true,
+                reservado: false,
+                tipoServicio: 'Consejería'
+              });
+            }
+          }
+        }
+
+        const dispRef = collection(db, `usuarios/${uid}/disponibilidad`);
+        const snapshot = await getDocs(dispRef);
+        const batch = writeBatch(db);
+
+        snapshot.forEach(docSnap => {
+          const slot = docSnap.data();
+          if (slot.reservado) return; 
+          
+          let slotDate = null;
+          if (slot.fechaInicio && typeof slot.fechaInicio.toDate === 'function') {
+            slotDate = slot.fechaInicio.toDate();
+          } else if (slot.fechaInicio) {
+            slotDate = new Date(slot.fechaInicio);
+          }
+          
+          if (slotDate && slotDate >= startOfWeek && slotDate <= endOfWeek) {
+            batch.delete(docSnap.ref);
+          }
+        });
+
+        newSlots.forEach(slotData => {
+          const newDocRef = doc(collection(db, `usuarios/${uid}/disponibilidad`));
+          batch.set(newDocRef, slotData);
+        });
+
+        await batch.commit();
+
         showToast('Horarios de la semana actualizados', 'success');
         userData.horarios = horariosGuardados;
       } catch (e) {
+        console.error("Error al actualizar la grilla:", e);
         showToast('Error al actualizar horarios', 'error');
       } finally {
         btnGuardar.textContent = 'Guardar Horarios de la Semana';
