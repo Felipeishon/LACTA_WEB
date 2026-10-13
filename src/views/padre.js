@@ -622,13 +622,6 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
           let erroresSecundarios = false;
 
           await addDoc(collection(db, 'reservas'), nuevaReservaData);
-          
-          try {
-            await addDoc(collection(db, 'citas'), nuevaReservaData);
-          } catch(errCitas) {
-            console.error("Firebase bloqueó la copia en 'citas':", errCitas);
-            erroresSecundarios = true;
-          }
 
           if (profId && finalSlotId && profId !== 'asignacion_automatica') {
             try {
