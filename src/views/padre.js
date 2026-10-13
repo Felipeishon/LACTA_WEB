@@ -1,6 +1,6 @@
 import { db } from '../firebase.js';
 import { collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
-import { fetchFichasCuidadoPorNido, fetchFichasAtencionPorNido, fetchUserAppointments, obtenerDatosNido, fetchActiveProducts, createPedido, fetchPedidosUsuario, actualizarEstadoCita } from '../api/firestore.js';
+import { fetchFichasCuidadoPorNido, fetchFichasAtencionPorNido, fetchUserAppointments, obtenerDatosNido, fetchActiveProducts, createPedido, fetchPedidosUsuario, actualizarEstadoCita, updateAppointmentDateTime } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { openCartModal, getCartQuantity } from '../ui/cart.js';
 import { showToast } from '../ui/notifications.js';
@@ -34,10 +34,21 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
         else if (fEst === 'completada') fEstClass = 'bg-green-100 text-green-800';
 
         let actions = '';
+        const slotDataId = app.slotId || app.slotAsignado || '';
+        const profDataId = app.profesionalId || app.prestadorId || app.consejeraId || app.cuidadoraId || '';
+        const profNombre = escapeHTML(app.profesionalNombre || app.prestadorNombre || app.consejeraNombre || app.cuidadoraNombre || 'Profesional');
+        const servicioVisual = escapeHTML(app.servicioVisual || app.servicio || 'Atención');
+
         if (fEst === 'Pendiente' || fEst === 'Aprobado') {
-            const slotDataId = app.slotId || app.slotAsignado || '';
-            const profDataId = app.profesionalId || app.prestadorId || app.consejeraId || app.cuidadoraId || '';
-            actions = `<button data-id="${app.id}" data-slot="${slotDataId}" data-prof="${profDataId}" class="btn-anular-cita text-red-500 hover:text-red-700 text-xs font-bold transition underline">Anular</button>`;
+            actions = `<button data-id="${escapeHTML(app.id)}" data-slot="${escapeHTML(slotDataId)}" data-prof="${escapeHTML(profDataId)}" class="btn-anular-cita text-red-500 hover:text-red-700 text-xs font-bold transition underline">Anular</button>`;
+        } else if (fEst === 'Cancelada' || fEst === 'Rechazada') {
+            actions = `<button
+              data-id="${escapeHTML(app.id)}"
+              data-prof="${escapeHTML(profDataId)}"
+              data-servicio="${servicioVisual}"
+              data-prof-nombre="${profNombre}"
+              class="btn-reagendar-cita text-[#e87a30] hover:text-[#d66a20] text-xs font-bold transition underline"
+            >Reagendar</button>`;
         }
 
         return `
@@ -120,6 +131,136 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
           showToast('Error al anular cita', 'error');
           btn.textContent = 'Anular';
           btn.disabled = false;
+        }
+      };
+    });
+
+    dashboardContent.querySelectorAll('.btn-reagendar-cita').forEach(btn => {
+      btn.onclick = async () => {
+        const citaId = btn.dataset.id;
+        const profId = btn.dataset.prof;
+        const servicio = btn.dataset.servicio;
+        const profNombre = btn.dataset.profNombre;
+
+        if (!profId) {
+          showToast('No se pudo identificar al profesional.', 'error');
+          return;
+        }
+
+        const modalExistente = document.getElementById('modal-reagendar-cita');
+        if (modalExistente) modalExistente.remove();
+
+        const modalHtml = `
+          <div id="modal-reagendar-cita" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button id="cerrar-modal-reagendar" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">&times;</button>
+              <h3 class="text-xl font-black text-[#181411] mb-2">🔄 Reagendar Cita</h3>
+              <p class="text-xs text-gray-500 mb-4">Servicio: <strong>${escapeHTML(servicio)}</strong> · Profesional: <strong>${escapeHTML(profNombre)}</strong></p>
+
+              <div id="reagendar-slots-container" class="space-y-2 mb-4">
+                <p class="text-center py-4 text-gray-400 italic text-sm">Cargando horarios disponibles...</p>
+              </div>
+
+              <div class="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <button type="button" id="btn-cancelar-reagendar" class="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const container = document.getElementById('reagendar-slots-container');
+        const closeReagendarModal = () => document.getElementById('modal-reagendar-cita')?.remove();
+        document.getElementById('cerrar-modal-reagendar').onclick = closeReagendarModal;
+        document.getElementById('btn-cancelar-reagendar').onclick = closeReagendarModal;
+
+        try {
+          const slotsRef = collection(db, `usuarios/${profId}/disponibilidad`);
+          const slotsSnap = await getDocs(slotsRef);
+
+          if (slotsSnap.empty) {
+            container.innerHTML = '<p class="text-center py-4 text-gray-400 italic text-sm">Este profesional no tiene horarios publicados.</p>';
+            return;
+          }
+
+          const slotsDisponibles = [];
+          slotsSnap.forEach(doc => {
+            const slot = doc.data();
+            if (slot.reservado === true || slot.disponible === false) return;
+
+            let inicio = null, fin = null;
+            if (slot.fechaInicio?.toDate) inicio = slot.fechaInicio.toDate();
+            else if (typeof slot.fechaInicio === 'string') inicio = new Date(slot.fechaInicio);
+
+            if (slot.fechaFin?.toDate) fin = slot.fechaFin.toDate();
+            else if (typeof slot.fechaFin === 'string') fin = new Date(slot.fechaFin);
+
+            if (inicio && fin && !isNaN(inicio.getTime()) && !isNaN(fin.getTime())) {
+              slotsDisponibles.push({
+                id: doc.id,
+                inicio,
+                horaInicio: slot.horaInicio || '',
+                horaFin: slot.horaFin || '',
+                texto: `${inicio.toLocaleDateString('es-CL', {weekday:'short', day:'numeric', month:'short'})} · ${slot.horaInicio || inicio.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})} → ${slot.horaFin || fin.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}`
+              });
+            }
+          });
+
+          if (slotsDisponibles.length === 0) {
+            container.innerHTML = '<p class="text-center py-4 text-gray-400 italic text-sm">No hay horarios disponibles actualmente.</p>';
+            return;
+          }
+
+          container.innerHTML = slotsDisponibles.map(slot => `
+            <button
+              data-slot-id="${escapeHTML(slot.id)}"
+              data-fecha="${slot.inicio.toLocaleDateString('es-CL')}"
+              data-hora="${escapeHTML(`${slot.horaInicio} a ${slot.horaFin}`)}"
+              data-slot-texto="${escapeHTML(slot.texto)}"
+              class="btn-confirmar-reagendar w-full text-left p-3 bg-white border border-gray-200 hover:border-[#e87a30] hover:bg-orange-50 rounded-xl transition"
+            >
+              <p class="font-bold text-sm text-[#181411]">${escapeHTML(slot.texto)}</p>
+              <p class="text-xs text-gray-500 mt-1">Click para reagendar en este horario</p>
+            </button>
+          `).join('');
+
+          container.querySelectorAll('.btn-confirmar-reagendar').forEach(btnSlot => {
+            btnSlot.onclick = async () => {
+              if (!confirm('¿Confirmas el reagendamiento en este nuevo horario?')) return;
+
+              const nuevoSlotId = btnSlot.dataset.slotId;
+              const nuevaFecha = btnSlot.dataset.fecha;
+              const nuevaHora = btnSlot.dataset.hora;
+
+              try {
+                btnSlot.disabled = true;
+                btnSlot.textContent = 'Reagendando...';
+
+                await updateAppointmentDateTime(citaId, nuevaFecha, nuevaHora);
+                await updateDoc(doc(db, 'reservas', citaId), {
+                  slotId: nuevoSlotId,
+                  slotAsignado: nuevoSlotId
+                });
+
+                const nuevoSlotRef = doc(db, `usuarios/${profId}/disponibilidad`, nuevoSlotId);
+                await updateDoc(nuevoSlotRef, { reservado: true, disponible: false, bookingId: citaId });
+
+                await actualizarEstadoCita(citaId, 'Pendiente');
+
+                showToast('¡Cita reagendada con éxito!', 'success');
+                closeReagendarModal();
+                renderPadreTab('resumen', userData, openPerfilBebeModal, switchTab);
+              } catch (err) {
+                console.error('Error al reagendar:', err);
+                showToast('Error al reagendar la cita', 'error');
+                btnSlot.disabled = false;
+              }
+            };
+          });
+
+        } catch (err) {
+          console.error('Error al cargar slots:', err);
+          container.innerHTML = '<p class="text-center py-4 text-red-500 italic text-sm">Error al cargar horarios.</p>';
         }
       };
     });
