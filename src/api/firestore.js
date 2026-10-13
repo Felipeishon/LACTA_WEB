@@ -79,13 +79,20 @@ export async function fetchServiceAppointments(servicio, uid) {
     try {
         const snap = await getDocs(collection(db, "reservas"));
         const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Excluir citas canceladas o rechazadas de la vista activa
+        const ESTADOS_EXCLUIDOS = ['cancelada', 'rechazada'];
+        const activas = all.filter(a => {
+            const estado = (a.estado || 'pendiente').toString().toLowerCase().trim();
+            return !ESTADOS_EXCLUIDOS.includes(estado);
+        });
+
         if (uid) {
-            return all.filter(a => {
+            return activas.filter(a => {
                 const pId = a.profesionalId || a.prestadorId || a.consejeraId || a.cuidadoraId;
                 return pId === uid;
             });
         }
-        return all;
+        return activas;
     } catch (error) {
         console.error("Error al obtener citas del servicio:", error);
         throw error;
