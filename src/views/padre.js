@@ -1,6 +1,5 @@
-import { escapeHTML } from '../utils/html.js';
 import { renderPadreTienda } from './padre/tienda.js';
-import { renderPadrePedidos } from './padre/pedidos.js';
+import { renderPadreFavoritos } from './padre/favoritos.js';
 import { renderPadreHistorial } from './padre/historial.js';
 import { renderPadreResumen } from './padre/resumen.js';
 
@@ -18,7 +17,7 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
   } else if (activeTab === 'tienda') {
     await renderPadreTienda(dashboardContent);
 
-  } else if (activeTab === 'pedidos') {
-    await renderPadrePedidos(dashboardContent, userData);
+  } else if (activeTab === 'favoritos') {
+    renderPadreFavoritos(dashboardContent);
   }
 }

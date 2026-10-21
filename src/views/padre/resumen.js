@@ -110,7 +110,32 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
     // Event listeners para anular cita
     dashboardContent.querySelectorAll('.btn-anular-cita').forEach(btn => {
       btn.onclick = async () => {
-        if (!confirm('¿Estás seguro que deseas anular esta cita? El horario se volverá a liberar.')) return;
+        const modalHtml = `
+          <div id="modal-confirmar-anulacion" class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+              <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⚠️</div>
+              <h3 class="text-xl font-black text-[#181411] mb-2">Anular Cita</h3>
+              <p class="text-sm text-gray-600 mb-6">¿Estás seguro que deseas anular esta cita? El horario se volverá a liberar.</p>
+              <div class="flex gap-3 justify-center">
+                <button id="btn-cancelar-anulacion" class="px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
+                <button id="btn-confirmar-anulacion" class="px-5 py-2 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white shadow-md transition">Sí, Anular</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const confirmar = await new Promise((resolve) => {
+          document.getElementById('btn-cancelar-anulacion').onclick = () => {
+            document.getElementById('modal-confirmar-anulacion').remove();
+            resolve(false);
+          };
+          document.getElementById('btn-confirmar-anulacion').onclick = () => {
+            document.getElementById('modal-confirmar-anulacion').remove();
+            resolve(true);
+          };
+        });
+        if (!confirmar) return;
         
         try {
           btn.textContent = 'Anulando...';

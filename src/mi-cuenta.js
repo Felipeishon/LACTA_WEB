@@ -10,7 +10,7 @@ import { getUserProfileWithSubcollections } from './api/firestore.js';
 import { initCalendario } from './calendario.js';
 import { initModales } from './modales.js';
 import { showToast } from './ui/notifications.js';
-import { getCartQuantity, openCartModal, updateCartIconIndicator, initCheckoutForm } from './ui/cart.js';
+import { updateCartIconIndicator, initCheckoutForm } from './ui/cart.js';
 import { initAccountFormHandlers, openPerfilBebeModal, openFichaCuidadoModal } from './ui/account.js';
 import { renderPadreTab } from './views/padre.js';
 import { renderConsejeraTab } from './views/consejera.js';
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     padre: [
       { label: "Resumen", icon: "🏠", action: "resumen" },
       { label: "Tienda Bebé 🛍️", icon: "🧸", action: "tienda" },
-      { label: "Mis Pedidos 📦", icon: "🚚", action: "pedidos" },
+      { label: "Mis Favoritos ❤️", icon: "❤️", action: "favoritos" },
       { label: "Historial del Bebé", icon: "📜", action: "historial_bebe" }
     ],
     consejera: [
@@ -99,20 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return !item.permission || (item.permission && userData[item.permission] === true);
     });
 
-    let cartBtnHtml = '';
-    if (role === 'padre') {
-      cartBtnHtml = `
-        <button id="btnVerCarrito" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium text-[#887263] hover:bg-[#f4eade] hover:text-[#181411] w-full mt-2 relative">
-          <span class="flex items-center gap-3">
-            <span class="text-xl">🛒</span> Ver Carrito
-          </span>
-          <span id="cart-badge" class="bg-[#e87a30] text-white text-xs px-2 py-0.5 rounded-full font-bold ${getCartQuantity() === 0 ? 'hidden' : ''}">
-            ${getCartQuantity()}
-          </span>
-        </button>
-      `;
-    }
-
     sidebarNav.innerHTML = filteredItems.map(item => {
       const isActive = activeTab === item.action;
       return `
@@ -121,17 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
           ${item.label}
         </a>
       `;
-    }).join('') + cartBtnHtml;
+    }).join('');
 
-    sidebarNav.querySelectorAll('.nav-item, #btnVerCarrito').forEach(link => {
+    sidebarNav.querySelectorAll('.nav-item').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        const action = link.dataset.action || 'carrito';
-        if (action === 'carrito') {
-          openCartModal();
-        } else {
-          switchTab(action, role, userData);
-        }
+        switchTab(link.dataset.action, role, userData);
       });
     });
   }
