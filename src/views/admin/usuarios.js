@@ -8,7 +8,7 @@ import {
 import { approveUserWithAudit } from '../../api/admin.js';
 import { escapeHTML } from '../../utils/html.js';
 import { hasRole } from '../../utils/roles.js';
-import { formatFirestoreDate } from './helpers.js';
+import { formatFirestoreDate } from '../../utils/helpers.js';
 import { db } from '../../firebase.js';
 import { doc, updateDoc } from 'firebase/firestore';
 

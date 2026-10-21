@@ -1,4 +1,4 @@
-import { escapeHTML } from '../../utils/html.js';
+import { escapeHTML } from './html.js';
 
 function formatFirestoreDate(value, includeTime = false) {
   if (!value) return null;

@@ -1,7 +1,7 @@
 import { showToast } from '../../ui/notifications.js';
 import { fetchActiveProducts, updateProduct, deleteProduct, fetchTodosPedidos } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
-import { fileToBase64, formatFirestoreDate } from './helpers.js';
+import { fileToBase64, formatFirestoreDate } from '../../utils/helpers.js';
 
 async function renderAdminInventory() {
   const list = document.getElementById('admin-inventory-list');

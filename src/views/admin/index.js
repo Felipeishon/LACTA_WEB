@@ -12,7 +12,7 @@ import {
 } from './usuarios.js';
 import { loadAllNidos } from './nidos.js';
 import { loadAllRegistros } from './registros.js';
-import { fileToBase64 } from './helpers.js';
+import { fileToBase64 } from '../../utils/helpers.js';
 
 async function renderAdminTab(activeTab) {
   const dashboardContent = document.getElementById('dashboard-content');

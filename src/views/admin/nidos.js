@@ -8,7 +8,7 @@ import {
   fetchFichasAtencionPorNido 
 } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
-import { formatFirestoreDate, showInfoModal, FIELD_LABELS } from './helpers.js';
+import { formatFirestoreDate, showInfoModal, FIELD_LABELS } from '../../utils/helpers.js';
 import { renderAdminTab } from '../admin.js';
 
 async function loadAllNidos() {

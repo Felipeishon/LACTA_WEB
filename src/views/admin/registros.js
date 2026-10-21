@@ -12,7 +12,7 @@ import {
   showInfoModal,
   resolveHistoricalName,
   getNidoNombreDesdePadre
-} from './helpers.js';
+} from '../../utils/helpers.js';
 
 async function loadAllRegistros() {
   const container = document.getElementById('registros-container');
