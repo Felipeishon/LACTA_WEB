@@ -18,6 +18,6 @@ export async function renderPadreTab(activeTab, userData, openPerfilBebeModal, s
     await renderPadreTienda(dashboardContent);
 
   } else if (activeTab === 'favoritos') {
-    renderPadreFavoritos(dashboardContent);
+    await renderPadreFavoritos(dashboardContent);
   }
 }
