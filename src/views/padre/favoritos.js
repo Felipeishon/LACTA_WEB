@@ -31,7 +31,7 @@ export async function renderPadreFavoritos(dashboardContent) {
         ? `<a href="${escapeHTML(urlDestino)}" target="_blank" rel="noopener noreferrer">${imagen}</a>`
         : imagen;
       const enlaceCompra = prod.mercadoLibreUrl
-        ? `<a href="${escapeHTML(urlDestino)}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Ver en Mercado Libre 🛒</a>`
+        ? `<a href="${escapeHTML(urlDestino)}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Ver en Mercado Libre</a>`
         : prod.whatsappNumber
           ? `<a href="${escapeHTML(urlDestino)}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Contactar por WhatsApp 💬</a>`
           : '<span class="text-xs text-gray-400">Sin enlace de compra</span>';

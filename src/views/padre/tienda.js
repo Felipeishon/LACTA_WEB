@@ -27,7 +27,7 @@ export async function renderPadreTienda(dashboardContent) {
             const imagen = prod.imagenUrl ? `<img src="${escapeHTML(prod.imagenUrl)}" alt="${escapeHTML(prod.nombre)}" class="w-full h-40 object-cover rounded-xl mb-3" />` : '';
             const imgTag = urlDestino && imagen ? `<a href="${urlDestinoHTML}" target="_blank" rel="noopener noreferrer">${imagen}</a>` : imagen;
             const enlaceCompra = prod.mercadoLibreUrl
-              ? `<a href="${urlDestinoHTML}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Ver en Mercado Libre 🛒</a>`
+              ? `<a href="${urlDestinoHTML}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Ver en Mercado Libre</a>`
               : prod.whatsappNumber
                 ? `<a href="${urlDestinoHTML}" target="_blank" rel="noopener noreferrer" class="bg-[#181411] hover:bg-[#332b26] text-white text-xs font-bold px-3 py-2 rounded-xl transition">Contactar por WhatsApp 💬</a>`
                 : '<button disabled class="bg-gray-200 text-gray-400 text-xs font-bold px-3 py-2 rounded-xl cursor-not-allowed">Sin enlace</button>';

@@ -10,7 +10,6 @@ import { getUserProfileWithSubcollections } from './api/firestore.js';
 import { initCalendario } from './calendario.js';
 import { initModales } from './modales.js';
 import { showToast } from './ui/notifications.js';
-import { updateCartIconIndicator, initCheckoutForm } from './ui/cart.js';
 import { initAccountFormHandlers, openPerfilBebeModal, openFichaCuidadoModal } from './ui/account.js';
 import { renderPadreTab } from './views/padre.js';
 import { renderConsejeraTab } from './views/consejera.js';
@@ -42,13 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     getCurrentUserData: () => currentUserData,
     getCurrentUserRole: () => currentUserRole
   });
-  initCheckoutForm({
-    renderContent,
-    getCurrentUserData: () => currentUserData
-  });
-
-  updateCartIconIndicator();
-
   const NAV_CONFIG = {
     padre: [
       { label: "Resumen", icon: "🏠", action: "resumen" },
