@@ -3,7 +3,7 @@
 
 import '../index.css';
 
-import { db, auth } from './firebase.js';
+import { auth } from './firebase.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { initFormularios } from './formularios.js';
 import { getUserProfileWithSubcollections } from './api/firestore.js';
@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeTab = 'resumen';
   let currentUserData = null;
-  let currentUser = null;
   let currentUserRole = 'padre';
 
   initFormularios();
@@ -237,7 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
-        currentUser = user; 
         const userData = await getUserProfileWithSubcollections(user.uid);
 
         if (userData) {
@@ -266,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Error al conectar con el servidor', 'error');
       }
     } else {
-      currentUser = null; 
       window.location.href = 'index.html';
     }
   });
