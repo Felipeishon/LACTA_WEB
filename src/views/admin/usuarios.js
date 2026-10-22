@@ -236,13 +236,16 @@ async function loadLatestUsers() {
     }
 
     container.innerHTML = users.map(u => {
-      const esPrestador = !hasRole(u, 'padre');
+      const roles = Array.isArray(u.rol) ? u.rol : [u.rol].filter(Boolean);
+      const labelRoles = { padre: 'Padre', consejera: 'Consejera', cuidadora: 'Cuidadora', admin: 'Admin' };
+      const rolesLabel = roles.map(rol => labelRoles[rol] || rol).join(', ') || 'Sin rol';
+      const esPrestador = hasRole(u, 'consejera') || hasRole(u, 'cuidadora');
       const color = esPrestador ? 'bg-green-500' : 'bg-blue-500';
       const fecha = formatFirestoreDate(u.fechaRegistro) || '---';
       return `
         <li class="flex items-center justify-between text-sm">
           <span class="flex items-center gap-2">
-            <span class="w-2 h-2 ${color} rounded-full"></span> ${escapeHTML(u.nombre)}
+            <span class="w-2 h-2 ${color} rounded-full"></span> ${escapeHTML(u.nombre)} (${escapeHTML(rolesLabel)})
           </span>
           <span class="text-gray-400 text-xs">${escapeHTML(fecha)}</span>
         </li>

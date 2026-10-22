@@ -22,7 +22,7 @@ async function renderAdminTab(activeTab) {
     const stats = await fetchAdminStats();
     dashboardContent.innerHTML = `
       <h2 class="text-3xl font-black text-[#181411] mb-6">Panel Super Administrador 🚀</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
           <div class="text-gray-500 text-sm font-medium mb-1">Total Usuarios</div>
           <div class="text-3xl font-black">${stats.totalUsers || 0}</div>
@@ -30,10 +30,19 @@ async function renderAdminTab(activeTab) {
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
           <div class="text-gray-500 text-sm font-medium mb-1">Citas Activas</div>
           <div class="text-3xl font-black text-[#e87a30]">${stats.activeAppointments || 0}</div>
+          <div class="text-xs text-gray-400 mt-1">${stats.citasCompletadas || 0} completadas</div>
         </div>
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
           <div class="text-gray-500 text-sm font-medium mb-1">Prestadores</div>
           <div class="text-3xl font-black text-[#887263]">${stats.totalPrestadores || 0}</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div class="text-gray-500 text-sm font-medium mb-1">Fichas de Consejería</div>
+          <div class="text-3xl font-black text-[#887263]">${stats.totalFichas || 0}</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+          <div class="text-gray-500 text-sm font-medium mb-1">Bitácoras de Cuidado</div>
+          <div class="text-3xl font-black text-[#887263]">${stats.totalBitacoras || 0}</div>
         </div>
         <div class="bg-gradient-to-br from-[#e87a30] to-[#f4c28e] p-5 rounded-xl shadow-sm text-white">
           <div class="text-white/80 text-sm font-medium mb-1">Pedidos Generados</div>

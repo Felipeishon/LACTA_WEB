@@ -41,16 +41,33 @@ export async function getUserProfileWithSubcollections(uid) {
 
 export async function fetchAdminStats() {
     try {
-        const activeUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo")));
-        const pendingUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente")));
-        const activeAppointmentsSnap = await getDocs(query(collection(db, "reservas"), where("estado", "==", "pendiente")));
-        const consejerasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera")));
-        const cuidadorasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora")));
+        const [
+            activeUsersSnap,
+            pendingUsersSnap,
+            activeAppointmentsSnap,
+            completedAppointmentsSnap,
+            consejerasSnap,
+            cuidadorasSnap,
+            fichasSnap,
+            bitacorasSnap
+        ] = await Promise.all([
+            getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo"))),
+            getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente"))),
+            getDocs(query(collection(db, "reservas"), where("estado", "==", "pendiente"))),
+            getDocs(query(collection(db, "reservas"), where("estado", "==", "completada"))),
+            getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera"))),
+            getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora"))),
+            getDocs(collection(db, "fichas_atencion")),
+            getDocs(collection(db, "bitacoras"))
+        ]);
         return {
             totalUsers: activeUsersSnap.size + pendingUsersSnap.size,
             activeAppointments: activeAppointmentsSnap.size,
+            citasCompletadas: completedAppointmentsSnap.size,
             totalPrestadores: new Set([...consejerasSnap.docs.map(d => d.id), ...cuidadorasSnap.docs.map(d => d.id)]).size,
-            pendingPrestadores: pendingUsersSnap.size
+            pendingPrestadores: pendingUsersSnap.size,
+            totalFichas: fichasSnap.size,
+            totalBitacoras: bitacorasSnap.size
         };
     } catch (e) {
         console.error("Error al obtener estadísticas:", e);
