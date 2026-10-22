@@ -4,6 +4,7 @@ import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderConsejeraHorarios } from './consejera/horarios.js';
+import { showConfirmModal } from '../modales.js';
 
 export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoModal) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -155,7 +156,8 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
     // Handler para Rechazar
     dashboardContent.querySelectorAll('.btn-rechazar-cita').forEach(btn => {
       btn.onclick = async () => {
-        if (!confirm('¿Segura que deseas rechazar esta consejería? El bloque horario quedará libre.')) return;
+        const confirmado = await showConfirmModal('Rechazar Consejería', '¿Segura que deseas rechazar esta consejería? El bloque horario quedará libre.');
+        if (!confirmado) return;
         try {
           btn.textContent = '...';
           btn.disabled = true;

@@ -4,6 +4,7 @@ import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderCuidadoraDisponibilidad } from './cuidadora/disponibilidad.js';
+import { showConfirmModal } from '../modales.js';
 
 export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoModal) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -158,7 +159,8 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     // Handler para Rechazar
     dashboardContent.querySelectorAll('.btn-rechazar-cita').forEach(btn => {
       btn.onclick = async () => {
-        if (!confirm('¿Segura que deseas rechazar este turno? El horario se volverá a liberar para otros padres.')) return;
+        const confirmado = await showConfirmModal('Rechazar Turno', '¿Segura que deseas rechazar este turno? El horario se volverá a liberar para otros padres.');
+        if (!confirmado) return;
         try {
           btn.textContent = 'Rechazando...';
           btn.disabled = true;

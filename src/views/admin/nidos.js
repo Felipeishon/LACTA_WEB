@@ -10,6 +10,7 @@ import {
 import { escapeHTML } from '../../utils/html.js';
 import { formatFirestoreDate, showInfoModal, FIELD_LABELS } from '../../utils/helpers.js';
 import { renderAdminTab } from '../admin.js';
+import { showConfirmModal } from '../../modales.js';
 
 async function loadAllNidos() {
   const container = document.getElementById('nidos-table-container');
@@ -113,7 +114,8 @@ async function loadAllNidos() {
       container.querySelectorAll('.btn-delete-nido').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nidoId = btn.dataset.id;
-          if (!window.confirm('¿Estás seguro de desactivar este nido?')) return;
+          const confirmado = await showConfirmModal('Desactivar Nido', '¿Estás seguro de desactivar este nido?');
+          if (!confirmado) return;
           btn.disabled = true;
           btn.textContent = 'Desactivando...';
           try {
@@ -134,7 +136,8 @@ async function loadAllNidos() {
       container.querySelectorAll('.btn-reactivate-nido').forEach(btn => {
         btn.addEventListener('click', async () => {
           const nidoId = btn.dataset.id;
-          if (!window.confirm('¿Reactivar este nido?')) return;
+          const confirmado = await showConfirmModal('Reactivar Nido', '¿Reactivar este nido?', false);
+          if (!confirmado) return;
           btn.disabled = true;
           btn.textContent = 'Reactivando...';
           try {

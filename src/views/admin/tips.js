@@ -1,6 +1,7 @@
 import { showToast } from '../../ui/notifications.js';
 import { fetchAllTips, approveTip, deleteTip } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
+import { showConfirmModal } from '../../modales.js';
 
 async function renderAdminTipsManagement() {
   const container = document.getElementById('admin-tips-management');
@@ -46,7 +47,8 @@ async function renderAdminTipsManagement() {
 
     container.querySelectorAll('.btn-approve-tip').forEach(button => {
       button.addEventListener('click', async () => {
-        if (!window.confirm('¿Aprobar este tip?')) return;
+        const confirmado = await showConfirmModal('Aprobar Tip', '¿Aprobar este tip?', false);
+        if (!confirmado) return;
         button.disabled = true;
         try {
           await approveTip(button.dataset.id);
@@ -62,7 +64,8 @@ async function renderAdminTipsManagement() {
 
     container.querySelectorAll('.btn-delete-tip').forEach(button => {
       button.addEventListener('click', async () => {
-        if (!window.confirm('¿Estás seguro de eliminar este tip?')) return;
+        const confirmado = await showConfirmModal('Eliminar Tip', '¿Estás seguro de eliminar este tip?');
+        if (!confirmado) return;
         button.disabled = true;
         try {
           await deleteTip(button.dataset.id);

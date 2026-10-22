@@ -1,6 +1,7 @@
 import { showToast } from '../../ui/notifications.js';
 import { getAvailabilitySlots, addAvailabilitySlot, removeAvailabilitySlot } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
+import { showConfirmModal } from '../../modales.js';
 
 export async function renderCuidadoraDisponibilidad(dashboardContent, userData) {
   const uid = userData?.uid || userData?.id;
@@ -159,14 +160,14 @@ async function loadCaregiverAvailabilitySlots(uid) {
 
       slotsList.querySelectorAll('.btn-delete-slot').forEach(btn => {
         btn.onclick = async () => {
-          if (confirm('¿Seguro que quieres eliminar este turno disponible?')) {
-            try {
-              await removeAvailabilitySlot(uid, btn.dataset.id);
-              showToast('Turno eliminado', 'success');
-              loadCaregiverAvailabilitySlots(uid);
-            } catch (e) {
-              showToast('Error al eliminar el turno', 'error');
-            }
+          const confirmado = await showConfirmModal('Eliminar Turno', '¿Seguro que quieres eliminar este turno disponible?');
+          if (!confirmado) return;
+          try {
+            await removeAvailabilitySlot(uid, btn.dataset.id);
+            showToast('Turno eliminado', 'success');
+            loadCaregiverAvailabilitySlots(uid);
+          } catch (e) {
+            showToast('Error al eliminar el turno', 'error');
           }
         };
       });

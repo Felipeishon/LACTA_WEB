@@ -2,6 +2,7 @@ import { showToast } from '../../ui/notifications.js';
 import { fetchActiveProducts, updateProduct, deleteProduct, fetchTodosPedidos } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { fileToBase64, formatFirestoreDate } from '../../utils/helpers.js';
+import { showConfirmModal } from '../../modales.js';
 
 async function renderAdminInventory() {
   const list = document.getElementById('admin-inventory-list');
@@ -47,14 +48,14 @@ async function renderAdminInventory() {
 
     list.querySelectorAll('.btn-delete-product').forEach(btn => {
       btn.onclick = async () => {
-        if (window.confirm('¿Estás seguro de eliminar este producto?')) {
-          try {
-            await deleteProduct(btn.dataset.id);
-            showToast('Producto eliminado', 'success');
-            renderAdminInventory();
-          } catch {
-            showToast('Error al eliminar producto', 'error');
-          }
+        const confirmado = await showConfirmModal('Eliminar Producto', '¿Estás seguro de eliminar este producto?');
+        if (!confirmado) return;
+        try {
+          await deleteProduct(btn.dataset.id);
+          showToast('Producto eliminado', 'success');
+          renderAdminInventory();
+        } catch {
+          showToast('Error al eliminar producto', 'error');
         }
       };
     });

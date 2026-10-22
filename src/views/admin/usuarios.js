@@ -11,6 +11,7 @@ import { hasRole } from '../../utils/roles.js';
 import { formatFirestoreDate } from '../../utils/helpers.js';
 import { db } from '../../firebase.js';
 import { doc, updateDoc } from 'firebase/firestore';
+import { showConfirmModal } from '../../modales.js';
 
 async function loadPendingUsers() {
   const container = document.getElementById('pending-users-list');
@@ -159,7 +160,8 @@ async function loadAllUsersTable() {
       container.querySelectorAll('.btn-delete-user').forEach(button => {
         button.addEventListener('click', async () => {
           const uid = button.dataset.uid;
-          if (!window.confirm('¿Estás seguro de desactivar este usuario?')) return;
+          const confirmado = await showConfirmModal('Desactivar Usuario', '¿Estás seguro de desactivar este usuario?');
+          if (!confirmado) return;
           button.disabled = true;
           try {
             await deleteUserProfile(uid);

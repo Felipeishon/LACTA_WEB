@@ -1,3 +1,44 @@
+export async function showConfirmModal(title, message, isDanger = true) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+      <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⚠️</div>
+      <h3 class="text-xl font-black text-[#181411] mb-2"></h3>
+      <p class="text-sm text-gray-600 mb-6"></p>
+      <div class="flex gap-3 justify-center">
+        <button class="confirm-cancel px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
+        <button class="confirm-accept px-5 py-2 rounded-xl text-sm font-bold text-white shadow-md transition"></button>
+      </div>
+    </div>
+  `;
+
+  modal.querySelector('h3').textContent = title;
+  modal.querySelector('p').textContent = message;
+  const acceptButton = modal.querySelector('.confirm-accept');
+  acceptButton.classList.add(...(isDanger ? ['bg-red-500', 'hover:bg-red-600'] : ['bg-[#e87a30]', 'hover:bg-[#d66a20]']));
+  acceptButton.textContent = 'Sí, confirmar';
+  document.body.appendChild(modal);
+
+  return new Promise(resolve => {
+    const finish = (confirmed) => {
+      document.removeEventListener('keydown', handleKeydown);
+      modal.remove();
+      resolve(confirmed);
+    };
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape') finish(false);
+    };
+
+    modal.querySelector('.confirm-cancel').addEventListener('click', () => finish(false));
+    acceptButton.addEventListener('click', () => finish(true));
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) finish(false);
+    });
+    document.addEventListener('keydown', handleKeydown);
+  });
+}
+
 export function initModales() {
   const modales = {
     registroPadre: document.getElementById('modalRegistroPadre'),
