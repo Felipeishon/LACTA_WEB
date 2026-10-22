@@ -89,6 +89,7 @@ service cloud.firestore {
       );
       allow read, list: if request.auth != null && (
         esMiembroDelNido(resource.data.nidoId) || 
+        datosUsuario().rol.hasAny(['consejera']) ||
         (isPrestador() && resource.data.prestadorId == request.auth.uid) ||
         isAdmin()
       );
