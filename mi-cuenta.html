@@ -16,9 +16,12 @@
 
 <body class="min-h-screen text-[#181411] flex overflow-hidden">
 
+  <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-40"></div>
+
   <!-- Sidebar -->
   <aside
-    class="w-64 glass-panel border-r border-[#e5dfdc] flex flex-col justify-between hidden md:flex h-screen relative z-10">
+    id="sidebar-menu"
+    class="w-64 glass-panel border-r border-[#e5dfdc] flex flex-col justify-between fixed inset-y-0 left-0 -translate-x-full transition-transform duration-300 z-50 h-screen md:relative md:inset-auto md:translate-x-0 md:flex md:z-10">
     <div class="p-6">
       
       <!-- Logo grande, centrado y sin duplicados -->
@@ -62,6 +65,7 @@
     <header
       class="glass-panel sticky top-0 z-20 border-b border-[#e5dfdc]/50 px-6 py-4 flex items-center justify-between">
       <div class="md:hidden flex items-center gap-3">
+        <button type="button" id="btn-menu-toggle" class="text-2xl leading-none" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar-menu">☰</button>
         <img src="./logo/logo_trans.png" alt="LactaNido Logo" class="size-6 object-contain">
         <span class="font-bold">Mi Cuenta</span>
       </div>

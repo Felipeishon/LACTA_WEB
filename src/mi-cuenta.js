@@ -24,6 +24,22 @@ import './css/mi-cuenta.css';
 document.addEventListener('DOMContentLoaded', () => {
   const dashboardContent = document.getElementById('dashboard-content');
   const sidebarNav = document.getElementById('sidebar-nav');
+  const sidebarMenu = document.getElementById('sidebar-menu');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const menuToggle = document.getElementById('btn-menu-toggle');
+
+  const closeSidebar = () => {
+    sidebarMenu?.classList.add('-translate-x-full');
+    sidebarOverlay?.classList.add('hidden');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+  };
+
+  menuToggle?.addEventListener('click', () => {
+    sidebarMenu?.classList.remove('-translate-x-full');
+    sidebarOverlay?.classList.remove('hidden');
+    menuToggle.setAttribute('aria-expanded', 'true');
+  });
+  sidebarOverlay?.addEventListener('click', closeSidebar);
 
   const userNameEl = document.getElementById('user-name');
   const userRoleLabel = document.getElementById('user-role-label');
@@ -105,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         switchTab(link.dataset.action, role, userData);
+        closeSidebar();
       });
     });
   }
