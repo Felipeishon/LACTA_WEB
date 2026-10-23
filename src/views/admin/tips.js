@@ -12,36 +12,43 @@ async function renderAdminTipsManagement() {
     const pendingTips = tips.filter(tip => tip.estado === 'pendiente');
     const approvedTips = tips.filter(tip => tip.estado === 'aprobado');
     if (tips.length === 0) {
-      container.innerHTML = '<p class="text-center text-gray-500">Aún no hay tips creados.</p>';
+      container.innerHTML = '<div class="text-center py-8 text-gray-400 italic flex flex-col items-center justify-center"><span class="text-3xl mb-2">🍃</span>Aún no hay tips creados.</div>';
       return;
     }
 
+    const renderTipCard = (tip, actionButton) => {
+      const autorRol = tip.autorRol || tip.rolAutor;
+      return `
+        <article class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-4 md:p-5 mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div class="min-w-0 flex-1">
+            <h5 class="text-lg font-black text-[#181411] mb-2">${escapeHTML(tip.titulo)}</h5>
+            <div class="bg-gray-50 p-3 rounded-lg text-sm text-gray-700 mb-3">${escapeHTML(tip.contenido)}</div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-gray-500 italic">${escapeHTML(tip.autorNombre || 'Autor no registrado')}</span>
+              ${autorRol ? `<span class="bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-[10px] font-bold">${escapeHTML(autorRol)}</span>` : ''}
+            </div>
+          </div>
+          ${actionButton}
+        </article>
+      `;
+    };
+
     container.innerHTML = `
       <h4 class="font-bold text-lg mb-4">Tips Pendientes de Aprobación</h4>
-      <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 mb-8">
-        ${pendingTips.length === 0 ? '<p class="text-sm text-gray-500">No hay tips pendientes.</p>' : pendingTips.map(tip => `
-          <div class="flex items-start justify-between gap-4 p-3 bg-gray-50 border rounded-md">
-            <div>
-              <p class="font-bold text-sm">${escapeHTML(tip.titulo)}</p>
-              <p class="text-xs text-gray-600">${escapeHTML(tip.contenido)}</p>
-              <p class="text-[10px] text-gray-400 mt-1">${escapeHTML(tip.autorNombre || 'Autor no registrado')}</p>
-            </div>
-            <button type="button" data-id="${escapeHTML(tip.id)}" class="btn-approve-tip bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Aprobar</button>
-          </div>
-        `).join('')}
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 mb-8">
+        ${pendingTips.length === 0
+          ? '<div class="text-center py-8 text-gray-400 italic flex flex-col items-center justify-center"><span class="text-3xl mb-2">🍃</span>No hay tips pendientes de aprobación.</div>'
+          : pendingTips.map(tip => renderTipCard(tip, `
+              <button type="button" data-id="${escapeHTML(tip.id)}" class="btn-approve-tip shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-2 sm:py-1.5 px-4 rounded-lg text-xs transition shadow-sm">Aprobar</button>
+            `)).join('')}
       </div>
       <h4 class="font-bold text-lg mb-4">Tips Aprobados</h4>
-      <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-        ${approvedTips.length === 0 ? '<p class="text-sm text-gray-500">No hay tips aprobados.</p>' : approvedTips.map(tip => `
-          <div class="flex items-start justify-between gap-4 p-3 bg-gray-50 border rounded-md">
-            <div>
-              <p class="font-bold text-sm">${escapeHTML(tip.titulo)}</p>
-              <p class="text-xs text-gray-600">${escapeHTML(tip.contenido)}</p>
-              <p class="text-[10px] text-gray-400 mt-1">${escapeHTML(tip.autorNombre || 'Autor no registrado')}</p>
-            </div>
-            <button type="button" data-id="${escapeHTML(tip.id)}" class="btn-delete-tip text-red-600 hover:text-red-800 text-xs font-bold whitespace-nowrap">Eliminar</button>
-          </div>
-        `).join('')}
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2">
+        ${approvedTips.length === 0
+          ? '<div class="text-center py-8 text-gray-400 italic flex flex-col items-center justify-center"><span class="text-3xl mb-2">🍃</span>No hay tips aprobados.</div>'
+          : approvedTips.map(tip => renderTipCard(tip, `
+              <button type="button" data-id="${escapeHTML(tip.id)}" class="btn-delete-tip shrink-0 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 sm:py-1.5 px-4 rounded-lg text-xs transition border border-red-200">Eliminar</button>
+            `)).join('')}
       </div>
     `;
 
