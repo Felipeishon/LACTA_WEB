@@ -99,10 +99,13 @@ async function loadAllRegistros() {
               💜 Fichas (${totalFichas})
             </button>
           </div>
-          <div class="text-xs text-gray-500">
-            ${hayFiltrosActivos 
-              ? `Mostrando <strong>${totalFiltrados}</strong> de <strong>${totalBase}</strong> registros`
-              : `Total: <strong>${totalBase}</strong> registros`}
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 w-full">
+            <div class="text-xs text-gray-500">
+              ${hayFiltrosActivos 
+                ? `Mostrando <strong>${totalFiltrados}</strong> de <strong>${totalBase}</strong> registros`
+                : `Total: <strong>${totalBase}</strong> registros`}
+            </div>
+            <button type="button" id="btn-exportar-registros" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-sm transition">📥 Exportar CSV</button>
           </div>
         </div>
 
@@ -154,16 +157,16 @@ async function loadAllRegistros() {
         } else {
           container.innerHTML = headerHTML + `
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+              <div class="overflow-x-auto w-full rounded-lg border border-gray-200">
+                <table class="w-full min-w-[800px] text-left text-sm">
                   <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
                     <tr>
-                      <th class="p-3">Fecha</th>
-                      <th class="p-3">Nido / Bebé</th>
-                      <th class="p-3">Prestador</th>
-                      <th class="p-3">Sueño</th>
-                      <th class="p-3">Deposiciones</th>
-                      <th class="p-3">Acciones</th>
+                      <th class="p-3 whitespace-nowrap">Fecha</th>
+                      <th class="p-3 whitespace-nowrap">Nido / Bebé</th>
+                      <th class="p-3 whitespace-nowrap">Prestador</th>
+                      <th class="p-3 whitespace-nowrap">Sueño</th>
+                      <th class="p-3 whitespace-nowrap">Deposiciones</th>
+                      <th class="p-3 whitespace-nowrap">Acciones</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
@@ -173,11 +176,11 @@ async function loadAllRegistros() {
                       const nombrePrestador = resolveHistoricalName(b.prestadorNombre, () => userMap.get(b.prestadorId)?.nombre, 'Sin nombre');
                       return `
                         <tr>
-                          <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
-                          <td class="p-3 text-xs font-bold">${escapeHTML(nombreNido)}</td>
-                          <td class="p-3 text-xs">${escapeHTML(nombrePrestador)}</td>
-                          <td class="p-3 text-xs">${escapeHTML((b.sueno || '---').toString().substring(0, 40))}</td>
-                          <td class="p-3 text-xs">${escapeHTML((b.deposiciones || '---').toString().substring(0, 40))}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(fecha)}</td>
+                          <td class="p-3 text-xs font-bold whitespace-nowrap">${escapeHTML(nombreNido)}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(nombrePrestador)}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML((b.sueno || '---').toString().substring(0, 40))}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML((b.deposiciones || '---').toString().substring(0, 40))}</td>
                           <td class="p-3 whitespace-nowrap">
                             <button type="button" class="btn-ver-bitacora text-blue-600 hover:text-blue-800 text-xs font-bold" data-json='${escapeHTML(JSON.stringify(b))}' data-nido='${escapeHTML(nombreNido)}' data-prestador='${escapeHTML(nombrePrestador)}'>Ver</button>
                           </td>
@@ -196,15 +199,15 @@ async function loadAllRegistros() {
         } else {
           container.innerHTML = headerHTML + `
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+              <div class="overflow-x-auto w-full rounded-lg border border-gray-200">
+                <table class="w-full min-w-[800px] text-left text-sm">
                   <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
                     <tr>
-                      <th class="p-3">Fecha Atención</th>
-                      <th class="p-3">Nido / Bebé</th>
-                      <th class="p-3">Consejera</th>
-                      <th class="p-3">Motivo</th>
-                      <th class="p-3">Acciones</th>
+                      <th class="p-3 whitespace-nowrap">Fecha Atención</th>
+                      <th class="p-3 whitespace-nowrap">Nido / Bebé</th>
+                      <th class="p-3 whitespace-nowrap">Consejera</th>
+                      <th class="p-3 whitespace-nowrap">Motivo</th>
+                      <th class="p-3 whitespace-nowrap">Acciones</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
@@ -214,10 +217,10 @@ async function loadAllRegistros() {
                       const nombreConsejera = resolveHistoricalName(f.consejeraNombre, () => userMap.get(f.consejeraId)?.nombre, 'Sin nombre');
                       return `
                         <tr>
-                          <td class="p-3 text-xs">${escapeHTML(fecha)}</td>
-                          <td class="p-3 text-xs font-bold">${escapeHTML(nombreNido)}</td>
-                          <td class="p-3 text-xs">${escapeHTML(nombreConsejera)}</td>
-                          <td class="p-3 text-xs">${escapeHTML((f.motivoConsulta || f.motivo || '---').substring(0, 50))}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(fecha)}</td>
+                          <td class="p-3 text-xs font-bold whitespace-nowrap">${escapeHTML(nombreNido)}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(nombreConsejera)}</td>
+                          <td class="p-3 text-xs whitespace-nowrap">${escapeHTML((f.motivoConsulta || f.motivo || '---').substring(0, 50))}</td>
                           <td class="p-3 whitespace-nowrap">
                             <button type="button" class="btn-ver-ficha-global text-blue-600 hover:text-blue-800 text-xs font-bold" data-json='${escapeHTML(JSON.stringify(f))}' data-nido='${escapeHTML(nombreNido)}' data-consejera='${escapeHTML(nombreConsejera)}'>Ver</button>
                           </td>
@@ -240,6 +243,9 @@ async function loadAllRegistros() {
       document.getElementById('btn-vista-fichas')?.addEventListener('click', () => {
         vistaActual = 'fichas';
         render();
+      });
+      document.getElementById('btn-exportar-registros')?.addEventListener('click', () => {
+        exportRegistrosToCsv(registrosFiltrados, vistaActual, userMap, nidoMap);
       });
 
       // Listeners de filtros (inputs)
@@ -339,6 +345,50 @@ async function loadAllRegistros() {
     console.error('Error al cargar registros globales:', error);
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error al cargar los registros.</p>';
   }
+}
+
+function exportRegistrosToCsv(registros, tipo, userMap, nidoMap) {
+  const csvCell = value => {
+    const text = String(value ?? '');
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+  const esBitacoras = tipo === 'bitacoras';
+  const headers = esBitacoras
+    ? ['Fecha', 'Nido / Bebé', 'Prestador', 'Sueño', 'Deposiciones']
+    : ['Fecha Atención', 'Nido / Bebé', 'Consejera', 'Motivo'];
+  const rows = registros.map(registro => {
+    const nombreNido = resolveHistoricalName(
+      registro.nidoNombreBebe,
+      () => (registro.nidoId ? nidoMap.get(registro.nidoId) : null) || getNidoNombreDesdePadre(registro.uidPadre, userMap, nidoMap),
+      'Sin nido'
+    );
+    const datos = esBitacoras
+      ? [
+          formatFirestoreDate(registro.fecha || registro.creadoEn) || '---',
+          nombreNido,
+          resolveHistoricalName(registro.prestadorNombre, () => userMap.get(registro.prestadorId)?.nombre, 'Sin nombre'),
+          (registro.sueno || '---').toString().substring(0, 40),
+          (registro.deposiciones || '---').toString().substring(0, 40)
+        ]
+      : [
+          formatFirestoreDate(registro.fechaAtencion || registro.creadoEn) || '---',
+          nombreNido,
+          resolveHistoricalName(registro.consejeraNombre, () => userMap.get(registro.consejeraId)?.nombre, 'Sin nombre'),
+          (registro.motivoConsulta || registro.motivo || '---').substring(0, 50)
+        ];
+    return datos.map(csvCell).join(',');
+  });
+  const csv = `\uFEFF${[headers.map(csvCell).join(','), ...rows].join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${esBitacoras ? 'bitacoras' : 'fichas_atencion'}_lactanido.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export { loadAllRegistros };
