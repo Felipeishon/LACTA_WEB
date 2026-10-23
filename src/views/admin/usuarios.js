@@ -9,8 +9,8 @@ import { approveUserWithAudit } from '../../api/admin.js';
 import { escapeHTML } from '../../utils/html.js';
 import { hasRole } from '../../utils/roles.js';
 import { formatFirestoreDate } from '../../utils/helpers.js';
-import { db } from '../../firebase.js';
-import { doc, updateDoc } from 'firebase/firestore';
+import { auth } from '../../firebase.js';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { showConfirmModal } from '../../modales.js';
 
 async function loadPendingUsers() {
@@ -74,28 +74,38 @@ async function loadAllUsersTable() {
       const status = statusFilter.value;
       const filteredUsers = users.filter(user => {
         const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
-        const searchable = [user.nombre, user.email, user.rut].filter(Boolean).join(' ').toLowerCase();
+        const searchable = [user.nombre, user.email, user.telefono, user.rut].filter(Boolean).join(' ').toLowerCase();
         return (!search || searchable.includes(search))
           && (!role || roles.includes(role))
           && (!status || user.estado === status);
       });
 
       if (filteredUsers.length === 0) {
-        container.innerHTML = '<p class="text-center py-8 text-gray-400 italic">No hay usuarios que coincidan.</p>';
+        container.innerHTML = `
+          <div class="flex justify-end mb-4">
+            <button type="button" id="btn-export-users" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-sm transition">📥 Exportar CSV</button>
+          </div>
+          <p class="text-center py-8 text-gray-400 italic">No hay usuarios que coincidan.</p>
+        `;
+        document.getElementById('btn-export-users').addEventListener('click', () => exportUsersToCsv(filteredUsers));
         return;
       }
 
       container.innerHTML = `
+        <div class="flex justify-end mb-4">
+          <button type="button" id="btn-export-users" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-sm transition">📥 Exportar CSV</button>
+        </div>
         <table class="w-full text-left text-sm">
           <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
             <tr>
               <th class="p-3">Nombre</th>
               <th class="p-3">Email</th>
+              <th class="p-3">Teléfono</th>
               <th class="p-3">RUT</th>
               <th class="p-3">Rol</th>
               <th class="p-3">Estado</th>
               <th class="p-3">Registro</th>
-              <th class="p-3">Tips</th>
+              <th class="p-3">Último Acceso</th>
               <th class="p-3">Acciones</th>
             </tr>
           </thead>
@@ -103,21 +113,22 @@ async function loadAllUsersTable() {
             ${filteredUsers.map(user => {
               const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
               const fecha = formatFirestoreDate(user.fechaRegistro) || '---';
-              const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
+              const ultimoAcceso = formatFirestoreDate(user.ultimoAcceso, true) || 'Nunca';
+              const esCurrentUser = user.id === auth.currentUser?.uid;
               return `
                 <tr>
                   <td class="p-3 font-bold">${escapeHTML(user.nombre || 'Sin nombre')}</td>
                   <td class="p-3 text-xs">${escapeHTML(user.email || '---')}</td>
+                  <td class="p-3 text-xs">${escapeHTML(user.telefono || '-')}</td>
                   <td class="p-3 text-xs">${escapeHTML(user.rut || '---')}</td>
                   <td class="p-3 text-xs">${escapeHTML(roles.join(', ') || '---')}</td>
                   <td class="p-3 text-xs">${escapeHTML(user.estado || '---')}</td>
                   <td class="p-3 text-xs text-gray-500">${escapeHTML(fecha)}</td>
-                  <td class="p-3 text-center">
-                    ${esPrestador ? `<input type="checkbox" data-uid="${escapeHTML(user.id)}" class="toggle-tips-admin" ${user.puedeCrearTips ? 'checked' : ''}>` : '---'}
-                  </td>
+                  <td class="p-3 text-xs text-gray-500">${escapeHTML(ultimoAcceso)}</td>
                   <td class="p-3 whitespace-nowrap">
                     <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-edit-user text-blue-600 hover:text-blue-800 text-xs font-bold">Editar</button>
-                    <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-delete-user text-red-600 hover:text-red-800 text-xs font-bold ml-3">Eliminar</button>
+                    ${esCurrentUser ? '' : `<button type="button" data-uid="${escapeHTML(user.id)}" class="btn-delete-user text-red-600 hover:text-red-800 text-xs font-bold ml-3">Desactivar</button>`}
+                    <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-reset-password text-indigo-600 hover:text-indigo-800 text-xs font-bold ml-3">🔑 Reset Pass</button>
                   </td>
                 </tr>
               `;
@@ -126,18 +137,7 @@ async function loadAllUsersTable() {
         </table>
       `;
 
-      container.querySelectorAll('.toggle-tips-admin').forEach(toggle => {
-        toggle.addEventListener('change', async event => {
-          const canCreateTips = event.target.checked;
-          try {
-            await updateDoc(doc(db, 'usuarios', event.target.dataset.uid), { puedeCrearTips: canCreateTips });
-            showToast(`Permiso para crear tips ${canCreateTips ? 'otorgado' : 'revocado'}.`, 'success');
-          } catch {
-            event.target.checked = !canCreateTips;
-            showToast('Error al actualizar permiso.', 'error');
-          }
-        });
-      });
+      document.getElementById('btn-export-users').addEventListener('click', () => exportUsersToCsv(filteredUsers));
 
       container.querySelectorAll('.btn-edit-user').forEach(button => {
         button.addEventListener('click', () => {
@@ -149,10 +149,29 @@ async function loadAllUsersTable() {
           form.elements.uid.value = user.id;
           form.elements.nombre.value = user.nombre || '';
           form.elements.email.value = user.email || '';
+          form.elements.telefono.value = user.telefono || '';
           form.elements.estado.value = user.estado || 'pendiente';
-          form.querySelectorAll('input[name="rol"]').forEach(input => {
+          const tipsPermissionContainer = document.getElementById('edit-tips-permission-container');
+          const tipsPermissionInput = document.getElementById('edit-user-tips');
+          const roleInputs = form.querySelectorAll('input[name="rol"]');
+          const updateTipsPermissionVisibility = () => {
+            const rolesActuales = Array.from(roleInputs)
+              .filter(input => input.checked)
+              .map(input => input.value);
+            const esPrestador = rolesActuales.includes('consejera') || rolesActuales.includes('cuidadora');
+            tipsPermissionContainer.classList.toggle('hidden', !esPrestador);
+            if (!esPrestador) tipsPermissionInput.checked = false;
+          };
+
+          tipsPermissionInput.checked = Boolean(user.puedeCrearTips);
+          roleInputs.forEach(input => {
             input.checked = roles.includes(input.value);
+            if (!input.dataset.tipsPermissionListenerAttached) {
+              input.dataset.tipsPermissionListenerAttached = 'true';
+              input.addEventListener('change', updateTipsPermissionVisibility);
+            }
           });
+          updateTipsPermissionVisibility();
           modal.showModal();
         });
       });
@@ -160,7 +179,7 @@ async function loadAllUsersTable() {
       container.querySelectorAll('.btn-delete-user').forEach(button => {
         button.addEventListener('click', async () => {
           const uid = button.dataset.uid;
-          const confirmado = await showConfirmModal('Desactivar Usuario', '¿Estás seguro de desactivar este usuario?');
+          const confirmado = await showConfirmModal('Desactivar Usuario', '¿Estás seguro de desactivar a este usuario? No podrá acceder al sistema, pero sus datos se conservarán.');
           if (!confirmado) return;
           button.disabled = true;
           try {
@@ -176,6 +195,28 @@ async function loadAllUsersTable() {
           }
         });
       });
+
+      container.querySelectorAll('.btn-reset-password').forEach(button => {
+        button.addEventListener('click', async () => {
+          const user = users.find(item => item.id === button.dataset.uid);
+          if (!user?.email) {
+            showToast('El usuario no tiene un email registrado.', 'error');
+            return;
+          }
+          const confirmado = await showConfirmModal('Restablecer Contraseña', `¿Enviar un correo para restablecer la contraseña a ${user.email}?`, false);
+          if (!confirmado) return;
+
+          button.disabled = true;
+          try {
+            await sendPasswordResetEmail(auth, user.email);
+            showToast('Correo para restablecer contraseña enviado.', 'success');
+          } catch (error) {
+            console.error('Error al enviar restablecimiento de contraseña:', error);
+            showToast('No se pudo enviar el correo para restablecer la contraseña.', 'error');
+            button.disabled = false;
+          }
+        });
+      });
     };
 
     const editModal = document.getElementById('modalEdicionUsuario');
@@ -187,6 +228,8 @@ async function loadAllUsersTable() {
         const formData = new FormData(editForm);
         const uid = formData.get('uid');
         const roles = Array.from(editForm.querySelectorAll('input[name="rol"]:checked')).map(input => input.value);
+        const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
+        const puedeCrearTips = esPrestador && document.getElementById('edit-user-tips').checked;
         if (roles.length === 0) {
           showToast('Selecciona al menos un rol.', 'error');
           return;
@@ -195,15 +238,19 @@ async function loadAllUsersTable() {
           await updateUserProfile(uid, {
             nombre: formData.get('nombre'),
             email: formData.get('email'),
+            telefono: formData.get('telefono'),
             estado: formData.get('estado'),
-            rol: roles
+            rol: roles,
+            puedeCrearTips
           });
           const user = users.find(item => item.id === uid);
           if (user) {
             user.nombre = formData.get('nombre');
             user.email = formData.get('email');
+            user.telefono = formData.get('telefono');
             user.estado = formData.get('estado');
             user.rol = roles;
+            user.puedeCrearTips = puedeCrearTips;
           }
           editModal?.close();
           renderTable();
@@ -223,6 +270,36 @@ async function loadAllUsersTable() {
     console.error('Error en loadAllUsersTable:', error);
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando usuarios.</p>';
   }
+}
+
+function exportUsersToCsv(users) {
+  const headers = ['Nombre', 'Email', 'Teléfono', 'RUT', 'Rol', 'Estado'];
+  const csvCell = value => {
+    const text = String(value ?? '');
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+  const rows = users.map(user => {
+    const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+    return [
+      user.nombre || '',
+      user.email || '',
+      user.telefono || '',
+      user.rut || '',
+      roles.join(', '),
+      user.estado || ''
+    ].map(csvCell).join(',');
+  });
+  const csv = `\uFEFF${[headers.map(csvCell).join(','), ...rows].join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'usuarios_lactanido.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 async function loadLatestUsers() {

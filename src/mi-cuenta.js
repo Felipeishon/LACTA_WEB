@@ -3,8 +3,9 @@
 
 import '../index.css';
 
-import { auth } from './firebase.js';
+import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initFormularios } from './formularios.js';
 import { getUserProfileWithSubcollections } from './api/firestore.js';
 import { initCalendario } from './calendario.js';
@@ -236,6 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
+        try {
+          await updateDoc(doc(db, 'usuarios', user.uid), { ultimoAcceso: serverTimestamp() });
+        } catch (error) {
+          console.error('Error al registrar el último acceso:', error);
+          showToast('No se pudo registrar el último acceso.', 'warning');
+        }
+
         const userData = await getUserProfileWithSubcollections(user.uid);
 
         if (userData) {

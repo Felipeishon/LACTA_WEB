@@ -194,8 +194,11 @@ export async function updateUserProfile(uid, updateData) {
     const changes = {
         nombre: String(updateData.nombre || '').trim(),
         email: String(updateData.email || '').trim(),
+        telefono: String(updateData.telefono || '').trim(),
         estado: updateData.estado,
-        rol: roles
+        rol: roles,
+        puedeCrearTips: (roles.includes('consejera') || roles.includes('cuidadora')) &&
+            updateData.puedeCrearTips === true
     };
     if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
     if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) throw new Error('Los datos del usuario no son válidos.');
