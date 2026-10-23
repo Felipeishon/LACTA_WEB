@@ -1,11 +1,7 @@
 import { showToast } from '../../ui/notifications.js';
-import {
-  fetchAdminStats, fetchTodosPedidos, createProduct
-} from '../../api/firestore.js';
+import { fetchAdminStats, createProduct } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
-import {
-  renderAdminInventory, renderAdminAllOrders
-} from './tienda.js';
+import { renderAdminInventory } from './tienda.js';
 import { renderAdminTipsManagement } from './tips.js';
 import {
   loadPendingUsers, loadAllUsersTable, loadLatestUsers
@@ -22,7 +18,7 @@ async function renderAdminTab(activeTab) {
     const stats = await fetchAdminStats();
     dashboardContent.innerHTML = `
       <h2 class="text-3xl font-black text-[#181411] mb-6">Panel Super Administrador 🚀</h2>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
           <div class="text-gray-500 text-sm font-medium mb-1">Total Usuarios</div>
           <div class="text-3xl font-black">${stats.totalUsers || 0}</div>
@@ -44,10 +40,6 @@ async function renderAdminTab(activeTab) {
           <div class="text-gray-500 text-sm font-medium mb-1">Bitácoras de Cuidado</div>
           <div class="text-3xl font-black text-[#887263]">${stats.totalBitacoras || 0}</div>
         </div>
-        <div class="bg-gradient-to-br from-[#e87a30] to-[#f4c28e] p-5 rounded-xl shadow-sm text-white">
-          <div class="text-white/80 text-sm font-medium mb-1">Pedidos Generados</div>
-          <div id="admin-orders-count" class="text-3xl font-black">Cargando...</div>
-        </div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -67,14 +59,6 @@ async function renderAdminTab(activeTab) {
 
     loadPendingUsers();
     loadLatestUsers();
-
-    try {
-      const ped = await fetchTodosPedidos();
-      const cnt = document.getElementById('admin-orders-count');
-      if (cnt) cnt.textContent = ped.length;
-    } catch (e) {
-      console.warn('No se pudo cargar el conteo de pedidos', e);
-    }
 
   } else if (activeTab === 'usuarios') {
     dashboardContent.innerHTML = `
@@ -213,14 +197,6 @@ async function renderAdminTab(activeTab) {
     `;
     await renderAdminTipsManagement();
 
-  } else if (activeTab === 'admin_pedidos') {
-    dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-6">📦 Historial de Todos los Pedidos</h2>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="admin-orders-list">
-        <p class="text-center py-10 text-gray-400 italic">Cargando todos los pedidos...</p>
-      </div>
-    `;
-    renderAdminAllOrders();
   }
 }
 

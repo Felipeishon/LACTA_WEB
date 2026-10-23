@@ -1,7 +1,7 @@
 import { showToast } from '../../ui/notifications.js';
-import { fetchActiveProducts, updateProduct, deleteProduct, fetchTodosPedidos } from '../../api/firestore.js';
+import { fetchActiveProducts, updateProduct, deleteProduct } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
-import { fileToBase64, formatFirestoreDate } from '../../utils/helpers.js';
+import { fileToBase64 } from '../../utils/helpers.js';
 import { showConfirmModal } from '../../modales.js';
 
 async function renderAdminInventory() {
@@ -100,45 +100,4 @@ async function renderAdminInventory() {
   }
 }
 
-async function renderAdminAllOrders() {
-  const div = document.getElementById('admin-orders-list');
-  if (!div) return;
-  try {
-    const orders = await fetchTodosPedidos();
-    if (orders.length === 0) {
-      div.innerHTML = '<p class="text-center py-6 text-gray-400 italic">No hay registros de compras.</p>';
-      return;
-    }
-
-    div.innerHTML = `
-      <table class="w-full text-left text-sm">
-        <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
-          <tr>
-            <th class="p-3">ID Pedido</th>
-            <th class="p-3">Usuario UID</th>
-            <th class="p-3">Dirección</th>
-            <th class="p-3">Productos</th>
-            <th class="p-3">Total</th>
-            <th class="p-3">Fecha</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          ${orders.map(o => `
-            <tr>
-              <td class="p-3 font-mono text-xs">${o.id}</td>
-              <td class="p-3 text-xs text-gray-600">${o.compradorUid}</td>
-              <td class="p-3 text-xs">${escapeHTML(o.direccion || 'No ingresada')}</td>
-              <td class="p-3 text-xs">${o.productos.map(p => `${escapeHTML(p.nombre)} x${p.cantidad}`).join(', ')}</td>
-              <td class="p-3 font-bold text-[#e87a30]">$${o.total.toLocaleString('cl-CL')}</td>
-              <td class="p-3 text-xs text-gray-400">${formatFirestoreDate(o.creadoEn) || '---'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-  } catch {
-    div.innerHTML = '<p class="text-center py-6 text-red-500 italic">Error cargando pedidos.</p>';
-  }
-}
-
-export { renderAdminInventory, renderAdminAllOrders };
+export { renderAdminInventory };

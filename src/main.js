@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnRegistro = document.getElementById('btnAbrirModalRegistroPadre');
   const btnMobileLogin = document.getElementById('btnMobileLogin');
   const btnMobileRegistro = document.getElementById('btnMobileRegistro');
+  const btnMobileMiCuenta = document.getElementById('btnMobileMiCuenta');
   const btnMiCuenta = document.getElementById('btnIrMiCuenta');
 
   onAuthStateChanged(auth, (user) => {
@@ -29,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnRegistro) btnRegistro.classList.add('hidden');
       if (btnMobileLogin) btnMobileLogin.classList.add('hidden');
       if (btnMobileRegistro) btnMobileRegistro.classList.add('hidden');
+      if (btnMobileMiCuenta) {
+        btnMobileMiCuenta.classList.remove('hidden');
+        btnMobileMiCuenta.classList.add('block');
+      }
       if (btnMiCuenta) {
         btnMiCuenta.classList.remove('hidden');
         btnMiCuenta.classList.add('flex');
@@ -39,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnRegistro) btnRegistro.classList.remove('hidden');
       if (btnMobileLogin) btnMobileLogin.classList.remove('hidden');
       if (btnMobileRegistro) btnMobileRegistro.classList.remove('hidden');
+      if (btnMobileMiCuenta) {
+        btnMobileMiCuenta.classList.add('hidden');
+        btnMobileMiCuenta.classList.remove('block');
+      }
       if (btnMiCuenta) {
         btnMiCuenta.classList.add('hidden');
         btnMiCuenta.classList.remove('flex');
