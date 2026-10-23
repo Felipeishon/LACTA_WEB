@@ -24,88 +24,110 @@ async function loadAllNidos() {
     }
 
     const userMap = new Map();
-    usuarios.forEach(u => userMap.set(u.id, u.nombre || u.email || u.id));
+    usuarios.forEach(u => userMap.set(u.id, u));
 
     let mostrarInactivos = false;
+    let terminoBusqueda = '';
 
     const renderTabla = () => {
-      const nidosFiltrados = nidos.filter(n => {
+      const nidosDelEstado = nidos.filter(n => {
         const estado = n.estado || 'activo';
         return mostrarInactivos ? estado === 'inactivo' : estado === 'activo';
+      });
+      const busqueda = terminoBusqueda.trim().toLowerCase();
+      const nidosFiltrados = nidosDelEstado.filter(nido => {
+        if (!busqueda) return true;
+        const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
+        return hijos.some(hijo =>
+          [hijo.nombre, hijo.rut].filter(Boolean).join(' ').toLowerCase().includes(busqueda)
+        );
       });
 
       const totalActivos = nidos.filter(n => (n.estado || 'activo') === 'activo').length;
       const totalInactivos = nidos.filter(n => n.estado === 'inactivo').length;
 
-      if (nidosFiltrados.length === 0) {
-        container.innerHTML = `
-          <div class="flex items-center gap-3 mb-4">
+      container.innerHTML = `
+        <div class="flex flex-col gap-3 mb-4">
+          <div class="flex items-center justify-between">
+            <p class="text-sm text-gray-500">Mostrando <strong>${nidosFiltrados.length}</strong> nido(s) ${mostrarInactivos ? 'inactivo(s)' : 'activo(s)'}</p>
             <button id="toggle-nidos-inactivos" class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${mostrarInactivos ? 'bg-[#e87a30] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-              ${mostrarInactivos ? '← Ver Activos' : `Ver Inactivos (${totalInactivos})`}
+              ${mostrarInactivos ? `← Ver Activos (${totalActivos})` : `Ver Inactivos (${totalInactivos})`}
             </button>
           </div>
-          <p class="text-center py-8 text-gray-400 italic">${mostrarInactivos ? 'No hay nidos desactivados.' : 'No hay nidos activos.'}</p>
-        `;
-        document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
-          mostrarInactivos = !mostrarInactivos;
-          renderTabla();
-        });
-        return;
-      }
-
-      container.innerHTML = `
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-sm text-gray-500">Mostrando <strong>${nidosFiltrados.length}</strong> nido(s) ${mostrarInactivos ? 'inactivo(s)' : 'activo(s)'}</p>
-          <button id="toggle-nidos-inactivos" class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${mostrarInactivos ? 'bg-[#e87a30] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-            ${mostrarInactivos ? `← Ver Activos (${totalActivos})` : `Ver Inactivos (${totalInactivos})`}
-          </button>
+          <div class="flex flex-col md:flex-row md:items-center gap-2">
+            <input type="text" id="buscar-nido" value="${escapeHTML(terminoBusqueda)}" placeholder="🔍 Buscar por nombre o RUT del bebé..." class="p-2 border rounded-lg text-sm w-full md:w-64">
+            <button type="button" id="btn-exportar-nidos" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-sm transition">📥 Exportar CSV</button>
+          </div>
         </div>
-        <table class="w-full text-left text-sm">
-          <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
-            <tr>
-              <th class="p-3">Estado</th>
-              <th class="p-3">Bebés / Hijos</th>
-              <th class="p-3">Padres / Familia</th>
-              <th class="p-3">Fecha Creación</th>
-              <th class="p-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            ${nidosFiltrados.map(nido => {
-              const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
-              const padresUids = nido.padresUids || [];
-              const nombresPadres = padresUids.map(uid => userMap.get(uid) || `(UID: ${uid.substring(0, 8)}...)`);
-              const estadoNido = nido.estado || 'activo';
-              const esActivo = estadoNido === 'activo';
-              const fechaCreacion = formatFirestoreDate(nido.creadoEn) || '---';
+        ${nidosFiltrados.length === 0
+          ? `<p class="text-center py-8 text-gray-400 italic">${busqueda ? 'No hay nidos que coincidan con la búsqueda.' : mostrarInactivos ? 'No hay nidos desactivados.' : 'No hay nidos activos.'}</p>`
+          : `
+            <div class="overflow-x-auto w-full rounded-lg border border-gray-200">
+              <table class="w-full min-w-[900px] text-left text-sm">
+                <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                  <tr>
+                    <th class="p-3 whitespace-nowrap">Estado</th>
+                    <th class="p-3 whitespace-nowrap">Bebés / Hijos</th>
+                    <th class="p-3 whitespace-nowrap">N° Hijos</th>
+                    <th class="p-3 whitespace-nowrap">Padres / Familia</th>
+                    <th class="p-3 whitespace-nowrap">Fecha Creación</th>
+                    <th class="p-3 whitespace-nowrap">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  ${nidosFiltrados.map(nido => {
+                    const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
+                    const padresUids = nido.padresUids || [];
+                    const padres = padresUids.map(uid => userMap.get(uid));
+                    const estadoNido = nido.estado || 'activo';
+                    const esActivo = estadoNido === 'activo';
+                    const fechaCreacion = formatFirestoreDate(nido.creadoEn) || '---';
 
-              return `
-                <tr class="${esActivo ? '' : 'bg-red-50/30 opacity-75'}">
-                  <td class="p-3">
-                    <span class="text-[10px] font-bold px-2 py-1 rounded-full ${esActivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                      ${esActivo ? '● ACTIVO' : '● INACTIVO'}
-                    </span>
-                  </td>
-                  <td class="p-3 text-xs">
-                    ${hijos.length > 0 ? hijos.map(h => `<div class="mb-1"><span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}</div>`).join('') : '<span class="text-gray-400 italic">Sin registros</span>'}
-                  </td>
-                  <td class="p-3 text-xs">${nombresPadres.length > 0 ? nombresPadres.map(n => `<div class="mb-1">${escapeHTML(n)}</div>`).join('') : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}</td>
-                  <td class="p-3 text-xs text-gray-500">${escapeHTML(fechaCreacion)}</td>
-                  <td class="p-3 whitespace-nowrap">
-                    <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">Ver</button>
-                    ${esActivo ? `<button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">Desactivar</button>` : `<button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">Reactivar</button>`}
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
+                    return `
+                      <tr class="${esActivo ? '' : 'bg-red-50/30 opacity-75'}">
+                        <td class="p-3 whitespace-nowrap">
+                          <span class="text-[10px] font-bold px-2 py-1 rounded-full ${esActivo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${esActivo ? '● ACTIVO' : '● INACTIVO'}
+                          </span>
+                        </td>
+                        <td class="p-3 text-xs whitespace-nowrap">
+                          ${hijos.length > 0 ? hijos.map(h => `<div class="mb-1"><span class="font-bold">${escapeHTML(h.nombre || 'Sin nombre')}</span>${h.rut ? `<span class="text-gray-400 ml-1">(${escapeHTML(h.rut)})</span>` : ''}</div>`).join('') : '<span class="text-gray-400 italic">Sin registros</span>'}
+                        </td>
+                        <td class="p-3 text-xs whitespace-nowrap">${hijos.length}</td>
+                        <td class="p-3 text-xs whitespace-nowrap">${padresUids.length > 0 ? padres.map((padre, index) => {
+                          const uid = padresUids[index];
+                          const nombre = padre?.nombre || padre?.email || (uid ? `(UID: ${uid.substring(0, 8)}...)` : '');
+                          return `<div class="mb-1">${escapeHTML(nombre)}${padre?.telefono ? `<span class="block text-[10px] text-gray-500">${escapeHTML(padre.telefono)}</span>` : ''}</div>`;
+                        }).join('') : '<span class="text-gray-400 italic">Sin padres vinculados</span>'}</td>
+                        <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${escapeHTML(fechaCreacion)}</td>
+                        <td class="p-3 whitespace-nowrap">
+                          <button type="button" class="btn-view-nido text-blue-600 hover:text-blue-800 text-xs font-bold" data-id="${nido.id}">Ver</button>
+                          ${esActivo ? `<button type="button" class="btn-delete-nido text-red-600 hover:text-red-800 text-xs font-bold ml-3" data-id="${nido.id}">Desactivar</button>` : `<button type="button" class="btn-reactivate-nido text-green-600 hover:text-green-800 text-xs font-bold ml-3" data-id="${nido.id}">Reactivar</button>`}
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
       `;
 
       document.getElementById('toggle-nidos-inactivos')?.addEventListener('click', () => {
         mostrarInactivos = !mostrarInactivos;
         renderTabla();
       });
+
+      document.getElementById('buscar-nido')?.addEventListener('input', event => {
+        terminoBusqueda = event.target.value;
+        const cursor = event.target.selectionStart;
+        renderTabla();
+        const input = document.getElementById('buscar-nido');
+        input?.focus();
+        input?.setSelectionRange(cursor, cursor);
+      });
+
+      document.getElementById('btn-exportar-nidos')?.addEventListener('click', () => exportNidosToCsv(nidosFiltrados, userMap));
 
       container.querySelectorAll('.btn-view-nido').forEach(btn => {
         btn.addEventListener('click', () => renderDetalleNido(btn.dataset.id));
@@ -161,6 +183,41 @@ async function loadAllNidos() {
     console.error('Error al cargar nidos:', error);
     container.innerHTML = '<p class="text-center py-8 text-red-500 italic">Error cargando nidos.</p>';
   }
+}
+
+function exportNidosToCsv(nidos, userMap) {
+  const csvCell = value => {
+    const text = String(value ?? '');
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
+  const headers = ['ID Nido', 'Bebés', 'Padres', 'Estado', 'Fecha Creación'];
+  const rows = nidos.map(nido => {
+    const hijos = nido.hijos || (nido.rutBebe ? [{ nombre: 'Nido antiguo', rut: nido.rutBebe }] : []);
+    const bebes = hijos.map(hijo => [hijo.nombre || 'Sin nombre', hijo.rut].filter(Boolean).join(' - ')).join('; ');
+    const padres = (nido.padresUids || []).map(uid => {
+      const padre = userMap.get(uid);
+      const nombre = padre?.nombre || padre?.email || (uid ? `(UID: ${uid.substring(0, 8)}...)` : '');
+      return [nombre, padre?.telefono].filter(Boolean).join(' - ');
+    }).join('; ');
+    return [
+      nido.id,
+      bebes,
+      padres,
+      nido.estado || 'activo',
+      formatFirestoreDate(nido.creadoEn) || '---'
+    ].map(csvCell).join(',');
+  });
+  const csv = `\uFEFF${[headers.map(csvCell).join(','), ...rows].join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'nidos_lactanido.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 async function renderDetalleNido(nidoId) {
