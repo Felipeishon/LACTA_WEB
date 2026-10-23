@@ -95,18 +95,18 @@ async function loadAllUsersTable() {
         <div class="flex justify-end mb-4">
           <button type="button" id="btn-export-users" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-4 rounded-lg text-sm transition">📥 Exportar CSV</button>
         </div>
-        <table class="w-full text-left text-sm">
+        <table class="w-full min-w-[900px] text-left text-sm">
           <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
             <tr>
-              <th class="p-3">Nombre</th>
-              <th class="p-3">Email</th>
-              <th class="p-3">Teléfono</th>
-              <th class="p-3">RUT</th>
-              <th class="p-3">Rol</th>
-              <th class="p-3">Estado</th>
-              <th class="p-3">Registro</th>
-              <th class="p-3">Último Acceso</th>
-              <th class="p-3">Acciones</th>
+              <th class="p-3 whitespace-nowrap">Nombre</th>
+              <th class="p-3 whitespace-nowrap">Email</th>
+              <th class="p-3 whitespace-nowrap">Teléfono</th>
+              <th class="p-3 whitespace-nowrap">RUT</th>
+              <th class="p-3 whitespace-nowrap">Rol</th>
+              <th class="p-3 whitespace-nowrap">Estado</th>
+              <th class="p-3 whitespace-nowrap">Registro</th>
+              <th class="p-3 whitespace-nowrap">Último Acceso</th>
+              <th class="p-3 whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -117,17 +117,17 @@ async function loadAllUsersTable() {
               const esCurrentUser = user.id === auth.currentUser?.uid;
               return `
                 <tr>
-                  <td class="p-3 font-bold">${escapeHTML(user.nombre || 'Sin nombre')}</td>
-                  <td class="p-3 text-xs">${escapeHTML(user.email || '---')}</td>
-                  <td class="p-3 text-xs">${escapeHTML(user.telefono || '-')}</td>
-                  <td class="p-3 text-xs">${escapeHTML(user.rut || '---')}</td>
-                  <td class="p-3 text-xs">${escapeHTML(roles.join(', ') || '---')}</td>
-                  <td class="p-3 text-xs">${escapeHTML(user.estado || '---')}</td>
-                  <td class="p-3 text-xs text-gray-500">${escapeHTML(fecha)}</td>
-                  <td class="p-3 text-xs text-gray-500">${escapeHTML(ultimoAcceso)}</td>
+                  <td class="p-3 font-bold whitespace-nowrap">${escapeHTML(user.nombre || 'Sin nombre')}</td>
+                  <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(user.email || '---')}</td>
+                  <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(user.telefono || '-')}</td>
+                  <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(user.rut || '---')}</td>
+                  <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(roles.join(', ') || '---')}</td>
+                  <td class="p-3 text-xs whitespace-nowrap">${escapeHTML(user.estado || '---')}</td>
+                  <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${escapeHTML(fecha)}</td>
+                  <td class="p-3 text-xs text-gray-500 whitespace-nowrap">${escapeHTML(ultimoAcceso)}</td>
                   <td class="p-3 whitespace-nowrap">
                     <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-edit-user text-blue-600 hover:text-blue-800 text-xs font-bold">Editar</button>
-                    ${esCurrentUser ? '' : `<button type="button" data-uid="${escapeHTML(user.id)}" class="btn-delete-user text-red-600 hover:text-red-800 text-xs font-bold ml-3">Desactivar</button>`}
+                    <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-delete-user text-red-600 hover:text-red-800 text-xs font-bold ml-3 ${esCurrentUser ? 'invisible pointer-events-none' : ''}" ${esCurrentUser ? 'disabled aria-hidden="true" tabindex="-1"' : ''}>Desactivar</button>
                     <button type="button" data-uid="${escapeHTML(user.id)}" class="btn-reset-password text-indigo-600 hover:text-indigo-800 text-xs font-bold ml-3">🔑 Reset Pass</button>
                   </td>
                 </tr>

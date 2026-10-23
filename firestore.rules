@@ -137,8 +137,8 @@ service cloud.firestore {
     // --- REGLA MODIFICADA: AUDIT LOGS ---
     match /auditLogs/{logId} {
       allow read: if isAdmin();
-      // Solo Cloud Functions con SDK admin puede escribir. Nunca desde el cliente.
-      allow write: if false;
+      allow create: if isAdmin();
+      allow update, delete: if false;
     }
 
   }
