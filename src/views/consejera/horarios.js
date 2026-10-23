@@ -31,10 +31,41 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
   const renderTablaHorarios = (semKey) => {
     const hSemana = horariosGuardados[semKey] || {};
+    const [yyyy, mm, dd] = semKey.split('-').map(Number);
+    const lunes = new Date(yyyy, mm - 1, dd);
+    lunes.setHours(0, 0, 0, 0);
+    const ahora = new Date();
+    const hoy = new Date(ahora);
+    hoy.setHours(0, 0, 0, 0);
+    const diasSemana = { Lunes: 0, Martes: 1, Miercoles: 2, Jueves: 3, Viernes: 4, Sabado: 5, Domingo: 6 };
+
     const getBtn = (day, block) => {
       const disp = hSemana[day] && hSemana[day][block];
-      if (disp) return `<button data-day="${day}" data-block="${block}" class="btn-bloque w-full py-2 bg-green-100 text-green-700 rounded-lg font-bold hover:bg-green-200 transition">Disponible</button>`;
-      return `<button data-day="${day}" data-block="${block}" class="btn-bloque w-full py-2 bg-gray-100 text-gray-400 rounded-lg hover:bg-gray-200 transition">No Disp.</button>`;
+      const modalidad = typeof disp === 'string' ? disp.toLowerCase() : (disp ? 'ambas' : '');
+      const fechaDia = new Date(lunes);
+      fechaDia.setDate(lunes.getDate() + diasSemana[day]);
+      const [horaInicio] = block.split('-');
+      const [hora, minuto] = horaInicio.split(':').map(Number);
+      const inicioBloque = new Date(fechaDia);
+      inicioBloque.setHours(hora, minuto, 0, 0);
+      const esPasado = fechaDia < hoy || (fechaDia.getTime() === hoy.getTime() && inicioBloque <= ahora);
+      if (esPasado) {
+        return `<button type="button" data-day="${day}" data-block="${block}" data-pasado="true" class="w-full py-2 bg-gray-200 text-gray-400 cursor-not-allowed opacity-50 rounded-lg" disabled>Pasado</button>`;
+      }
+      const horasDiferencia = (inicioBloque - ahora) / (1000 * 60 * 60);
+      const requiere48Horas = modalidad !== 'online';
+      if (horasDiferencia < 24 || (horasDiferencia < 48 && requiere48Horas)) {
+        return `<button type="button" data-day="${day}" data-block="${block}" data-pasado="true" class="w-full py-2 bg-gray-200 text-gray-400 cursor-not-allowed opacity-50 rounded-lg" disabled>Muy pronto</button>`;
+      }
+
+      const estados = {
+        '': { texto: 'No Disp.', clases: 'bg-gray-100 text-gray-400 hover:bg-gray-200' },
+        online: { texto: 'Disp. Online', clases: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+        presencial: { texto: 'Disp. Presencial', clases: 'bg-green-100 text-green-700 hover:bg-green-200' },
+        ambas: { texto: 'Disp. Ambas', clases: 'bg-purple-100 text-purple-700 hover:bg-purple-200' }
+      };
+      const estado = estados[modalidad] || estados[''];
+      return `<button type="button" data-day="${day}" data-block="${block}" data-modalidad="${modalidad}" data-horas-diferencia="${horasDiferencia}" class="btn-bloque w-full py-2 ${estado.clases} rounded-lg font-bold transition">${estado.texto}</button>`;
     };
 
     const containerTabla = document.getElementById('contenedor-tabla-horarios');
@@ -80,15 +111,24 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
       `;
 
     containerTabla.querySelectorAll('.btn-bloque').forEach(btn => {
+      if (btn.dataset.pasado === 'true') return;
       btn.addEventListener('click', () => {
-        const isDisp = btn.classList.contains('bg-green-100');
-        if (isDisp) {
-          btn.className = 'btn-bloque w-full py-2 bg-gray-100 text-gray-400 rounded-lg hover:bg-gray-200 transition';
-          btn.textContent = 'No Disp.';
-        } else {
-          btn.className = 'btn-bloque w-full py-2 bg-green-100 text-green-700 rounded-lg font-bold hover:bg-green-200 transition';
-          btn.textContent = 'Disponible';
+        const modalidades = ['', 'online', 'presencial', 'ambas'];
+        const actual = btn.dataset.modalidad || '';
+        let siguiente = modalidades[(modalidades.indexOf(actual) + 1) % modalidades.length];
+        if (Number(btn.dataset.horasDiferencia) < 48 && siguiente !== 'online' && siguiente !== '') {
+          siguiente = '';
         }
+        const estados = {
+          '': { texto: 'No Disp.', clases: 'bg-gray-100 text-gray-400 hover:bg-gray-200' },
+          online: { texto: 'Disp. Online', clases: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+          presencial: { texto: 'Disp. Presencial', clases: 'bg-green-100 text-green-700 hover:bg-green-200' },
+          ambas: { texto: 'Disp. Ambas', clases: 'bg-purple-100 text-purple-700 hover:bg-purple-200' }
+        };
+        const estado = estados[siguiente];
+        btn.dataset.modalidad = siguiente;
+        btn.className = `btn-bloque w-full py-2 ${estado.clases} rounded-lg font-bold transition`;
+        btn.textContent = estado.texto;
       });
     });
   };
@@ -127,12 +167,14 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
     btnGuardar.disabled = true;
 
     const horarioSemanaActual = {};
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
     dashboardContent.querySelectorAll('.btn-bloque').forEach(btn => {
       const day = btn.dataset.day;
       const block = btn.dataset.block;
-      const isDisp = btn.classList.contains('bg-green-100');
+      const modalidad = btn.dataset.modalidad || '';
       if (!horarioSemanaActual[day]) horarioSemanaActual[day] = {};
-      horarioSemanaActual[day][block] = isDisp;
+      horarioSemanaActual[day][block] = modalidad || false;
     });
 
     if (!horariosGuardados[semanaSeleccionada]) {
@@ -157,9 +199,12 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
       for (const day in horarioSemanaActual) {
         for (const block in horarioSemanaActual[day]) {
-          if (horarioSemanaActual[day][block]) { 
+          const modalidad = horarioSemanaActual[day][block];
+          if (modalidad) {
             const exactDate = new Date(monday);
             exactDate.setDate(monday.getDate() + daysMap[day]);
+            exactDate.setHours(0, 0, 0, 0);
+            if (exactDate < hoy) continue;
             
             const [horaInicioStr, horaFinStr] = block.split('-');
             
@@ -178,7 +223,8 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
               horaFin: horaFinStr,
               disponible: true,
               reservado: false,
-              tipoServicio: 'Consejería'
+              tipoServicio: 'Consejería',
+              modalidad: modalidad || 'ambas'
             });
           }
         }

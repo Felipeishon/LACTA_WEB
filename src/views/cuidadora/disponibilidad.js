@@ -97,6 +97,12 @@ function setupAvailabilityHandlers(uid) {
     const startDateTime = new Date(`${startDateVal}T${startTimeVal}:00`);
     const endDateTime = new Date(`${endDateVal}T${endTimeVal}:00`);
 
+    const horasDiferencia = (startDateTime - new Date()) / (1000 * 60 * 60);
+    if (horasDiferencia < 48) {
+      showToast('Los turnos de cuidado deben declararse con al menos 48 horas de anticipación.', 'warning');
+      return;
+    }
+
     if (endDateTime <= startDateTime) {
       showToast('La fecha y hora de fin debe ser posterior a la de inicio.', 'error');
       return;

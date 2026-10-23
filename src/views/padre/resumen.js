@@ -281,14 +281,6 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                 </select>
               </div>
 
-              <div id="container-modalidad" class="hidden">
-                <label class="block text-xs font-bold text-gray-600 mb-1">Modalidad de Atención</label>
-                <select id="cita-modalidad" class="w-full p-2.5 border rounded-xl text-sm bg-white">
-                  <option value="Presencial">Presencial (Domicilio)</option>
-                  <option value="Online">Online (Videollamada)</option>
-                </select>
-              </div>
-
               <div>
                 <label class="block text-xs font-bold text-gray-600 mb-1">Profesional Disponible</label>
                 <select id="cita-profesional" required class="w-full p-2.5 border rounded-xl text-sm bg-white focus:ring-[#e87a30]">
@@ -298,9 +290,16 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
               </div>
 
               <div id="container-turnos" class="hidden bg-orange-50 p-3 rounded-xl border border-orange-100">
-                <label class="block text-xs font-bold text-[#e87a30] mb-1">Bloque Publicado por el Profesional</label>
-                <select id="cita-turno" class="w-full p-2.5 border border-orange-200 rounded-xl text-sm bg-white font-semibold text-gray-700">
-                  <option value="">Selecciona un profesional primero...</option>
+                <div class="mb-3">
+                  <label class="block text-xs font-bold text-gray-700 mb-1">1. Selecciona el Día</label>
+                  <select id="cita-fecha-disponible" class="w-full p-2.5 border rounded-xl text-sm bg-white" disabled>
+                    <option value="">Selecciona un profesional primero...</option>
+                  </select>
+                </div>
+
+                <label class="block text-xs font-bold text-[#e87a30] mb-1">2. Selecciona el Horario</label>
+                <select id="cita-turno" class="w-full p-2.5 border border-orange-200 rounded-xl text-sm bg-white font-semibold text-gray-700" disabled>
+                  <option value="">Selecciona un día primero...</option>
                 </select>
                 
                 <div id="container-hora-consejera" class="hidden mt-3 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
@@ -320,6 +319,15 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                 </div>
                 
                 <p id="nota-duracion" class="text-xs text-gray-600 mt-2 font-medium"></p>
+              </div>
+
+              <div id="container-modalidad" class="hidden">
+                <label class="block text-xs font-bold text-gray-600 mb-1">Modalidad de Atención</label>
+                <select id="cita-modalidad" class="w-full p-2.5 border rounded-xl text-sm bg-white">
+                  <option value="Presencial">Presencial (Domicilio)</option>
+                  <option value="Online">Online (Videollamada)</option>
+                </select>
+                <p id="mensaje-modalidad-slot" class="hidden text-[11px] text-gray-500 mt-1"></p>
               </div>
 
               <div id="container-manual" class="grid grid-cols-2 gap-3 hidden">
@@ -362,6 +370,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       const selectServicio = document.getElementById('cita-servicio');
       const selectModalidad = document.getElementById('cita-modalidad');
       const selectProfesional = document.getElementById('cita-profesional');
+      const selectFechaDisponible = document.getElementById('cita-fecha-disponible');
       const selectTurno = document.getElementById('cita-turno');
       const containerTurnos = document.getElementById('container-turnos');
       const containerManual = document.getElementById('container-manual');
@@ -375,6 +384,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       const containerModalidad = document.getElementById('container-modalidad');
       const containerDireccion = document.getElementById('container-direccion');
       const inputDireccion = document.getElementById('cita-direccion');
+      const direccionGuardada = userData.direccion || userData.direccionPrincipal || '';
 
       let ultimoServicioCargado = '';
 
@@ -385,24 +395,32 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
       const updateFormUI = async () => {
         const servicio = selectServicio.value;
-        const modalidad = selectModalidad.value;
         const isConsejera = servicio === 'Consejería de Lactancia';
+        const modalidad = isConsejera ? selectModalidad.value : 'Presencial';
+        const modalidadDebeElegirse = isConsejera && (
+          selectProfesional.value === 'asignacion_automatica' || Boolean(selectTurno.value)
+        );
 
-        if (isConsejera) {
-          containerModalidad.classList.remove('hidden');
-        } else {
+        if (!isConsejera) {
           containerModalidad.classList.add('hidden');
           selectModalidad.value = 'Presencial'; 
+        } else if (!modalidadDebeElegirse) {
+          containerModalidad.classList.add('hidden');
         }
 
-        if (isConsejera && modalidad === 'Online') {
+        if (isConsejera && !modalidadDebeElegirse) {
+          containerDireccion.classList.add('hidden');
+          inputDireccion.removeAttribute('required');
+        } else if (isConsejera && modalidad === 'Online') {
           containerDireccion.classList.add('hidden');
           inputDireccion.removeAttribute('required');
           inputDireccion.value = 'Atención Online';
         } else {
           containerDireccion.classList.remove('hidden');
           inputDireccion.setAttribute('required', 'true');
-          if (inputDireccion.value === 'Atención Online') inputDireccion.value = '';
+          if (!inputDireccion.value || inputDireccion.value === 'Atención Online') {
+            inputDireccion.value = direccionGuardada;
+          }
         }
 
         if (servicio !== ultimoServicioCargado) {
@@ -465,7 +483,30 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       selectProfesional.addEventListener('change', async () => {
         const profId = selectProfesional.value;
         const isConsejera = selectServicio.value === 'Consejería de Lactancia';
+        containerModalidad.classList.add('hidden');
+        selectModalidad.disabled = false;
+        selectModalidad.querySelector('option[value="Presencial"]').disabled = false;
+        selectModalidad.querySelector('option[value="Online"]').disabled = false;
+        selectModalidad.value = 'Presencial';
+        if (isConsejera) {
+          containerDireccion.classList.add('hidden');
+          inputDireccion.removeAttribute('required');
+        } else {
+          containerDireccion.classList.remove('hidden');
+          inputDireccion.setAttribute('required', 'true');
+          if (!inputDireccion.value || inputDireccion.value === 'Atención Online') {
+            inputDireccion.value = direccionGuardada;
+          }
+        }
+        const mensajeModalidad = document.getElementById('mensaje-modalidad-slot');
+        mensajeModalidad.textContent = '';
+        mensajeModalidad.classList.add('hidden');
+        selectFechaDisponible.innerHTML = '<option value="">Selecciona un profesional primero...</option>';
+        selectFechaDisponible.disabled = true;
         selectTurno.innerHTML = '<option value="">Cargando horarios...</option>';
+        selectTurno.disabled = true;
+        inputHoraInicio.innerHTML = '';
+        inputHoraFin.innerHTML = '';
         
         if (isConsejera) {
           containerHoraConsejera.classList.remove('hidden');
@@ -494,8 +535,13 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
           document.getElementById('cita-fecha-manual').required = true;
           document.getElementById('cita-hora-manual').required = true;
           selectTurno.required = false;
+          selectTurno.disabled = true;
           inputHoraInicio.required = false;
           inputHoraFin.required = false;
+          if (isConsejera) {
+            containerModalidad.classList.remove('hidden');
+            updateFormUI();
+          }
           btnSubmitCita.disabled = false;
         } else {
           containerTurnos.classList.remove('hidden');
@@ -509,11 +555,12 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             const slotsSnap = await getDocs(slotsRef);
 
             if (slotsSnap.empty) {
-              selectTurno.innerHTML = '<option value="">El profesional no ha publicado horarios</option>';
+              selectFechaDisponible.innerHTML = '<option value="">No hay días disponibles actualmente.</option>';
+              selectTurno.innerHTML = '<option value="">No hay turnos disponibles que cumplan con la anticipación mínima requerida (24h Online / 48h Presencial).</option>';
               btnSubmitCita.disabled = true;
             } else {
-              let hasAvailable = false;
-              let optionsHTML = '<option value="">Selecciona un bloque disponible...</option>';
+              const slotsDisponibles = [];
+              const ahora = new Date();
 
               slotsSnap.forEach(doc => {
                 const slot = doc.data();
@@ -554,6 +601,10 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                 }
 
                 if (inicio && fin && !isNaN(inicio.getTime()) && !isNaN(fin.getTime())) {
+                  const inicioSlot = inicio;
+                  const horasDiferencia = (inicioSlot - ahora) / (1000 * 60 * 60);
+                  if (horasDiferencia < 24) return;
+
                   const duracionHoras = (fin - inicio) / (1000 * 60 * 60);
                   const pad = (n) => String(n).padStart(2, '0');
                   const hInicioStr = slot.horaInicio || `${pad(inicio.getHours())}:${pad(inicio.getMinutes())}`;
@@ -571,33 +622,75 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                     }
                   }
 
-                  hasAvailable = true;
                   const label = formatDateRango(inicio, fin);
                   const pFecha = inicio.toLocaleDateString('es-CL');
+                  let modalidadesPermitidas;
+                  if (!isConsejera) {
+                    if (horasDiferencia < 48) return;
+                    modalidadesPermitidas = ['presencial'];
+                  } else if (horasDiferencia < 24) {
+                    return;
+                  } else if (horasDiferencia < 48) {
+                    modalidadesPermitidas = ['online'];
+                  } else {
+                    const modalidadOriginal = (slot.modalidad || 'ambas').toLowerCase();
+                    modalidadesPermitidas = modalidadOriginal === 'online'
+                      ? ['online']
+                      : modalidadOriginal === 'presencial'
+                        ? ['presencial']
+                        : ['online', 'presencial'];
+                  }
                   
                   const slotData = JSON.stringify({ 
                     id: doc.id, 
                     fecha: pFecha, 
                     horaInicio: hInicioStr, 
                     horaFin: hFinStr, 
-                    texto: label 
+                    texto: label,
+                    modalidad: slot.modalidad || 'ambas',
+                    modalidadesPermitidas
                   });
-                  optionsHTML += `<option value='${slotData}'>${label}</option>`;
+                  const padDatePart = (value) => String(value).padStart(2, '0');
+                  const fechaKey = `${inicio.getFullYear()}-${padDatePart(inicio.getMonth() + 1)}-${padDatePart(inicio.getDate())}`;
+                  slotsDisponibles.push({ inicio, fechaKey, slotData, label });
                 }
               });
 
-              if (!hasAvailable) {
-                selectTurno.innerHTML = '<option value="">No hay bloques disponibles para este servicio</option>';
+              slotsDisponibles.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+
+              if (slotsDisponibles.length === 0) {
+                selectFechaDisponible.innerHTML = '<option value="">No hay días disponibles que cumplan con la anticipación mínima.</option>';
+                selectTurno.innerHTML = '<option value="">No hay turnos disponibles que cumplan con la anticipación mínima requerida (24h Online / 48h Presencial).</option>';
                 btnSubmitCita.disabled = true;
                 inputHoraInicio.innerHTML = '';
                 inputHoraFin.innerHTML = '';
               } else {
-                selectTurno.innerHTML = optionsHTML;
-                btnSubmitCita.disabled = false;
+                const fechasDisponibles = [...new Set(slotsDisponibles.map(slot => slot.fechaKey))];
+                selectFechaDisponible.innerHTML = `<option value="">Selecciona un día disponible...</option>${fechasDisponibles.map(fechaKey => {
+                  const fecha = new Date(`${fechaKey}T00:00:00`);
+                  const fechaTexto = fecha.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+                  return `<option value="${fechaKey}">${fechaTexto.charAt(0).toUpperCase()}${fechaTexto.slice(1)}</option>`;
+                }).join('')}`;
+                selectFechaDisponible.disabled = false;
+                selectTurno.innerHTML = '<option value="">Selecciona un día primero...</option>';
+                selectTurno.disabled = true;
+                btnSubmitCita.disabled = true;
+
+                selectFechaDisponible.onchange = () => {
+                  const fechaSeleccionada = selectFechaDisponible.value;
+                  const slotsDelDia = slotsDisponibles.filter(slot => slot.fechaKey === fechaSeleccionada);
+                  selectTurno.innerHTML = fechaSeleccionada
+                    ? `<option value="">Selecciona un horario disponible...</option>${slotsDelDia.map(slot => `<option value='${slot.slotData}'>${slot.label}</option>`).join('')}`
+                    : '<option value="">Selecciona un día primero...</option>';
+                  selectTurno.disabled = !fechaSeleccionada;
+                  selectTurno.value = '';
+                  selectTurno.dispatchEvent(new Event('change'));
+                };
               }
             }
           } catch(e) {
             console.error("Error al cargar turnos:", e);
+            selectFechaDisponible.innerHTML = '<option value="">Error al cargar los días disponibles.</option>';
             selectTurno.innerHTML = '<option value="">Error al cargar turnos</option>';
             btnSubmitCita.disabled = true;
           }
@@ -608,13 +701,54 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
         if (!selectTurno.value) {
             inputHoraInicio.innerHTML = '';
             inputHoraFin.innerHTML = '';
+            btnSubmitCita.disabled = true;
+            selectModalidad.disabled = false;
+            selectModalidad.querySelector('option[value="Presencial"]').disabled = false;
+            selectModalidad.querySelector('option[value="Online"]').disabled = false;
+            const mensajeModalidad = document.getElementById('mensaje-modalidad-slot');
+            mensajeModalidad.textContent = '';
+            mensajeModalidad.classList.add('hidden');
+            containerModalidad.classList.add('hidden');
+            updateFormUI();
             return;
         }
         
         try {
+          const slotData = JSON.parse(selectTurno.value);
+          btnSubmitCita.disabled = false;
+          const modalidadesPermitidas = slotData.modalidadesPermitidas || (
+            (slotData.modalidad || 'ambas').toLowerCase() === 'online'
+              ? ['online']
+              : (slotData.modalidad || 'ambas').toLowerCase() === 'presencial'
+                ? ['presencial']
+                : ['online', 'presencial']
+          );
+          const opcionPresencial = selectModalidad.querySelector('option[value="Presencial"]');
+          const opcionOnline = selectModalidad.querySelector('option[value="Online"]');
+          const mensajeModalidad = document.getElementById('mensaje-modalidad-slot');
+
+          opcionPresencial.disabled = !modalidadesPermitidas.includes('presencial');
+          opcionOnline.disabled = !modalidadesPermitidas.includes('online');
+          selectModalidad.disabled = modalidadesPermitidas.length === 1;
+
+          if (modalidadesPermitidas.length === 1) {
+            const modalidadForzada = modalidadesPermitidas[0];
+            selectModalidad.value = modalidadForzada === 'online' ? 'Online' : 'Presencial';
+            mensajeModalidad.textContent = `Este bloque solo está disponible para ${modalidadForzada === 'online' ? 'Online' : 'Presencial'}.`;
+            mensajeModalidad.classList.remove('hidden');
+          } else {
+            selectModalidad.disabled = false;
+            if (!modalidadesPermitidas.includes(selectModalidad.value.toLowerCase())) {
+              selectModalidad.value = 'Online';
+            }
+            mensajeModalidad.textContent = '';
+            mensajeModalidad.classList.add('hidden');
+          }
+          containerModalidad.classList.remove('hidden');
+          updateFormUI();
+
           const isConsejera = selectServicio.value === 'Consejería de Lactancia';
           if (isConsejera) {
-            const slotData = JSON.parse(selectTurno.value);
             if (slotData.horaInicio && slotData.horaFin) {
               
               const generarOpciones = (hI_str, hF_str) => {
@@ -628,7 +762,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
                 while (actual <= final) {
                   opciones.push(`${String(actual.getHours()).padStart(2, '0')}:${String(actual.getMinutes()).padStart(2, '0')}`);
-                  actual.setMinutes(actual.getMinutes() + 30);
+                  actual.setMinutes(actual.getMinutes() + 60);
                 }
                 return opciones;
               };
@@ -675,6 +809,13 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
       document.getElementById('form-agendar-cita').onsubmit = async (e) => {
         e.preventDefault();
+
+        const modalidadSeleccionada = document.getElementById('cita-modalidad').value;
+        const direccionInput = document.getElementById('cita-direccion').value.trim();
+        if (modalidadSeleccionada === 'Presencial' && !direccionInput) {
+          showToast('Debes ingresar una dirección para la atención presencial', 'warning');
+          return;
+        }
         
         let profId = selectProfesional.value;
         let profNombre = 'Asignado Automáticamente';
@@ -716,7 +857,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
           const servicioSeleccionado = document.getElementById('cita-servicio').value;
           const userPhone = document.getElementById('cita-telefono').value;
-          const userAddress = document.getElementById('cita-direccion').value;
+          const userAddress = direccionInput;
           const userNotes = document.getElementById('cita-notas').value + notaHorarioStr;
 
           const servicioNombreReal = isConsejera ? 'Consultor' : 'Cuidado de Recién Nacido';
