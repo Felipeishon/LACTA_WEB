@@ -5,6 +5,9 @@ import { showConfirmModal } from '../../modales.js';
 
 export async function renderCuidadoraDisponibilidad(dashboardContent, userData) {
   const uid = userData?.uid || userData?.id;
+  const tarifas = userData?.tarifas;
+  const permiteOnline = tarifas?.online !== false;
+  const permitePresencial = tarifas?.presencial !== false;
   const opcionesHora = Array.from({ length: 24 }, (_, hora) =>
     `<option value="${String(hora).padStart(2, '0')}">${String(hora).padStart(2, '0')}</option>`
   ).join('');
@@ -61,16 +64,16 @@ export async function renderCuidadoraDisponibilidad(dashboardContent, userData) 
         </div>
       </div>
     `;
-  setupAvailabilityHandlers(uid);
+  setupAvailabilityHandlers(uid, permiteOnline, permitePresencial);
 }
 
-function setupAvailabilityHandlers(uid) {
+function setupAvailabilityHandlers(uid, permiteOnline, permitePresencial) {
   if (!uid || uid === 'undefined') {
     showToast('Error de sesión, no se puede gestionar la disponibilidad.', 'error');
     return;
   }
 
-  loadCaregiverAvailabilitySlots(uid);
+  loadCaregiverAvailabilitySlots(uid, permiteOnline, permitePresencial);
 
   const addSlotModal = document.getElementById('addSlotModal');
   const btnOpenModal = document.getElementById('btnOpenAddSlotModal');
@@ -117,6 +120,11 @@ function setupAvailabilityHandlers(uid) {
 
     if (endDateTime <= startDateTime) {
       showToast('La fecha y hora de fin debe ser posterior a la de inicio.', 'error');
+      return;
+    }
+
+    if (!permitePresencial) {
+      showToast('No tienes habilitada la modalidad presencial en tus tarifas.', 'warning');
       return;
     }
 
@@ -177,7 +185,7 @@ function setupAvailabilityHandlers(uid) {
       addSlotModal.classList.add('hidden');
       addSlotModal.classList.remove('flex');
       addSlotForm.reset();
-      loadCaregiverAvailabilitySlots(uid);
+      loadCaregiverAvailabilitySlots(uid, permiteOnline, permitePresencial);
     } catch (error) {
       showToast('Error al guardar el turno.', 'error');
     } finally {
@@ -187,14 +195,20 @@ function setupAvailabilityHandlers(uid) {
   };
 }
 
-async function loadCaregiverAvailabilitySlots(uid) {
+async function loadCaregiverAvailabilitySlots(uid, permiteOnline, permitePresencial) {
   const slotsList = document.getElementById('caregiver-availability-slots-list');
   if (!slotsList) return;
 
   slotsList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">Cargando turnos...</li>';
 
   try {
-    const slots = await getAvailabilitySlots(uid, 'cuidado');
+    const slots = (await getAvailabilitySlots(uid, 'cuidado')).filter(slot => {
+      const modalidad = (slot.modalidad || 'presencial').toLowerCase();
+      if (modalidad === 'online') return permiteOnline;
+      if (modalidad === 'presencial') return permitePresencial;
+      if (modalidad === 'ambas') return permiteOnline && permitePresencial;
+      return true;
+    });
     if (slots.length === 0) {
       slotsList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">No tienes turnos futuros disponibles.</li>';
     } else {
@@ -225,7 +239,7 @@ async function loadCaregiverAvailabilitySlots(uid) {
           try {
             await removeAvailabilitySlot(uid, btn.dataset.id);
             showToast('Turno eliminado', 'success');
-            loadCaregiverAvailabilitySlots(uid);
+            loadCaregiverAvailabilitySlots(uid, permiteOnline, permitePresencial);
           } catch (e) {
             showToast('Error al eliminar el turno', 'error');
           }

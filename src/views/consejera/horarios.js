@@ -29,6 +29,17 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
   let semanaSeleccionada = semanas[0].key;
   const horariosGuardados = userData.horarios || {};
   let hayCambios = false;
+  const modalidadesTarifas = userData?.tarifas?.modalidades;
+  const permiteOnline = Array.isArray(modalidadesTarifas)
+    ? modalidadesTarifas.includes('online')
+    : userData?.tarifas?.online !== false;
+  const permitePresencial = Array.isArray(modalidadesTarifas)
+    ? modalidadesTarifas.includes('presencial')
+    : userData?.tarifas?.presencial !== false;
+  const estadosPosibles = ['no_disp'];
+  if (permiteOnline) estadosPosibles.push('online');
+  if (permitePresencial) estadosPosibles.push('presencial');
+  if (permiteOnline && permitePresencial) estadosPosibles.push('ambas');
 
   const renderTablaHorarios = (semKey) => {
     const hSemana = horariosGuardados[semKey] || {};
@@ -42,7 +53,8 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
     const getBtn = (day, block) => {
       const disp = hSemana[day] && hSemana[day][block];
-      const modalidad = typeof disp === 'string' ? disp.toLowerCase() : (disp ? 'ambas' : '');
+      let modalidad = typeof disp === 'string' ? disp.toLowerCase() : (disp ? 'ambas' : '');
+      if (modalidad && !estadosPosibles.includes(modalidad)) modalidad = '';
       const fechaDia = new Date(lunes);
       fechaDia.setDate(lunes.getDate() + diasSemana[day]);
       const [horaInicio] = block.split('-');
@@ -114,20 +126,20 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
     containerTabla.querySelectorAll('.btn-bloque').forEach(btn => {
       if (btn.dataset.pasado === 'true') return;
       btn.addEventListener('click', () => {
-        const modalidades = ['', 'online', 'presencial', 'ambas'];
-        const actual = btn.dataset.modalidad || '';
-        let siguiente = modalidades[(modalidades.indexOf(actual) + 1) % modalidades.length];
-        if (Number(btn.dataset.horasDiferencia) < 48 && siguiente !== 'online' && siguiente !== '') {
-          siguiente = '';
-        }
+        const estadosDelBloque = Number(btn.dataset.horasDiferencia) < 48
+          ? estadosPosibles.filter(estado => estado === 'no_disp' || estado === 'online')
+          : estadosPosibles;
+        const actual = btn.dataset.modalidad || 'no_disp';
+        const indiceActual = estadosDelBloque.indexOf(actual);
+        const siguiente = estadosDelBloque[(indiceActual + 1) % estadosDelBloque.length];
         const estados = {
-          '': { texto: 'No Disp.', clases: 'bg-gray-100 text-gray-400 hover:bg-gray-200' },
+          no_disp: { texto: 'No Disp.', clases: 'bg-gray-100 text-gray-400 hover:bg-gray-200' },
           online: { texto: 'Disp. Online', clases: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
           presencial: { texto: 'Disp. Presencial', clases: 'bg-green-100 text-green-700 hover:bg-green-200' },
           ambas: { texto: 'Disp. Ambas', clases: 'bg-purple-100 text-purple-700 hover:bg-purple-200' }
         };
         const estado = estados[siguiente];
-        btn.dataset.modalidad = siguiente;
+        btn.dataset.modalidad = siguiente === 'no_disp' ? '' : siguiente;
         btn.className = `btn-bloque w-full py-2 ${estado.clases} rounded-lg font-bold transition`;
         btn.textContent = estado.texto;
         hayCambios = true;
@@ -182,15 +194,30 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
     btnGuardar.textContent = 'Guardando...';
 
     const horarioSemanaActual = {};
+    let hayModalidadNoPermitida = false;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     dashboardContent.querySelectorAll('.btn-bloque').forEach(btn => {
       const day = btn.dataset.day;
       const block = btn.dataset.block;
       const modalidad = btn.dataset.modalidad || '';
+      const modalidadPermitida = modalidad === '' ||
+        (modalidad === 'online' && permiteOnline) ||
+        (modalidad === 'presencial' && permitePresencial) ||
+        (modalidad === 'ambas' && permiteOnline && permitePresencial);
+      if (!modalidadPermitida) {
+        hayModalidadNoPermitida = true;
+      }
       if (!horarioSemanaActual[day]) horarioSemanaActual[day] = {};
       horarioSemanaActual[day][block] = modalidad || false;
     });
+
+    if (hayModalidadNoPermitida) {
+      showToast('No puedes guardar una modalidad no habilitada en tus tarifas.', 'warning');
+      btnGuardar.disabled = false;
+      btnGuardar.textContent = 'Guardar Cambios';
+      return;
+    }
 
     if (!horariosGuardados[semanaSeleccionada]) {
       horariosGuardados[semanaSeleccionada] = {};
