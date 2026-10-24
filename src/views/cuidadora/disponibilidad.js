@@ -122,9 +122,50 @@ function setupAvailabilityHandlers(uid) {
 
     const btnSave = document.getElementById('btnSaveSlot');
     btnSave.disabled = true;
-    btnSave.textContent = 'Guardando...';
+    btnSave.textContent = 'Verificando...';
 
     try {
+      let slotsActuales;
+      try {
+        slotsActuales = await getAvailabilitySlots(uid);
+      } catch (error) {
+        console.error('Error al verificar turnos existentes:', error);
+        showToast('No se pudieron verificar los turnos existentes.', 'error');
+        return;
+      }
+
+      const nuevoInicio = startDateTime.getTime();
+      const nuevoFin = endDateTime.getTime();
+      const ahora = Date.now();
+      const convertirFecha = valor => {
+        if (!valor) return null;
+        const fecha = typeof valor.toDate === 'function'
+          ? valor.toDate()
+          : valor instanceof Date
+            ? valor
+            : new Date(valor);
+        return Number.isNaN(fecha.getTime()) ? null : fecha;
+      };
+      const haySolapamiento = slotsActuales.some(slot => {
+        if (slot.tipoServicio !== 'cuidado' && slot.servicio !== 'cuidado') return false;
+
+        const existenteInicio = convertirFecha(slot.fechaInicio);
+        const existenteFin = convertirFecha(slot.fechaFin);
+
+        if (!existenteInicio || !existenteFin ||
+            existenteFin.getTime() <= ahora) {
+          return false;
+        }
+
+        return nuevoInicio < existenteFin.getTime() && nuevoFin > existenteInicio.getTime();
+      });
+
+      if (haySolapamiento) {
+        showToast('Ya tienes un turno que se cruza con este horario', 'warning');
+        return;
+      }
+
+      btnSave.textContent = 'Guardando...';
       await addAvailabilitySlot(uid, {
         servicio: 'cuidado',
         tipoServicio: 'cuidado',
