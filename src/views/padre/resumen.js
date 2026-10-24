@@ -483,6 +483,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       selectProfesional.addEventListener('change', async () => {
         const profId = selectProfesional.value;
         const isConsejera = selectServicio.value === 'Consejería de Lactancia';
+        const tipoServicioEsperado = isConsejera ? 'consejeria' : 'cuidado';
         containerModalidad.classList.add('hidden');
         selectModalidad.disabled = false;
         selectModalidad.querySelector('option[value="Presencial"]').disabled = false;
@@ -564,6 +565,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
               slotsSnap.forEach(doc => {
                 const slot = doc.data();
+                if (slot.tipoServicio !== tipoServicioEsperado) return;
                 
                 if (slot.reservado === true || slot.disponible === false) return;
 

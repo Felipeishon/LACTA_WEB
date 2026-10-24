@@ -1,5 +1,5 @@
 import { showToast } from '../ui/notifications.js';
-import { fetchServiceAppointments, updateAppointmentDateTime, actualizarEstadoCita } from '../api/firestore.js';
+import { fetchServiceAppointments, actualizarEstadoCita } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
@@ -44,18 +44,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           const fechaSafe = escapeHTML(app.fecha || '');
           const emailSafe = escapeHTML(app.email || '');
 
-          // Traductor de Fechas
-          let dateInputVal = fechaSafe;
-          const fParts = fechaSafe.split('-');
-          if (fParts.length === 3 && fParts[0].length === 2) {
-              dateInputVal = `${fParts[2]}-${fParts[1]}-${fParts[0]}`;
-          }
-
-          // Traductor de Horas
-          let timeInputVal = '';
-          const tMatch = horaSafe.match(/\d{2}:\d{2}/);
-          if (tMatch) timeInputVal = tMatch[0];
-
           let actionButtons = '';
 
           // Control Inteligente de Botones
@@ -85,15 +73,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
               <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${fechaSafe}</span> • Hora: ${horaSafe}</p>
               <p class="text-sm text-gray-600 mt-1">Cliente: ${emailSafe}</p>
             </div>
-            
-            <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-center gap-2">
-              <div>
-                <input type="date" value="${dateInputVal}" class="edit-fecha p-1 border rounded text-xs block mb-1" data-id="${appIdSafe}" />
-                <input type="time" value="${timeInputVal}" class="edit-hora p-1 border rounded text-xs block" data-id="${appIdSafe}" />
-              </div>
-              <button data-id="${appIdSafe}" class="btn-guardar-cambio-cita bg-gray-800 hover:bg-[#e87a30] text-white text-xs font-bold px-3 py-2 rounded transition">Actualizar</button>
-            </div>
-
             <div>
               ${actionButtons}
             </div>
@@ -104,41 +83,6 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
         `}
       </div>
     `;
-
-    // Handler para Modificar Fecha
-    dashboardContent.querySelectorAll('.btn-guardar-cambio-cita').forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.dataset.id;
-        const container = btn.closest('div.bg-gray-50');
-        const nuevaFecha = container.querySelector('.edit-fecha').value;
-        const nuevaHora = container.querySelector('.edit-hora').value;
-
-        if (!nuevaFecha || !nuevaHora) {
-          showToast('Selecciona fecha y hora', 'warning');
-          return;
-        }
-
-        let fechaParaGuardar = nuevaFecha;
-        if (nuevaFecha.includes('-')) {
-            const parts = nuevaFecha.split('-');
-            if (parts[0].length === 4) {
-                fechaParaGuardar = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
-        }
-
-        try {
-          btn.disabled = true;
-          btn.textContent = '...';
-          await updateAppointmentDateTime(id, fechaParaGuardar, nuevaHora);
-          showToast('Turno actualizado con éxito', 'success');
-          renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
-        } catch (e) {
-          showToast('Error al actualizar turno', 'error');
-          btn.disabled = false;
-          btn.textContent = 'Actualizar';
-        }
-      };
-    });
 
     // Handler para Aprobar
     dashboardContent.querySelectorAll('.btn-aprobar-cita').forEach(btn => {

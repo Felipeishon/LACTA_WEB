@@ -5,6 +5,12 @@ import { showConfirmModal } from '../../modales.js';
 
 export async function renderCuidadoraDisponibilidad(dashboardContent, userData) {
   const uid = userData?.uid || userData?.id;
+  const opcionesHora = Array.from({ length: 24 }, (_, hora) =>
+    `<option value="${String(hora).padStart(2, '0')}">${String(hora).padStart(2, '0')}</option>`
+  ).join('');
+  const opcionesMinuto = ['00', '30'].map(minuto =>
+    `<option value="${minuto}">${minuto}</option>`
+  ).join('');
 
   dashboardContent.innerHTML = `
       <div class="space-y-8">
@@ -31,7 +37,10 @@ export async function renderCuidadoraDisponibilidad(dashboardContent, userData) 
             </div>
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1">⏰ Hora de Inicio</label>
-              <input type="time" id="slot-start-time" required step="1800" class="w-full p-2 border border-gray-300 rounded-lg text-sm">
+              <div class="flex gap-2">
+                <select id="slot-start-hour" required class="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg text-sm">${opcionesHora}</select>
+                <select id="slot-start-minute" required class="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg text-sm">${opcionesMinuto}</select>
+              </div>
             </div>
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1">📅 Fecha de Fin</label>
@@ -39,7 +48,10 @@ export async function renderCuidadoraDisponibilidad(dashboardContent, userData) 
             </div>
             <div>
               <label class="block text-xs font-bold text-gray-700 mb-1">⏰ Hora de Fin</label>
-              <input type="time" id="slot-end-time" required step="1800" class="w-full p-2 border border-gray-300 rounded-lg text-sm">
+              <div class="flex gap-2">
+                <select id="slot-end-hour" required class="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg text-sm">${opcionesHora}</select>
+                <select id="slot-end-minute" required class="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg text-sm">${opcionesMinuto}</select>
+              </div>
             </div>
             <div class="flex justify-end gap-4 pt-4">
               <button type="button" id="btnCloseAddSlotModal" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg text-sm">Cancelar</button>
@@ -85,9 +97,9 @@ function setupAvailabilityHandlers(uid) {
   addSlotForm.onsubmit = async (e) => {
     e.preventDefault();
     const startDateVal = document.getElementById('slot-start-date').value;
-    const startTimeVal = document.getElementById('slot-start-time').value;
+    const startTimeVal = `${document.getElementById('slot-start-hour').value}:${document.getElementById('slot-start-minute').value}`;
     const endDateVal = document.getElementById('slot-end-date').value;
-    const endTimeVal = document.getElementById('slot-end-time').value;
+    const endTimeVal = `${document.getElementById('slot-end-hour').value}:${document.getElementById('slot-end-minute').value}`;
 
     if (!startDateVal || !startTimeVal || !endDateVal || !endTimeVal) {
       showToast('Debes completar todas las fechas y horas.', 'error');
@@ -115,6 +127,7 @@ function setupAvailabilityHandlers(uid) {
     try {
       await addAvailabilitySlot(uid, {
         servicio: 'cuidado',
+        tipoServicio: 'cuidado',
         fechaInicio: startDateTime,
         fechaFin: endDateTime,
       });
@@ -140,7 +153,7 @@ async function loadCaregiverAvailabilitySlots(uid) {
   slotsList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">Cargando turnos...</li>';
 
   try {
-    const slots = await getAvailabilitySlots(uid);
+    const slots = await getAvailabilitySlots(uid, 'cuidado');
     if (slots.length === 0) {
       slotsList.innerHTML = '<li class="p-2 text-center text-gray-400 italic">No tienes turnos futuros disponibles.</li>';
     } else {

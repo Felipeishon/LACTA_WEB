@@ -103,13 +103,22 @@ export async function fetchServiceAppointments(servicio, uid) {
             return !ESTADOS_EXCLUIDOS.includes(estado);
         });
 
-        if (uid) {
-            return activas.filter(a => {
-                const pId = a.profesionalId || a.prestadorId || a.consejeraId || a.cuidadoraId;
-                return pId === uid;
-            });
-        }
-        return activas;
+        const tipoServicio = servicio === 'Consultor' ? 'Consultor'
+            : servicio === 'Cuidador' ? 'Cuidadora'
+                : servicio;
+        const campoProfesional = servicio === 'Consultor' ? 'consejeraId'
+            : servicio === 'Cuidador' ? 'cuidadoraId'
+                : null;
+
+        return activas.filter(a => {
+            const coincideTipo = a.tipoServicio === tipoServicio;
+            if (!uid) return coincideTipo;
+            if (!campoProfesional) return coincideTipo;
+
+            const idProfesional = a.profesionalId || a.prestadorId;
+            return a[campoProfesional] === uid ||
+                (coincideTipo && idProfesional === uid);
+        });
     } catch (error) {
         console.error("Error al obtener citas del servicio:", error);
         throw error;
@@ -287,11 +296,12 @@ export async function saveUserTarifas(uid, tarifas) {
     }
 }
 
-export async function getAvailabilitySlots(uid) {
+export async function getAvailabilitySlots(uid, tipoServicio) {
     try {
         const q = query(collection(db, `usuarios/${uid}/disponibilidad`), orderBy("fechaInicio", "asc"));
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const slots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return tipoServicio ? slots.filter(slot => slot.tipoServicio === tipoServicio) : slots;
     } catch (error) {
         console.error("Error cargando slots de disponibilidad:", error);
         throw error;
@@ -432,6 +442,19 @@ export async function saveFichaCuidado(fichaData) {
         return docRef.id;
     } catch (error) {
         console.error("Error al guardar ficha de cuidado:", error);
+        throw error;
+    }
+}
+
+export async function saveFichaAtencion(fichaData) {
+    try {
+        const docRef = await addDoc(collection(db, "fichas_atencion"), { ...fichaData, creadoEn: new Date().toISOString() });
+        if (fichaData.reservaId) {
+            await updateDoc(doc(db, "reservas", fichaData.reservaId), { estado: 'completada' });
+        }
+        return docRef.id;
+    } catch (error) {
+        console.error("Error al guardar ficha de atención:", error);
         throw error;
     }
 }

@@ -238,7 +238,7 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
               horaFin: horaFinStr,
               disponible: true,
               reservado: false,
-              tipoServicio: 'Consejería',
+              tipoServicio: 'consejeria',
               modalidad: modalidad || 'ambas'
             });
           }
@@ -252,6 +252,7 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
       snapshot.forEach(docSnap => {
         const slot = docSnap.data();
         if (slot.reservado) return; 
+        if (slot.tipoServicio !== 'consejeria' && slot.tipoServicio !== 'Consejería') return;
         
         let slotDate = null;
         if (slot.fechaInicio && typeof slot.fechaInicio.toDate === 'function') {

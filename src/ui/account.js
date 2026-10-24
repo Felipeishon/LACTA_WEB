@@ -1,10 +1,12 @@
 // Archivo: src/ui/account.js
 import { auth, db } from '../firebase.js';
-import { saveFichaCuidado, obtenerDatosNido } from '../api/firestore.js';
+import { saveFichaCuidado, saveFichaAtencion, obtenerDatosNido } from '../api/firestore.js';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './notifications.js';
 import { escapeHTML } from '../utils/html.js';
 import { formatRut, validarRut } from '../rut.js';
+
+let fichaModalContext = null;
 
 export async function openPerfilBebeModal(userData) {
   const modal = document.getElementById('modalPerfilBebe');
@@ -177,11 +179,120 @@ export function openFichaCuidadoModal(reservaId, nidoId) {
   const modal = document.getElementById('modalFichaCuidado');
   if (!modal) return;
 
-  document.getElementById('ficha-reservaId').value = reservaId;
-  document.getElementById('ficha-nidoId').value = nidoId;
+  const currentUser = fichaModalContext?.getCurrentUserData();
+  const currentUserRole = fichaModalContext?.getCurrentUserRole()?.toLowerCase();
+  const esCuidadora = currentUserRole === 'cuidadora';
+  const esConsejera = currentUserRole === 'consejera';
+  if (!currentUser || (!esCuidadora && !esConsejera)) {
+    showToast('No se pudo identificar el rol para completar la ficha.', 'error');
+    return;
+  }
 
-  const inputFecha = modal.querySelector('input[name="fecha"]');
-  if (inputFecha) inputFecha.value = new Date().toISOString().split('T')[0];
+  const titulo = esCuidadora ? 'Completar Bitácora de Cuidado' : 'Completar Ficha de Atención';
+  const campos = esCuidadora ? `
+    <label class="text-xs font-bold text-gray-700">Alimentación
+      <input type="text" name="tipoAlimentacion" placeholder="Ej. Leche materna" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal">
+    </label>
+    <label class="text-xs font-bold text-gray-700">Horas de sueño
+      <input type="number" name="horasSueno" min="0" step="0.5" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal">
+    </label>
+    <label class="text-xs font-bold text-gray-700">Cantidad de pañales
+      <input type="number" name="cantidadPanales" min="0" step="1" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal">
+    </label>
+    <label class="text-xs font-bold text-gray-700">Observaciones
+      <textarea name="observaciones" rows="4" class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal"></textarea>
+    </label>
+  ` : `
+    <label class="text-xs font-bold text-gray-700">Motivo de consulta
+      <input type="text" name="motivoConsulta" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal">
+    </label>
+    <label class="text-xs font-bold text-gray-700">Evaluación
+      <textarea name="evaluacion" rows="4" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal"></textarea>
+    </label>
+    <label class="text-xs font-bold text-gray-700">Plan de acción
+      <textarea name="planAccion" rows="4" required class="w-full mt-1 p-2 border border-gray-300 rounded-lg text-sm font-normal"></textarea>
+    </label>
+  `;
+
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 sm:p-8 w-full relative shadow-xl max-h-[90vh] overflow-y-auto">
+      <button type="button" class="btnCerrarModal absolute top-3 right-4 text-2xl text-gray-400 hover:text-gray-700" aria-label="Cerrar">&times;</button>
+      <h2 class="text-xl font-bold mb-5 text-[#181411]">${titulo}</h2>
+      <form id="fichaCuidadoForm" class="flex flex-col gap-4">
+        <input type="hidden" name="reservaId">
+        <input type="hidden" name="nidoId">
+        ${campos}
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-2.5 mt-2 hover:bg-[#d66a20] transition-colors text-sm">Guardar</button>
+      </form>
+    </div>
+  `;
+
+  const form = modal.querySelector('#fichaCuidadoForm');
+  form.elements.namedItem('reservaId').value = reservaId || '';
+  form.elements.namedItem('nidoId').value = nidoId || '';
+  modal.querySelector('.btnCerrarModal').onclick = () => modal.close();
+  modal.onclick = (event) => {
+    if (event.target === modal) modal.close();
+  };
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const formNidoId = formData.get('nidoId');
+    if (!formNidoId) {
+      showToast('Esta cita no tiene un Nido asociado. Pide a los padres registrar su nido.', 'error');
+      return;
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      const prestadorId = auth.currentUser?.uid;
+      if (!prestadorId) throw new Error('No se pudo identificar al profesional.');
+      const snapshotNido = await capturarSnapshotNido(formNidoId);
+      const ahora = new Date().toISOString();
+      const data = {
+        reservaId: formData.get('reservaId'),
+        nidoId: formNidoId,
+        prestadorId,
+        prestadorNombre: currentUser.nombre || 'Prestador',
+        prestadorRol: currentUserRole,
+        prestadorRut: currentUser.rut || null,
+        nidoNombreBebe: snapshotNido.nidoNombreBebe,
+        nidoRutBebe: snapshotNido.nidoRutBebe,
+        padresNombres: snapshotNido.padresNombres,
+        creadoEn: ahora,
+        ...(esCuidadora ? {
+          fecha: ahora,
+          tipoAlimentacion: formData.get('tipoAlimentacion').trim(),
+          horasSueno: parseFloat(formData.get('horasSueno')) || 0,
+          cantidadPanales: parseInt(formData.get('cantidadPanales'), 10) || 0,
+          observaciones: formData.get('observaciones').trim()
+        } : {
+          motivoConsulta: formData.get('motivoConsulta').trim(),
+          evaluacion: formData.get('evaluacion').trim(),
+          planAccion: formData.get('planAccion').trim()
+        })
+      };
+
+      if (esCuidadora) {
+        await saveFichaCuidado(data);
+      } else {
+        await saveFichaAtencion(data);
+      }
+
+      showToast(esCuidadora ? 'Bitácora de cuidado guardada y compartida' : 'Ficha de atención guardada y compartida', 'success');
+      modal.close();
+      await fichaModalContext.renderContent(currentUserRole, currentUser);
+    } catch (error) {
+      console.error('Error guardando ficha:', error);
+      showToast('Error al guardar la ficha.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Guardar';
+    }
+  });
 
   modal.showModal();
 }
@@ -231,74 +342,5 @@ async function capturarSnapshotNido(nidoId) {
 }
 
 export function initAccountFormHandlers({ renderContent, getCurrentUserData, getCurrentUserRole }) {
-  const fichaCuidadoForm = document.getElementById('fichaCuidadoForm');
-  if (fichaCuidadoForm) {
-    fichaCuidadoForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = fichaCuidadoForm.querySelector('button[type="submit"]');
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Guardando Ficha...';
-      }
-
-      const fd = new FormData(fichaCuidadoForm);
-      const nidoId = fd.get('nidoId');
-
-      if (!nidoId) {
-        showToast('Error: Esta cita no tiene un Nido asociado. Pide a los padres registrar su nido.', 'error');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Guardar y Enviar Bitácora';
-        }
-        return;
-      }
-
-      // 📸 Snapshot inmutable del nido y padres al momento de crear el registro
-      const snapshotNido = await capturarSnapshotNido(nidoId);
-
-      const currentUser = getCurrentUserData();
-      const data = {
-        reservaId: fd.get('reservaId'),
-        nidoId: nidoId,
-
-        // 📸 SNAPSHOT INMUTABLE DEL NIDO (histórico)
-        nidoNombreBebe: snapshotNido.nidoNombreBebe,
-        nidoRutBebe: snapshotNido.nidoRutBebe,
-        padresNombres: snapshotNido.padresNombres,
-
-        // Datos del formulario
-        fecha: new Date().toISOString(),
-        horasEfectivas: parseInt(fd.get('horasEfectivas')) || 0,
-        tipoAlimentacion: fd.get('tipoAlimentacion') || '',
-        cantidadOz: parseInt(fd.get('cantidadOz')) || 0,
-        horasSueno: parseFloat(fd.get('horasSueno')) || 0,
-        cantidadPanales: parseInt(fd.get('cantidadPanales')) || 0,
-        observaciones: fd.get('observaciones') || '',
-        recomendaciones: fd.get('recomendaciones') || '',
-        seguimiento: fd.get('seguimiento') || '',
-
-        // 📸 SNAPSHOT INMUTABLE DEL PRESTADOR (histórico)
-        prestadorId: auth.currentUser.uid,
-        prestadorNombre: currentUser?.nombre || 'Prestador',
-        prestadorRol: getCurrentUserRole(),
-        prestadorRut: currentUser?.rut || null,
-      };
-
-      try {
-        await saveFichaCuidado(data);
-        showToast('Ficha de cuidado guardada y compartida', 'success');
-        fichaCuidadoForm.reset();
-        document.getElementById('modalFichaCuidado')?.close();
-        renderContent(getCurrentUserRole(), getCurrentUserData());
-      } catch (err) {
-        console.error('Error guardando ficha:', err);
-        showToast('Error al guardar la bitácora', 'error');
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Guardar y Enviar Bitácora';
-        }
-      }
-    });
-  }
+  fichaModalContext = { renderContent, getCurrentUserData, getCurrentUserRole };
 }
