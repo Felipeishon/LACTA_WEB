@@ -28,6 +28,7 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
   const semanas = getSiguientes4Semanas();
   let semanaSeleccionada = semanas[0].key;
   const horariosGuardados = userData.horarios || {};
+  let hayCambios = false;
 
   const renderTablaHorarios = (semKey) => {
     const hSemana = horariosGuardados[semKey] || {};
@@ -129,6 +130,17 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
         btn.dataset.modalidad = siguiente;
         btn.className = `btn-bloque w-full py-2 ${estado.clases} rounded-lg font-bold transition`;
         btn.textContent = estado.texto;
+        hayCambios = true;
+        const estadoGuardado = document.getElementById('estado-guardado');
+        estadoGuardado.textContent = '● Tienes cambios sin guardar';
+        estadoGuardado.classList.remove('text-gray-400', 'text-green-500', 'opacity-0');
+        estadoGuardado.classList.add('text-amber-500', 'opacity-100');
+        const btnGuardar = document.getElementById('btnGuardarHorarios');
+        if (btnGuardar) {
+          btnGuardar.disabled = false;
+          btnGuardar.className = 'bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-6 rounded-full text-sm transition-colors shadow-md';
+          btnGuardar.textContent = 'Guardar Cambios';
+        }
       });
     });
   };
@@ -148,8 +160,9 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
       <div class="glass-panel p-6 rounded-2xl">
         <div class="overflow-x-auto" id="contenedor-tabla-horarios"></div>
-        <div class="mt-4 flex justify-end">
-           <button id="btnGuardarHorarios" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full text-sm transition-colors shadow-md">Guardar Horarios de la Semana</button>
+        <div class="flex items-center justify-between mt-4">
+           <span id="estado-guardado" class="text-sm font-bold text-gray-400 transition-opacity opacity-0"></span>
+           <button id="btnGuardarHorarios" class="bg-gray-300 text-gray-500 font-bold py-2 px-6 rounded-full text-sm cursor-not-allowed transition-colors shadow-sm" disabled>Guardar Horarios</button>
         </div>
       </div>
     `;
@@ -163,8 +176,10 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
   const btnGuardar = document.getElementById('btnGuardarHorarios');
   btnGuardar.onclick = async () => {
-    btnGuardar.textContent = 'Guardando...';
+    if (!hayCambios) return;
+
     btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando...';
 
     const horarioSemanaActual = {};
     const hoy = new Date();
@@ -257,14 +272,31 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
       await batch.commit();
 
+      hayCambios = false;
+      btnGuardar.className = 'bg-green-500 text-white font-bold py-2 px-6 rounded-full text-sm cursor-not-allowed transition-colors shadow-sm';
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = '✅ Guardado';
+      setTimeout(() => {
+        if (!hayCambios) {
+          btnGuardar.className = 'bg-gray-300 text-gray-500 font-bold py-2 px-6 rounded-full text-sm cursor-not-allowed transition-colors shadow-sm';
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Guardar Horarios';
+        }
+      }, 3000);
+
+      const estadoGuardado = document.getElementById('estado-guardado');
+      estadoGuardado.textContent = '✅ Horario guardado';
+      estadoGuardado.classList.remove('text-gray-400', 'text-amber-500', 'opacity-0');
+      estadoGuardado.classList.add('text-green-500', 'opacity-100');
+
       showToast('Horarios de la semana actualizados', 'success');
       userData.horarios = horariosGuardados;
     } catch (e) {
       console.error("Error al actualizar la grilla:", e);
-      showToast('Error al actualizar horarios', 'error');
-    } finally {
-      btnGuardar.textContent = 'Guardar Horarios de la Semana';
+      btnGuardar.className = 'bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 px-6 rounded-full text-sm transition-colors shadow-md';
       btnGuardar.disabled = false;
+      btnGuardar.textContent = 'Guardar Cambios';
+      showToast('Error al actualizar horarios', 'error');
     }
   };
 }
