@@ -1,5 +1,5 @@
 import { showToast } from '../../ui/notifications.js';
-import { fetchAdminStats, createProduct } from '../../api/firestore.js';
+import { fetchAdminStats, createProduct, fetchServiciosActivos, createServicio, deleteServicio } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { renderAdminInventory } from './tienda.js';
 import { renderAdminTipsManagement } from './tips.js';
@@ -9,6 +9,49 @@ import {
 import { loadAllNidos } from './nidos.js';
 import { loadAllRegistros } from './registros.js';
 import { fileToBase64 } from '../../utils/helpers.js';
+
+async function renderAdminServicesList() {
+  const servicesList = document.getElementById('admin-services-list');
+  if (!servicesList) return;
+
+  try {
+    const servicios = await fetchServiciosActivos();
+    if (servicios.length === 0) {
+      servicesList.innerHTML = '<p class="text-sm text-gray-400 italic">Aún no hay servicios activos.</p>';
+      return;
+    }
+
+    servicesList.innerHTML = servicios.map(servicio => `
+      <div class="flex items-start justify-between gap-4 rounded-lg border border-gray-100 p-4">
+        <div class="flex items-start gap-3">
+          <i class="${escapeHTML(servicio.icono || 'fa-solid fa-heart')} text-xl text-[#e87a30]" aria-hidden="true"></i>
+          <div>
+            <h5 class="font-bold text-[#181411]">${escapeHTML(servicio.nombre)}</h5>
+            <p class="mt-1 text-sm text-gray-500">${escapeHTML(servicio.descripcion)}</p>
+          </div>
+        </div>
+        <button type="button" data-delete-service="${escapeHTML(servicio.id)}" class="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100">Eliminar</button>
+      </div>
+    `).join('');
+
+    servicesList.querySelectorAll('[data-delete-service]').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (!window.confirm('¿Eliminar este servicio?')) return;
+        try {
+          await deleteServicio(button.dataset.deleteService);
+          showToast('Servicio eliminado con éxito', 'success');
+          await renderAdminServicesList();
+        } catch (error) {
+          console.error('Error al eliminar servicio desde administración:', error);
+          showToast('Error al eliminar el servicio', 'error');
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error al cargar servicios para administración:', error);
+    servicesList.innerHTML = '<p class="text-sm font-medium text-red-600">No se pudieron cargar los servicios.</p>';
+  }
+}
 
 async function renderAdminTab(activeTab) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -197,6 +240,64 @@ async function renderAdminTab(activeTab) {
     `;
     await renderAdminTipsManagement();
 
+  } else if (activeTab === 'admin_servicios') {
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Servicios</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <h4 class="font-bold text-lg text-[#181411] mb-4">Añadir Servicio</h4>
+          <form id="adminAddServiceForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Nombre</label>
+              <input type="text" name="nombre" required maxlength="120" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Descripción</label>
+              <textarea name="descripcion" required maxlength="1000" rows="4" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-[#e87a30] outline-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Ícono (opcional)</label>
+              <select id="servicio-icono" name="icono" class="w-full p-2 border rounded-xl text-sm mb-3">
+                <option value="fa-solid fa-heart">❤️ Corazón (Apoyo)</option>
+                <option value="fa-solid fa-baby">👶 Bebé (Lactancia)</option>
+                <option value="fa-solid fa-moon">🌙 Luna (Cuidado nocturno)</option>
+                <option value="fa-solid fa-hand-holding-heart">🤝 Mano con Corazón (Ayuda)</option>
+                <option value="fa-solid fa-hands-holding-child">🫂 Manos con Niño (Cuidado)</option>
+                <option value="fa-solid fa-stethoscope">🩺 Estetoscopio (Salud)</option>
+              </select>
+            </div>
+            <button type="submit" class="w-full bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-2.5 rounded-lg text-sm transition">Guardar Servicio</button>
+          </form>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <h4 class="font-bold text-lg text-[#181411] mb-4">Servicios activos</h4>
+          <div id="admin-services-list" class="space-y-3">
+            <p class="text-sm text-gray-400 italic">Cargando servicios...</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await renderAdminServicesList();
+
+    const addServiceForm = document.getElementById('adminAddServiceForm');
+    addServiceForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const formData = new FormData(addServiceForm);
+      try {
+        await createServicio({
+          nombre: formData.get('nombre'),
+          descripcion: formData.get('descripcion'),
+          icono: formData.get('icono')
+        });
+        showToast('Servicio creado con éxito', 'success');
+        addServiceForm.reset();
+        await renderAdminServicesList();
+      } catch (error) {
+        console.error('Error al crear servicio desde administración:', error);
+        showToast('Error al crear el servicio', 'error');
+      }
+    });
   }
 }
 

@@ -7,8 +7,40 @@ import { initNavigation } from './ui/navigation.js';
 import { initTipsModal } from './views/tips.js';
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { fetchActiveProducts } from './api/firestore.js';
+import { fetchActiveProducts, fetchServiciosActivos } from './api/firestore.js';
 import { escapeHTML } from './utils/html.js';
+
+async function renderServicios() {
+  const grid = document.getElementById('servicios-grid');
+  if (!grid) return;
+
+  try {
+    const servicios = await fetchServiciosActivos();
+    if (servicios.length === 0) {
+      grid.innerHTML = '<p class="col-span-full rounded-xl border border-white/30 bg-white/90 px-6 py-8 text-center font-medium text-[#887263] shadow-sm">Pronto compartiremos nuestros servicios. ¡Vuelve pronto!</p>';
+      return;
+    }
+
+    grid.innerHTML = servicios.map(servicio => {
+      const icono = escapeHTML(servicio.icono || 'fa-solid fa-heart');
+
+      return `
+        <article class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
+          <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full flex items-center justify-center" aria-hidden="true">
+            <i class="${icono} text-3xl"></i>
+          </div>
+          <div class="flex flex-col gap-2 text-center">
+            <h4 class="text-[#181411] text-lg font-bold leading-tight">${escapeHTML(servicio.nombre)}</h4>
+            <p class="text-[#887263] text-sm font-normal leading-relaxed">${escapeHTML(servicio.descripcion)}</p>
+          </div>
+        </article>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('Error al cargar servicios de la landing:', error);
+    grid.innerHTML = '<p class="col-span-full rounded-xl border border-red-200 bg-white/95 px-6 py-8 text-center font-medium text-red-700 shadow-sm">No fue posible cargar los servicios.</p>';
+  }
+}
 
 async function renderLandingProducts() {
   const grid = document.getElementById('tienda-productos-grid');
@@ -63,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFormularios();
   initNavigation();
   initTipsModal(); // Inicializar el modal de tips
+  renderServicios();
   renderLandingProducts();
 
   // --- Observador de sesión: adapta el navbar según el estado de autenticación ---

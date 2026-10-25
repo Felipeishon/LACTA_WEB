@@ -119,6 +119,11 @@ service cloud.firestore {
       );
     }
 
+    match /servicios/{servicioId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /pedidos/{pedidoId} {
       allow create: if request.auth != null &&
         request.resource.data.compradorUid == request.auth.uid;

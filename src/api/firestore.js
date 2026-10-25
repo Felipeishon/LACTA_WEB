@@ -529,6 +529,48 @@ export async function fetchActiveProducts() {
     }
 }
 
+export async function fetchServiciosActivos() {
+    try {
+        const q = query(collection(db, "servicios"), where("activo", "==", true));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener servicios activos:", error);
+        throw error;
+    }
+}
+
+export async function createServicio(data) {
+    try {
+        const nombre = String(data.nombre || '').trim();
+        const descripcion = String(data.descripcion || '').trim();
+        const icono = String(data.icono || '').trim();
+        if (!nombre || !descripcion) throw new Error('El nombre y la descripción del servicio son obligatorios.');
+
+        const docRef = await addDoc(collection(db, "servicios"), {
+            nombre,
+            descripcion,
+            icono,
+            activo: true,
+            creadoEn: new Date().toISOString()
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error al crear servicio:", error);
+        throw error;
+    }
+}
+
+export async function deleteServicio(id) {
+    try {
+        if (typeof id !== 'string' || !id.trim()) throw new Error('No se pudo identificar el servicio.');
+        await deleteDoc(doc(db, "servicios", id));
+    } catch (error) {
+        console.error("Error al eliminar servicio:", error);
+        throw error;
+    }
+}
+
 export async function createProduct(productData) {
     try {
         const docRef = await addDoc(collection(db, "productos"), { ...productData, activo: true, creadoEn: new Date().toISOString() });
