@@ -1,5 +1,6 @@
 import { showToast } from '../../ui/notifications.js';
-import { fetchAdminStats, createProduct, fetchServiciosActivos, createServicio, deleteServicio } from '../../api/firestore.js';
+import { showConfirmModal } from '../../modales.js';
+import { fetchAdminStats, createProduct, fetchServiciosActivos, createServicio, updateServicio, deleteServicio } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { renderAdminInventory } from './tienda.js';
 import { renderAdminTipsManagement } from './tips.js';
@@ -10,7 +11,7 @@ import { loadAllNidos } from './nidos.js';
 import { loadAllRegistros } from './registros.js';
 import { fileToBase64 } from '../../utils/helpers.js';
 
-async function renderAdminServicesList() {
+async function renderAdminServicesList(onEdit) {
   const servicesList = document.getElementById('admin-services-list');
   if (!servicesList) return;
 
@@ -30,17 +31,31 @@ async function renderAdminServicesList() {
             <p class="mt-1 text-sm text-gray-500">${escapeHTML(servicio.descripcion)}</p>
           </div>
         </div>
-        <button type="button" data-delete-service="${escapeHTML(servicio.id)}" class="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100">Eliminar</button>
+        <div class="flex shrink-0 gap-2">
+          <button type="button" data-edit-service="${escapeHTML(servicio.id)}" class="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100">Editar</button>
+          <button type="button" data-delete-service="${escapeHTML(servicio.id)}" class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100">Eliminar</button>
+        </div>
       </div>
     `).join('');
 
+    servicesList.querySelectorAll('[data-edit-service]').forEach(button => {
+      button.addEventListener('click', () => {
+        const servicio = servicios.find(item => item.id === button.dataset.editService);
+        if (servicio) onEdit?.(servicio);
+      });
+    });
+
     servicesList.querySelectorAll('[data-delete-service]').forEach(button => {
       button.addEventListener('click', async () => {
-        if (!window.confirm('¿Eliminar este servicio?')) return;
+        const confirmado = await showConfirmModal(
+          'Eliminar Servicio',
+          '¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer.'
+        );
+        if (!confirmado) return;
         try {
           await deleteServicio(button.dataset.deleteService);
           showToast('Servicio eliminado con éxito', 'success');
-          await renderAdminServicesList();
+          await renderAdminServicesList(onEdit);
         } catch (error) {
           console.error('Error al eliminar servicio desde administración:', error);
           showToast('Error al eliminar el servicio', 'error');
@@ -241,6 +256,8 @@ async function renderAdminTab(activeTab) {
     await renderAdminTipsManagement();
 
   } else if (activeTab === 'admin_servicios') {
+    let idServicioEditando = null;
+
     dashboardContent.innerHTML = `
       <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Servicios</h2>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -266,7 +283,10 @@ async function renderAdminTab(activeTab) {
                 <option value="fa-solid fa-stethoscope">🩺 Estetoscopio (Salud)</option>
               </select>
             </div>
-            <button type="submit" class="w-full bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-2.5 rounded-lg text-sm transition">Guardar Servicio</button>
+            <div class="flex gap-3">
+              <button id="admin-save-service" type="submit" class="flex-1 bg-[#181411] hover:bg-[#e87a30] text-white font-bold py-2.5 rounded-lg text-sm transition">Guardar Servicio</button>
+              <button id="admin-cancel-service-edit" type="button" class="hidden flex-1 rounded-lg border border-gray-300 bg-gray-100 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-200">Cancelar Edición</button>
+            </div>
           </form>
         </div>
         <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -278,24 +298,56 @@ async function renderAdminTab(activeTab) {
       </div>
     `;
 
-    await renderAdminServicesList();
-
     const addServiceForm = document.getElementById('adminAddServiceForm');
+    const saveServiceButton = document.getElementById('admin-save-service');
+    const cancelServiceEditButton = document.getElementById('admin-cancel-service-edit');
+    const serviceNameInput = addServiceForm.elements.namedItem('nombre');
+    const serviceDescriptionInput = addServiceForm.elements.namedItem('descripcion');
+    const serviceIconSelect = addServiceForm.elements.namedItem('icono');
+
+    const resetServiceForm = () => {
+      addServiceForm.reset();
+      idServicioEditando = null;
+      saveServiceButton.textContent = 'Guardar Servicio';
+      cancelServiceEditButton.classList.add('hidden');
+    };
+
+    const editService = servicio => {
+      idServicioEditando = servicio.id;
+      serviceNameInput.value = servicio.nombre || '';
+      serviceDescriptionInput.value = servicio.descripcion || '';
+      serviceIconSelect.value = servicio.icono || 'fa-solid fa-heart';
+      if (!serviceIconSelect.value) serviceIconSelect.value = 'fa-solid fa-heart';
+      saveServiceButton.textContent = 'Actualizar Servicio';
+      cancelServiceEditButton.classList.remove('hidden');
+      addServiceForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    await renderAdminServicesList(editService);
+
+    cancelServiceEditButton.addEventListener('click', resetServiceForm);
+
     addServiceForm?.addEventListener('submit', async event => {
       event.preventDefault();
       const formData = new FormData(addServiceForm);
+      const datos = {
+        nombre: formData.get('nombre'),
+        descripcion: formData.get('descripcion'),
+        icono: formData.get('icono')
+      };
       try {
-        await createServicio({
-          nombre: formData.get('nombre'),
-          descripcion: formData.get('descripcion'),
-          icono: formData.get('icono')
-        });
-        showToast('Servicio creado con éxito', 'success');
-        addServiceForm.reset();
-        await renderAdminServicesList();
+        if (idServicioEditando === null) {
+          await createServicio(datos);
+          showToast('Servicio creado con éxito', 'success');
+        } else {
+          await updateServicio(idServicioEditando, datos);
+          showToast('Servicio actualizado con éxito', 'success');
+        }
+        resetServiceForm();
+        await renderAdminServicesList(editService);
       } catch (error) {
-        console.error('Error al crear servicio desde administración:', error);
-        showToast('Error al crear el servicio', 'error');
+        console.error('Error al guardar servicio desde administración:', error);
+        showToast('Error al guardar el servicio', 'error');
       }
     });
   }

@@ -17,7 +17,7 @@ async function renderServicios() {
   try {
     const servicios = await fetchServiciosActivos();
     if (servicios.length === 0) {
-      grid.innerHTML = '<p class="col-span-full rounded-xl border border-white/30 bg-white/90 px-6 py-8 text-center font-medium text-[#887263] shadow-sm">Pronto compartiremos nuestros servicios. ¡Vuelve pronto!</p>';
+      grid.innerHTML = '<p class="w-full rounded-xl border border-white/30 bg-white/90 px-6 py-8 text-center font-medium text-[#887263] shadow-sm">Pronto compartiremos nuestros servicios. ¡Vuelve pronto!</p>';
       return;
     }
 
@@ -25,7 +25,7 @@ async function renderServicios() {
       const icono = escapeHTML(servicio.icono || 'fa-solid fa-heart');
 
       return `
-        <article class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
+        <article class="h-full w-full sm:w-[calc(50%-0.75rem)] md:w-[calc(33.333%-1rem)] max-w-sm flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
           <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full flex items-center justify-center" aria-hidden="true">
             <i class="${icono} text-3xl"></i>
           </div>
@@ -38,7 +38,7 @@ async function renderServicios() {
     }).join('');
   } catch (error) {
     console.error('Error al cargar servicios de la landing:', error);
-    grid.innerHTML = '<p class="col-span-full rounded-xl border border-red-200 bg-white/95 px-6 py-8 text-center font-medium text-red-700 shadow-sm">No fue posible cargar los servicios.</p>';
+    grid.innerHTML = '<p class="w-full rounded-xl border border-red-200 bg-white/95 px-6 py-8 text-center font-medium text-red-700 shadow-sm">No fue posible cargar los servicios.</p>';
   }
 }
 

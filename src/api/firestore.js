@@ -561,6 +561,22 @@ export async function createServicio(data) {
     }
 }
 
+export async function updateServicio(id, data) {
+    try {
+        if (typeof id !== 'string' || !id.trim()) throw new Error('No se pudo identificar el servicio.');
+
+        const nombre = String(data.nombre || '').trim();
+        const descripcion = String(data.descripcion || '').trim();
+        const icono = String(data.icono || '').trim();
+        if (!nombre || !descripcion) throw new Error('El nombre y la descripción del servicio son obligatorios.');
+
+        await updateDoc(doc(db, "servicios", id), { nombre, descripcion, icono });
+    } catch (error) {
+        console.error("Error al actualizar servicio:", error);
+        throw error;
+    }
+}
+
 export async function deleteServicio(id) {
     try {
         if (typeof id !== 'string' || !id.trim()) throw new Error('No se pudo identificar el servicio.');
