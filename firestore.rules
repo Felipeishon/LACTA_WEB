@@ -135,8 +135,9 @@ service cloud.firestore {
 
     match /tips/{tipId} {
       allow read, list: if true;
-      allow create, update, delete: if request.auth != null &&
+      allow create: if request.auth != null &&
         (datosUsuario().puedeCrearTips == true || isAdmin());
+      allow update, delete: if isAdmin();
     }
 
     // --- REGLA MODIFICADA: AUDIT LOGS ---
