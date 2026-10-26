@@ -75,12 +75,16 @@ export async function fetchAdminStats() {
     }
 }
 
-export async function fetchUserAppointments(uid) {
+export async function fetchUserAppointments(uid, nidoId = null) {
     try {
         const snap = await getDocs(collection(db, "reservas"));
         const docs = snap.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(r => r.uid === uid || r.userId === uid || r.usuarioId === uid || r.clienteId === uid);
+            .filter(r => {
+                const esMia = r.uid === uid || r.userId === uid || r.usuarioId === uid || r.clienteId === uid;
+                const esDeMiNido = nidoId && r.nidoId === nidoId;
+                return esMia || esDeMiNido;
+            });
         return docs.sort((a, b) => {
             const tA = a.creadoEn?.toDate ? a.creadoEn.toDate().getTime() : new Date(a.creadoEn || 0).getTime();
             const tB = b.creadoEn?.toDate ? b.creadoEn.toDate().getTime() : new Date(b.creadoEn || 0).getTime();

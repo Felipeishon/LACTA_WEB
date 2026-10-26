@@ -6,7 +6,7 @@ import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
 
 export async function renderPadreResumen(dashboardContent, userData, nidoId, openPerfilBebeModal, switchTab) {
-    const appointments = await fetchUserAppointments(userData.uid);
+    const appointments = await fetchUserAppointments(userData.uid, nidoId);
     let nidoData = null;
     if (nidoId) {
       try {
@@ -879,7 +879,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             userNombre: userData.nombre || 'Padre/Madre',
             clienteNombre: userData.nombre || 'Padre/Madre',
             email: userData.email || '',
-            nidoId: userData.nidoId || null,
+            nidoId: nidoId || null,
             servicio: servicioNombreReal,
             tipoServicio: tipoServicioReal,
             servicioVisual: servicioSeleccionado,
