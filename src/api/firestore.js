@@ -1,5 +1,5 @@
 import { db, auth } from '../firebase.js';
-import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp, arrayUnion } from 'firebase/firestore';
 
 export async function getUserProfileWithSubcollections(uid) {
     try {
@@ -378,7 +378,14 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
             const datosNido = nidoExistenteDoc.data();
             const padresActuales = datosNido.padresUids || [];
             if (!padresActuales.includes(uidUsuario)) {
-                await updateDoc(doc(db, "nidos", nidoId), { padresUids: [...padresActuales, uidUsuario] });
+                try {
+                    await updateDoc(doc(db, "nidos", nidoId), { padresUids: arrayUnion(uidUsuario) });
+                } catch (error) {
+                    if (error.code === 'permission-denied') {
+                        console.error("El nido ya existe, pero no tienes permisos para unirte. Contacta al administrador.", error);
+                    }
+                    throw error;
+                }
             }
         }
         await updateDoc(doc(db, "usuarios", uidUsuario), { nidoId: nidoId });

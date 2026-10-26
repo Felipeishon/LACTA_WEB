@@ -9,7 +9,12 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
     const appointments = await fetchUserAppointments(userData.uid);
     let nidoData = null;
     if (nidoId) {
-      nidoData = await obtenerDatosNido(nidoId);
+      try {
+        nidoData = await obtenerDatosNido(nidoId);
+      } catch (error) {
+        console.error('Error al cargar el Nido en el resumen:', error);
+        throw error;
+      }
     }
 
     let appointmentsHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-400 italic">No tienes citas agendadas aún.</td></tr>';
@@ -82,7 +87,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             <p class="text-xs text-[#887263] mt-1">${nidoData ? '¡Nido vinculado!' : 'Sin nido vinculado aún'}</p>
           </div>
           <button id="btnAbrirPerfilNido" class="mt-4 w-full bg-[#f4eade] hover:bg-[#e8dcd0] text-[#181411] font-bold py-2 px-4 rounded-xl text-xs transition">
-            Ver Perfil del Nido
+            ${nidoData ? 'Ver Perfil del Nido' : 'Crear Nido'}
           </button>
         </div>
       </div>

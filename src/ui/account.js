@@ -1,6 +1,6 @@
 // Archivo: src/ui/account.js
 import { auth, db } from '../firebase.js';
-import { saveFichaCuidado, saveFichaAtencion, obtenerDatosNido } from '../api/firestore.js';
+import { saveFichaCuidado, saveFichaAtencion, obtenerDatosNido, vincularNidoFamiliar } from '../api/firestore.js';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { showToast } from './notifications.js';
 import { escapeHTML } from '../utils/html.js';
@@ -12,19 +12,74 @@ export async function openPerfilBebeModal(userData) {
   const modal = document.getElementById('modalPerfilBebe');
   if (!modal) return;
 
-  if (!userData?.nidoId) {
-    showToast('No tienes ningún Nido familiar vinculado todavía.', 'warning');
+  if (!userData?.uid) {
+    showToast('No se pudo identificar al usuario.', 'error');
     return;
   }
 
   modal.showModal();
 
   try {
-    const nidoData = await obtenerDatosNido(userData.nidoId);
+    const nidoData = userData.nidoId ? await obtenerDatosNido(userData.nidoId) : null;
     if (!nidoData) {
-      showToast('No se encontraron los datos del Nido.', 'error');
+      const tituloModal = modal.querySelector('h2, h3, h4');
+      if (tituloModal) tituloModal.textContent = 'Crear Nido Familiar';
+
+      modal.querySelector('#nido-dinamico-info')?.remove();
+      let formSection = modal.querySelector('#nido-crear-form');
+      if (!formSection) {
+        formSection = document.createElement('div');
+        formSection.id = 'nido-crear-form';
+        tituloModal?.insertAdjacentElement('afterend', formSection);
+      }
+
+      formSection.innerHTML = `
+        <form class="mt-4 space-y-3 text-left">
+          <label class="block text-xs font-bold text-gray-700">Nombre del bebé
+            <input type="text" name="nombre" required class="w-full mt-1 p-2 border border-gray-200 rounded text-sm" />
+          </label>
+          <label class="block text-xs font-bold text-gray-700">RUT del bebé
+            <input type="text" name="rut" required maxlength="12" class="w-full mt-1 p-2 border border-gray-200 rounded text-sm" />
+          </label>
+          <button type="submit" class="w-full bg-[#e87a30] text-white font-bold rounded-xl py-2.5 text-sm">Crear Nido</button>
+        </form>
+      `;
+
+      const form = formSection.querySelector('form');
+      const inputRut = form.elements.namedItem('rut');
+      inputRut.addEventListener('input', (event) => {
+        event.target.value = formatRut(event.target.value);
+      });
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nombre = form.elements.namedItem('nombre').value.trim();
+        const rut = inputRut.value.trim();
+        if (!nombre || !validarRut(rut)) {
+          showToast('Por favor ingresa un nombre y un RUT válido.', 'warning');
+          return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Creando...';
+        try {
+          userData.nidoId = await vincularNidoFamiliar(userData.uid, [{ nombre, rut }]);
+          showToast('¡Nido creado con éxito!', 'success');
+          modal.close();
+          location.reload();
+        } catch (error) {
+          console.error('Error al crear el Nido:', error);
+          showToast('Error al crear el Nido.', 'error');
+          submitButton.disabled = false;
+          submitButton.textContent = 'Crear Nido';
+        }
+      });
       return;
     }
+
+    const tituloModal = modal.querySelector('h2, h3, h4');
+    if (tituloModal) tituloModal.textContent = 'Perfil de Nido';
+    modal.querySelector('#nido-crear-form')?.remove();
 
     let listaHijosHtml = '';
     const hijos = nidoData.hijos || (nidoData.rutBebe ? [{ nombre: nidoData.nombreBebe || 'Hijo/a', rut: nidoData.rutBebe }] : []);
