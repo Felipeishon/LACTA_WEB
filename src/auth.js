@@ -31,6 +31,15 @@ export function initAuthHandlers() {
           rut: data.rut,
           email: data.email,
           telefono: data.telefono,
+          direccion: {
+            calle: String(data.calle || '').trim(),
+            numero: String(data.numero || '').trim(),
+            departamento: String(data.departamento || '').trim(),
+            comuna: String(data.comuna || '').trim(),
+            referencia: String(data.referencia || '').trim(),
+            lat: null,
+            lng: null
+          },
           subtipo: data.subtipo,
           rol: ['padre'],
           fechaRegistro: new Date().toISOString(),

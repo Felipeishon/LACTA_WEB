@@ -333,7 +333,22 @@
         <input name="rut" placeholder="RUT (ej: 12.345.678-9)" required class="input-rut p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="RUT o DNI" maxlength="12" />
         <input name="email" type="email" placeholder="Email" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
         <input name="telefono" placeholder="Teléfono" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Teléfono" />
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input name="calle" placeholder="Calle" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Calle" />
+          <input name="numero" placeholder="Número" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Número" />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input name="departamento" placeholder="Depto / Casa (opcional)" class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Departamento" />
+          <input name="comuna" placeholder="Comuna" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Comuna" />
+        </div>
+        <input name="referencia" placeholder="Referencia (opcional)" class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Referencia" />
+        <p class="text-xs text-gray-400 mb-2">Dirección de atención para servicios presenciales.</p>
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Crear mi cuenta</button>
         <p class="text-center text-sm text-[#887263] mt-2">¿Eres colaborador? <button type="button" id="linkCambiarAPrestador" class="text-[#e87a30] underline font-bold">Regístrate aquí</button></p>
       </form>
@@ -355,7 +370,12 @@
           <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" name="tipo" value="cuidadora" class="accent-[#e87a30]"> Cuidadora 24/7</label>
         </div>
         <textarea name="referencias" placeholder="Cuéntanos sobre tu experiencia o links a certificaciones" class="p-3 rounded-lg border border-[#e5dfdc] text-sm focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" rows="3"></textarea>
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#887263] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#6b584b] transition-colors active:scale-95 shadow-md">Registrarse como Prestador</button>
       </form>
     </div>
@@ -446,7 +466,12 @@
       <h2 class="text-2xl font-bold mb-6 text-[#181411] text-center">Ingresar a mi cuenta</h2>
       <form id="loginForm" class="flex flex-col gap-4" autocomplete="off">
         <input name="email" type="email" placeholder="Email" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#181411] text-white font-bold rounded-full py-3 mt-2 hover:bg-gray-800 transition-colors active:scale-95 shadow-md">Entrar</button>
       </form>
       <div class="mt-6 text-center space-y-3">

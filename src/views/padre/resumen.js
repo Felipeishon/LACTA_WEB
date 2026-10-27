@@ -389,7 +389,17 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       const containerModalidad = document.getElementById('container-modalidad');
       const containerDireccion = document.getElementById('container-direccion');
       const inputDireccion = document.getElementById('cita-direccion');
-      const direccionGuardada = userData.direccion || userData.direccionPrincipal || '';
+      const direccionGuardada = typeof userData.direccion === 'string'
+        ? userData.direccion
+        : userData.direccion && typeof userData.direccion === 'object'
+          ? [
+            userData.direccion.calle,
+            userData.direccion.numero,
+            userData.direccion.departamento,
+            userData.direccion.comuna,
+            userData.direccion.referencia
+          ].filter(Boolean).join(', ')
+          : userData.direccionPrincipal || '';
 
       let ultimoServicioCargado = '';
 

@@ -40,6 +40,20 @@ export async function showConfirmModal(title, message, isDanger = true) {
 }
 
 export function initModales() {
+  document.querySelectorAll('.btn-toggle-password').forEach(button => {
+    button.addEventListener('click', () => {
+      const input = button.previousElementSibling;
+      const icon = button.querySelector('i');
+
+      if (!(input instanceof HTMLInputElement) || !icon) return;
+
+      const showPassword = input.type === 'password';
+      input.type = showPassword ? 'text' : 'password';
+      icon.classList.toggle('fa-eye', !showPassword);
+      icon.classList.toggle('fa-eye-slash', showPassword);
+    });
+  });
+
   const modales = {
     registroPadre: document.getElementById('modalRegistroPadre'),
     registroPrestador: document.getElementById('modalRegistroPrestador'),
