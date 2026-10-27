@@ -15,6 +15,13 @@ export function initAuthHandlers() {
       btnSubmit.textContent = 'Registrando...';
       const data = Object.fromEntries(new FormData(registroPadreForm).entries());
 
+      if (![data.calle, data.numero, data.comuna].every(value => String(value || '').trim())) {
+        showToast('Por favor completa tu dirección (Calle, Número y Comuna) para continuar.', 'error');
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = 'Crear mi cuenta';
+        return;
+      }
+
       if (!validarRut(data.rut)) {
         showToast('El RUT ingresado no es válido.', 'error');
         btnSubmit.disabled = false;

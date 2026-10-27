@@ -352,8 +352,17 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
               </div>
 
               <div id="container-direccion">
-                <label class="block text-xs font-bold text-gray-600 mb-1">Dirección (Solo presencial)</label>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Dirección de Atención (Presencial)</label>
+                <div class="flex gap-4 mb-2">
+                  <label id="label-direccion-registrada" class="flex items-center gap-1 text-sm cursor-pointer">
+                    <input type="radio" name="opcion-direccion" value="registrada" checked class="accent-[#e87a30]"> Usar mi dirección registrada
+                  </label>
+                  <label class="flex items-center gap-1 text-sm cursor-pointer">
+                    <input type="radio" name="opcion-direccion" value="nueva" class="accent-[#e87a30]"> Usar otra dirección
+                  </label>
+                </div>
                 <input type="text" id="cita-direccion" placeholder="Ej: Av. Las Condes 1234, Depto 501" class="w-full p-2.5 border rounded-xl text-sm bg-white" />
+                <p id="texto-direccion-registrada" class="text-xs text-gray-500 mt-1 hidden">Usando dirección del perfil.</p>
               </div>
 
               <div>
@@ -389,17 +398,50 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       const containerModalidad = document.getElementById('container-modalidad');
       const containerDireccion = document.getElementById('container-direccion');
       const inputDireccion = document.getElementById('cita-direccion');
-      const direccionGuardada = typeof userData.direccion === 'string'
-        ? userData.direccion
-        : userData.direccion && typeof userData.direccion === 'object'
-          ? [
-            userData.direccion.calle,
-            userData.direccion.numero,
-            userData.direccion.departamento,
-            userData.direccion.comuna,
-            userData.direccion.referencia
+      const datosDireccion = userData.direccion;
+      const direccionRegistrada = String(typeof datosDireccion === 'string'
+        ? datosDireccion
+        : datosDireccion && typeof datosDireccion === 'object'
+          ? datosDireccion.texto || [
+            datosDireccion.calle,
+            datosDireccion.numero,
+            datosDireccion.departamento,
+            datosDireccion.comuna,
+            datosDireccion.referencia
           ].filter(Boolean).join(', ')
-          : userData.direccionPrincipal || '';
+          : userData.direccionPrincipal || '').trim();
+      const opcionDireccionRegistrada = containerDireccion.querySelector('input[value="registrada"]');
+      const opcionDireccionNueva = containerDireccion.querySelector('input[value="nueva"]');
+      const labelDireccionRegistrada = document.getElementById('label-direccion-registrada');
+      const textoDireccionRegistrada = document.getElementById('texto-direccion-registrada');
+
+      if (direccionRegistrada) {
+        inputDireccion.value = direccionRegistrada;
+        inputDireccion.readOnly = true;
+      } else {
+        labelDireccionRegistrada.classList.add('hidden');
+        opcionDireccionRegistrada.checked = false;
+        opcionDireccionNueva.checked = true;
+        inputDireccion.readOnly = false;
+      }
+
+      containerDireccion.querySelectorAll('input[name="opcion-direccion"]').forEach(opcion => {
+        opcion.addEventListener('change', () => {
+          if (opcionDireccionRegistrada.checked && direccionRegistrada) {
+            inputDireccion.value = direccionRegistrada;
+            inputDireccion.readOnly = true;
+            textoDireccionRegistrada.classList.remove('hidden');
+          } else {
+            inputDireccion.value = '';
+            inputDireccion.readOnly = false;
+            textoDireccionRegistrada.classList.add('hidden');
+          }
+        });
+      });
+
+      if (direccionRegistrada && opcionDireccionRegistrada.checked) {
+        textoDireccionRegistrada.classList.remove('hidden');
+      }
 
       let ultimoServicioCargado = '';
 
@@ -429,13 +471,9 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
         } else if (isConsejera && modalidad === 'Online') {
           containerDireccion.classList.add('hidden');
           inputDireccion.removeAttribute('required');
-          inputDireccion.value = 'Atención Online';
         } else {
           containerDireccion.classList.remove('hidden');
           inputDireccion.setAttribute('required', 'true');
-          if (!inputDireccion.value || inputDireccion.value === 'Atención Online') {
-            inputDireccion.value = direccionGuardada;
-          }
         }
 
         if (servicio !== ultimoServicioCargado) {
@@ -510,9 +548,6 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
         } else {
           containerDireccion.classList.remove('hidden');
           inputDireccion.setAttribute('required', 'true');
-          if (!inputDireccion.value || inputDireccion.value === 'Atención Online') {
-            inputDireccion.value = direccionGuardada;
-          }
         }
         const mensajeModalidad = document.getElementById('mensaje-modalidad-slot');
         mensajeModalidad.textContent = '';

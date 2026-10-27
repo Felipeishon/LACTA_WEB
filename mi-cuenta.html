@@ -153,6 +153,18 @@
         <label class="text-xs font-bold text-gray-700">Teléfono
           <input type="tel" id="edit-user-telefono" name="telefono" class="w-full mt-1 p-2 border rounded text-sm" />
         </label>
+        <div id="container-direccion-admin" class="hidden mt-3 space-y-2">
+          <label class="block text-xs font-bold text-gray-600">Dirección</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="edit-user-calle" placeholder="Calle" class="p-2 border rounded-xl text-sm" />
+            <input type="text" id="edit-user-numero" placeholder="Número" class="p-2 border rounded-xl text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="edit-user-departamento" placeholder="Depto/Casa (opcional)" class="p-2 border rounded-xl text-sm" />
+            <input type="text" id="edit-user-comuna" placeholder="Comuna" class="p-2 border rounded-xl text-sm" />
+          </div>
+          <input type="text" id="edit-user-referencia" placeholder="Referencia (opcional)" class="p-2 border rounded-xl text-sm w-full" />
+        </div>
         <label class="text-xs font-bold text-gray-700">Estado
           <select name="estado" class="w-full mt-1 p-2 border rounded text-sm">
             <option value="activo">Activo</option>

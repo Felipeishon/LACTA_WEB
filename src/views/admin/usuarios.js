@@ -153,6 +153,15 @@ async function loadAllUsersTable() {
           form.elements.email.value = user.email || '';
           form.elements.telefono.value = user.telefono || '';
           form.elements.estado.value = user.estado || 'pendiente';
+          const direccion = user.direccion && typeof user.direccion === 'object'
+            ? user.direccion
+            : { calle: typeof user.direccion === 'string' ? user.direccion : '' };
+          form.querySelector('#edit-user-calle').value = direccion.calle || '';
+          form.querySelector('#edit-user-numero').value = direccion.numero || '';
+          form.querySelector('#edit-user-departamento').value = direccion.departamento || '';
+          form.querySelector('#edit-user-comuna').value = direccion.comuna || '';
+          form.querySelector('#edit-user-referencia').value = direccion.referencia || '';
+          const direccionContainer = document.getElementById('container-direccion-admin');
           const tipsPermissionContainer = document.getElementById('edit-tips-permission-container');
           const tipsPermissionInput = document.getElementById('edit-user-tips');
           const roleInputs = form.querySelectorAll('input[name="rol"]');
@@ -161,6 +170,7 @@ async function loadAllUsersTable() {
               .filter(input => input.checked)
               .map(input => input.value);
             const esPrestador = rolesActuales.includes('consejera') || rolesActuales.includes('cuidadora');
+            direccionContainer.classList.toggle('hidden', !rolesActuales.includes('padre'));
             tipsPermissionContainer.classList.toggle('hidden', !esPrestador);
             if (!esPrestador) tipsPermissionInput.checked = false;
           };
@@ -232,6 +242,16 @@ async function loadAllUsersTable() {
         const roles = Array.from(editForm.querySelectorAll('input[name="rol"]:checked')).map(input => input.value);
         const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
         const puedeCrearTips = esPrestador && document.getElementById('edit-user-tips').checked;
+        const direccion = roles.includes('padre') ? {
+          calle: document.getElementById('edit-user-calle').value.trim(),
+          numero: document.getElementById('edit-user-numero').value.trim(),
+          departamento: document.getElementById('edit-user-departamento').value.trim(),
+          comuna: document.getElementById('edit-user-comuna').value.trim(),
+          referencia: document.getElementById('edit-user-referencia').value.trim()
+        } : undefined;
+        if (direccion) {
+          direccion.texto = [[direccion.calle, direccion.numero].filter(Boolean).join(' '), direccion.comuna].filter(Boolean).join(', ');
+        }
         if (roles.length === 0) {
           showToast('Selecciona al menos un rol.', 'error');
           return;
@@ -243,7 +263,8 @@ async function loadAllUsersTable() {
             telefono: formData.get('telefono'),
             estado: formData.get('estado'),
             rol: roles,
-            puedeCrearTips
+            puedeCrearTips,
+            direccion
           });
           const user = users.find(item => item.id === uid);
           if (user) {
@@ -253,6 +274,7 @@ async function loadAllUsersTable() {
             user.estado = formData.get('estado');
             user.rol = roles;
             user.puedeCrearTips = puedeCrearTips;
+            if (direccion) user.direccion = direccion;
           }
           editModal?.close();
           renderTable();

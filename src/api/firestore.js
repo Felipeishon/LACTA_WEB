@@ -213,6 +213,22 @@ export async function updateUserProfile(uid, updateData) {
         puedeCrearTips: (roles.includes('consejera') || roles.includes('cuidadora')) &&
             updateData.puedeCrearTips === true
     };
+    if (roles.includes('padre')) {
+        const direccion = updateData.direccion || {};
+        const calle = String(direccion.calle || '').trim();
+        const numero = String(direccion.numero || '').trim();
+        const departamento = String(direccion.departamento || '').trim();
+        const comuna = String(direccion.comuna || '').trim();
+        const referencia = String(direccion.referencia || '').trim();
+        changes.direccion = {
+            calle,
+            numero,
+            departamento,
+            comuna,
+            referencia,
+            texto: [[calle, numero].filter(Boolean).join(' '), comuna].filter(Boolean).join(', ')
+        };
+    }
     if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
     if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) throw new Error('Los datos del usuario no son válidos.');
     if (roles.length === 0 || roles.some(role => !allowedRoles.includes(role))) throw new Error('Los roles del usuario no son válidos.');
