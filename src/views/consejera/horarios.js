@@ -234,7 +234,24 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
       startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(monday);
       endOfWeek.setDate(monday.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
+      endOfWeek.setHours(0, 0, 0, 0);
+      const formatDateKey = date => [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+      ].join('-');
+      const startOfWeekKey = formatDateKey(startOfWeek);
+      const endOfWeekKey = formatDateKey(endOfWeek);
+      const getSlotDateKey = value => {
+        if (!value) return null;
+        if (typeof value === 'string') {
+          const dateMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) return dateMatch[1];
+        }
+        const date = typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return formatDateKey(date);
+      };
 
       const daysMap = { 'Lunes': 0, 'Martes': 1, 'Miercoles': 2, 'Jueves': 3, 'Viernes': 4, 'Sabado': 5, 'Domingo': 6 };
       const newSlots = [];
@@ -281,14 +298,8 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
         if (slot.reservado) return; 
         if (slot.tipoServicio !== 'consejeria' && slot.tipoServicio !== 'Consejería') return;
         
-        let slotDate = null;
-        if (slot.fechaInicio && typeof slot.fechaInicio.toDate === 'function') {
-          slotDate = slot.fechaInicio.toDate();
-        } else if (slot.fechaInicio) {
-          slotDate = new Date(slot.fechaInicio);
-        }
-        
-        if (slotDate && slotDate >= startOfWeek && slotDate <= endOfWeek) {
+        const slotDateKey = getSlotDateKey(slot.fechaInicio);
+        if (slotDateKey && slotDateKey >= startOfWeekKey && slotDateKey <= endOfWeekKey) {
           batch.delete(docSnap.ref);
         }
       });

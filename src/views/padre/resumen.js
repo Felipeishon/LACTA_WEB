@@ -704,6 +704,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                   });
                   const padDatePart = (value) => String(value).padStart(2, '0');
                   const fechaKey = `${inicio.getFullYear()}-${padDatePart(inicio.getMonth() + 1)}-${padDatePart(inicio.getDate())}`;
+                  console.log('Slot encontrado:', { fecha: inicio.toLocaleDateString(), hora: slot.horaInicio, modalidad: slot.modalidad });
                   slotsDisponibles.push({ inicio, fechaKey, slotData, label });
                 }
               });
