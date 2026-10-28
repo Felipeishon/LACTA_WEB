@@ -1,6 +1,11 @@
 import { db, auth } from '../firebase.js';
 import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp, arrayUnion } from 'firebase/firestore';
 
+function cleanRut(rut) {
+    if (!rut) return '';
+    return rut.toString().replace(/[^0-9kK]/g, '').toUpperCase();
+}
+
 export async function getUserProfileWithSubcollections(uid) {
     try {
         const userRef = doc(db, 'usuarios', uid);
@@ -383,8 +388,12 @@ export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
         for (const nidoDoc of nidosSnap.docs) {
             const data = nidoDoc.data();
             const hijosRegistrados = data.hijos || [];
-            const matchHijosArray = hijosRegistrados.some(h => hijosArray.some(nuevo => nuevo.rut === h.rut));
-            const matchAntiguo = data.rutBebe && hijosArray.some(nuevo => nuevo.rut === data.rutBebe);
+            const matchHijosArray = hijosRegistrados.some(h => hijosArray.some(nuevo => {
+                const cleanNuevoRut = cleanRut(nuevo.rut);
+                const cleanHijoRut = cleanRut(h.rut);
+                return cleanNuevoRut === cleanHijoRut;
+            }));
+            const matchAntiguo = data.rutBebe && hijosArray.some(nuevo => cleanRut(nuevo.rut) === cleanRut(data.rutBebe));
             if (matchHijosArray || matchAntiguo) { nidoExistenteDoc = nidoDoc; break; }
         }
         if (!nidoExistenteDoc) {

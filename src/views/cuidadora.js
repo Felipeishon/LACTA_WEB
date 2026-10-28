@@ -72,6 +72,8 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
               <h4 class="font-bold text-lg">${nombreSafe}</h4>
               <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${fechaSafe}</span> • Hora: ${horaSafe}</p>
               <p class="text-sm text-gray-600 mt-1">Cliente: ${emailSafe}</p>
+              <p class="text-xs text-gray-600 mt-1"><strong>Tel:</strong> <a href="tel:${escapeHTML(app.telefono || '')}" class="text-[#e87a30] hover:underline font-semibold">${escapeHTML(app.telefono || 'No registrado')}</a></p>
+              <p class="text-xs text-gray-600"><strong>Dir:</strong> ${escapeHTML(app.direccion || 'No registrada')}</p>
             </div>
             <div>
               ${actionButtons}
