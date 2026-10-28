@@ -446,8 +446,17 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       let ultimoServicioCargado = '';
 
       const formatDateRango = (start, end) => {
-        const options = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
-        return `${start.toLocaleDateString('es-CL', options)} → ${end.toLocaleDateString('es-CL', options)}`;
+        const pad = (n) => String(n).padStart(2, '0');
+        const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+        const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+        const format = (d) => {
+          let h = d.getHours();
+          const ampm = h >= 12 ? 'p. m.' : 'a. m.';
+          h = h % 12 || 12;
+          return `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}, ${pad(h)}:${pad(d.getMinutes())} ${ampm}`;
+        };
+        return `${format(start)} → ${format(end)}`;
       };
 
       const updateFormUI = async () => {
@@ -675,7 +684,8 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                   }
 
                   const label = formatDateRango(inicio, fin);
-                  const pFecha = inicio.toLocaleDateString('es-CL');
+                  const padDatePart = (value) => String(value).padStart(2, '0');
+                  const fechaKey = `${inicio.getFullYear()}-${padDatePart(inicio.getMonth() + 1)}-${padDatePart(inicio.getDate())}`;
                   let modalidadesPermitidas;
                   if (!isConsejera) {
                     if (horasDiferencia < 48) return;
@@ -695,15 +705,13 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                   
                   const slotData = JSON.stringify({ 
                     id: doc.id, 
-                    fecha: pFecha, 
+                    fecha: fechaKey,
                     horaInicio: hInicioStr, 
                     horaFin: hFinStr, 
                     texto: label,
                     modalidad: slot.modalidad || 'ambas',
                     modalidadesPermitidas
                   });
-                  const padDatePart = (value) => String(value).padStart(2, '0');
-                  const fechaKey = `${inicio.getFullYear()}-${padDatePart(inicio.getMonth() + 1)}-${padDatePart(inicio.getDate())}`;
                   console.log('Slot encontrado:', { fecha: inicio.toLocaleDateString(), hora: slot.horaInicio, modalidad: slot.modalidad });
                   slotsDisponibles.push({ inicio, fechaKey, slotData, label });
                 }

@@ -267,13 +267,10 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
             
             const [horaInicioStr, horaFinStr] = block.split('-');
             
-            const fechaInicio = new Date(exactDate);
             const [hI, mI] = horaInicioStr.split(':');
-            fechaInicio.setHours(hI, mI, 0, 0);
-
-            const fechaFin = new Date(exactDate);
             const [hF, mF] = horaFinStr.split(':');
-            fechaFin.setHours(hF, mF, 0, 0);
+            const fechaInicio = new Date(exactDate.getFullYear(), exactDate.getMonth(), exactDate.getDate(), parseInt(hI), parseInt(mI), 0);
+            const fechaFin = new Date(exactDate.getFullYear(), exactDate.getMonth(), exactDate.getDate(), parseInt(hF), parseInt(mF), 0);
 
             newSlots.push({
               fechaInicio: fechaInicio,
