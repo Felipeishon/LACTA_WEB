@@ -370,6 +370,11 @@
           <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" name="tipo" value="cuidadora" class="accent-[#e87a30]"> Cuidadora 24/7</label>
         </div>
         <textarea name="referencias" placeholder="Cuéntanos sobre tu experiencia o links a certificaciones" class="p-3 rounded-lg border border-[#e5dfdc] text-sm focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" rows="3"></textarea>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Sube una foto de tu título o certificación (Opcional)</label>
+          <input type="file" id="registro-prestador-certificado" name="certificadoFile" accept="image/*,application/pdf" class="w-full p-2 border border-[#e5dfdc] rounded-lg text-sm file:mr-3 file:rounded file:border-0 file:bg-[#f4eade] file:px-3 file:py-1 file:text-xs file:font-bold" />
+          <p class="text-xs text-gray-400 mt-1">Máximo 2 MB para imágenes (se comprimen); PDF hasta 500 KB. Formatos: JPG, PNG o PDF.</p>
+        </div>
         <div class="relative w-full">
           <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
           <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">

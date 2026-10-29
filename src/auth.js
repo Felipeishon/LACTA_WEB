@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswor
 import { showToast } from './ui/notifications.js';
 import { emailService } from './emailService.js';
 import { validarRut } from './rut.js';
+import { fileToBase64 } from './utils/helpers.js';
 
 export function initAuthHandlers() {
   const registroPadreForm = document.getElementById('registroPadreForm');
@@ -81,6 +82,7 @@ export function initAuthHandlers() {
       const formData = new FormData(registroPrestadorForm);
       const data = Object.fromEntries(formData.entries());
       const rolesSeleccionados = formData.getAll('tipo');
+      const certificadoFile = formData.get('certificadoFile');
 
       if (!validarRut(data.rut)) {
         showToast('El RUT ingresado no es válido.', 'error');
@@ -90,6 +92,27 @@ export function initAuthHandlers() {
       }
 
       try {
+        let certificadoUrl = null;
+        if (certificadoFile instanceof File && certificadoFile.size > 0) {
+          const maxImageBytes = 2 * 1024 * 1024;
+          const maxPdfBytes = 500 * 1024;
+          const isImage = ['image/jpeg', 'image/png'].includes(certificadoFile.type);
+          const isPdf = certificadoFile.type === 'application/pdf';
+
+          if (!isImage && !isPdf) {
+            showToast('El certificado debe estar en formato JPG, PNG o PDF.', 'error');
+            return;
+          }
+          if (certificadoFile.size > maxImageBytes || (isPdf && certificadoFile.size > maxPdfBytes)) {
+            showToast(isPdf
+              ? 'El archivo PDF no puede superar los 500 KB.'
+              : 'La imagen no puede superar los 2 MB.',
+            'error');
+            return;
+          }
+          certificadoUrl = await fileToBase64(certificadoFile);
+        }
+
         const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
         const user = userCredential.user;
         await setDoc(doc(db, "usuarios", user.uid), {
@@ -99,6 +122,7 @@ export function initAuthHandlers() {
           email: data.email,
           telefono: data.telefono,
           referencias: data.referencias || '',
+          certificadoUrl,
           rol: rolesSeleccionados,
           fechaRegistro: new Date().toISOString(),
           estado: 'pendiente'

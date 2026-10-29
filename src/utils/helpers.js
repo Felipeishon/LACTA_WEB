@@ -225,11 +225,11 @@ function getNidoNombreDesdePadre(uidPadre, userMap, nidoMap) {
 
 function fileToBase64(file) {
   const maxBytes = 200 * 1024;
-  if (file.size <= maxBytes) {
+  if (file.type === 'application/pdf' || file.size <= maxBytes) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
       reader.readAsDataURL(file);
     });
   }

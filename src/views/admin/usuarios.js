@@ -13,6 +13,14 @@ import { auth } from '../../firebase.js';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { showConfirmModal } from '../../modales.js';
 
+function getCertificateDataUrl(value) {
+  if (typeof value !== 'string' ||
+      !/^data:(?:image\/(?:jpeg|png)|application\/pdf);base64,[A-Za-z0-9+/=]+$/i.test(value)) {
+    return '';
+  }
+  return value;
+}
+
 async function loadPendingUsers() {
   const container = document.getElementById('pending-users-list');
   if (!container) return;
@@ -27,10 +35,14 @@ async function loadPendingUsers() {
     users.forEach(u => {
       const div = document.createElement('div');
       div.className = 'flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200';
+      const certificadoUrl = getCertificateDataUrl(u.certificadoUrl);
       div.innerHTML = `
         <div>
           <p class="font-bold text-sm">${escapeHTML(u.nombre)} <span class="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">${escapeHTML(Array.isArray(u.rol) ? u.rol.join(', ') : u.rol)}</span></p>
           <p class="text-[10px] text-gray-500">${escapeHTML(u.email)} • RUT: ${escapeHTML(u.rut || 'No registrado')}</p>
+          ${certificadoUrl
+            ? `<a href="${escapeHTML(certificadoUrl)}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-xs font-bold text-blue-600 underline">📄 Ver Certificación</a>`
+            : '<span class="text-xs text-gray-400 italic mt-2 block">Sin certificación adjunta</span>'}
         </div>
         <button data-uid="${escapeHTML(u.id)}" data-nombre="${escapeHTML(u.nombre)}" data-email="${escapeHTML(u.email)}" class="btn-approve bg-green-500 text-white text-[10px] font-bold py-1 px-2 rounded hover:bg-green-600 transition-colors">Aprobar</button>
       `;
@@ -153,6 +165,14 @@ async function loadAllUsersTable() {
           form.elements.email.value = user.email || '';
           form.elements.telefono.value = user.telefono || '';
           form.elements.estado.value = user.estado || 'pendiente';
+          const certificateContainer = form.querySelector('#edit-user-certificate');
+          const certificateUrl = getCertificateDataUrl(user.certificadoUrl);
+          if (certificateContainer) {
+            certificateContainer.innerHTML = certificateUrl
+              ? `<a href="${escapeHTML(certificateUrl)}" target="_blank" rel="noopener noreferrer" class="inline-block text-xs font-bold text-blue-600 underline">📄 Ver Certificación</a>`
+              : '';
+            certificateContainer.classList.toggle('hidden', !certificateUrl);
+          }
           const direccion = user.direccion && typeof user.direccion === 'object'
             ? user.direccion
             : { calle: typeof user.direccion === 'string' ? user.direccion : '' };
