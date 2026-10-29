@@ -39,9 +39,10 @@ async function loadPendingUsers() {
       div.innerHTML = `
         <div>
           <p class="font-bold text-sm">${escapeHTML(u.nombre)} <span class="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">${escapeHTML(Array.isArray(u.rol) ? u.rol.join(', ') : u.rol)}</span></p>
-          <p class="text-[10px] text-gray-500">${escapeHTML(u.email)} • RUT: ${escapeHTML(u.rut || 'No registrado')}</p>
+          <p class="text-xs text-gray-500">${escapeHTML(u.email || '')} • RUT: ${escapeHTML(u.rut || 'Sin RUT')} • Tel: ${escapeHTML(u.telefono || 'Sin teléfono')}</p>
+          ${u.referencias ? `<p class="text-xs text-gray-600 mt-1"><strong>Experiencia:</strong> ${escapeHTML(u.referencias)}</p>` : ''}
           ${certificadoUrl
-            ? `<a href="${escapeHTML(certificadoUrl)}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-xs font-bold text-blue-600 underline">📄 Ver Certificación</a>`
+            ? `<button type="button" onclick="window.openBase64File('${escapeHTML(certificadoUrl)}')" class="inline-block mt-2 text-xs font-bold text-blue-600 underline hover:text-blue-800">📄 Ver Documentación</button>`
             : '<span class="text-xs text-gray-400 italic mt-2 block">Sin certificación adjunta</span>'}
         </div>
         <button data-uid="${escapeHTML(u.id)}" data-nombre="${escapeHTML(u.nombre)}" data-email="${escapeHTML(u.email)}" class="btn-approve bg-green-500 text-white text-[10px] font-bold py-1 px-2 rounded hover:bg-green-600 transition-colors">Aprobar</button>
@@ -169,7 +170,7 @@ async function loadAllUsersTable() {
           const certificateUrl = getCertificateDataUrl(user.certificadoUrl);
           if (certificateContainer) {
             certificateContainer.innerHTML = certificateUrl
-              ? `<a href="${escapeHTML(certificateUrl)}" target="_blank" rel="noopener noreferrer" class="inline-block text-xs font-bold text-blue-600 underline">📄 Ver Certificación</a>`
+              ? `<button type="button" onclick="window.openBase64File('${escapeHTML(certificateUrl)}')" class="inline-block mt-2 text-xs font-bold text-blue-600 underline hover:text-blue-800">📄 Ver Documentación</button>`
               : '';
             certificateContainer.classList.toggle('hidden', !certificateUrl);
           }

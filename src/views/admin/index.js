@@ -11,6 +11,28 @@ import { loadAllNidos } from './nidos.js';
 import { loadAllRegistros } from './registros.js';
 import { fileToBase64 } from '../../utils/helpers.js';
 
+window.openBase64File = function(base64Data) {
+  if (!base64Data) return;
+  try {
+    const parts = base64Data.split(',');
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const blob = new Blob([u8arr], { type: mime });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    console.error('Error al abrir el archivo:', error);
+    showToast('No se pudo abrir el documento', 'error');
+  }
+};
+
 async function renderAdminServicesList(onEdit) {
   const servicesList = document.getElementById('admin-services-list');
   if (!servicesList) return;
@@ -141,23 +163,20 @@ async function renderAdminTab(activeTab) {
         const appointments = await getPendingAppointments();
         pendingAppointmentsList.innerHTML = appointments.length > 0
           ? `
-            <p class="text-gray-600">${appointments.length} cita${appointments.length === 1 ? '' : 's'} pendiente${appointments.length === 1 ? '' : 's'}.</p>
+            <p class="mb-2"><span class="inline-flex items-center rounded-full bg-[#f4eade] px-2.5 py-1 text-xs font-bold text-[#887263]">${appointments.length} cita${appointments.length === 1 ? '' : 's'} pendiente${appointments.length === 1 ? '' : 's'}</span></p>
             <div class="space-y-2">
               ${appointments.map(cita => `
-                <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex justify-between items-center gap-3">
+                <button type="button" data-admin-tab="admin_registros" class="w-full bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex justify-between items-center gap-3 text-left cursor-pointer hover:bg-gray-100 transition-colors">
                   <div class="min-w-0">
                     <p class="font-bold text-[#181411]">${escapeHTML(cita.nombre || cita.clienteNombre || 'Cliente')}</p>
-                    <p class="text-xs text-gray-500">${escapeHTML(cita.servicioVisual || cita.servicio || 'Servicio')}</p>
+                    <p class="text-xs text-gray-500">${escapeHTML(cita.servicioVisual || cita.servicio || 'Servicio')} • <span class="text-[#e87a30] font-bold">Ver en Registros →</span></p>
                   </div>
                   <span class="shrink-0 text-[10px] font-bold bg-[#f4eade] text-[#e87a30] px-2 py-1 rounded-full">
                     ${escapeHTML(cita.profesionalNombre || cita.consejeraNombre || cita.cuidadoraNombre || 'Por Asignar')}
                   </span>
-                </div>
+                </button>
               `).join('')}
             </div>
-            <button type="button" data-admin-tab="admin_registros" class="mt-2 rounded-lg bg-[#e87a30] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#d66a20]">
-              Ir a Registros
-            </button>
           `
           : '<p class="text-gray-400 italic">No hay citas pendientes.</p>';
       } catch (error) {

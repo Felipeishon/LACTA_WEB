@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeTab = 'resumen';
   let currentUserData = null;
   let currentUserRole = 'padre';
+  const pendingAccountReloadKey = 'lactanido-pending-account-reloaded';
 
   initFormularios();
   initCalendario();
@@ -224,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (isUserPending(userData) && !hasRole(userData, 'admin')) {
             renderWaitingScreen(userData.nombre);
           } else {
+            sessionStorage.removeItem(pendingAccountReloadKey);
             const initialRole = getPrimaryRole(userData);
             
             if (userNameEl) userNameEl.textContent = userData?.nombre || "Usuario";
@@ -246,13 +248,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderWaitingScreen(nombre) {
+    if (sessionStorage.getItem(pendingAccountReloadKey) !== 'true') {
+      sessionStorage.setItem(pendingAccountReloadKey, 'true');
+      setTimeout(() => { window.location.reload(); }, 10000);
+    }
+
     if (dashboardContent) {
       dashboardContent.innerHTML = `
         <div class="glass-panel p-10 rounded-2xl text-center slide-up max-w-xl mx-auto mt-20">
           <div class="text-5xl mb-4">⌛</div>
           <h2 class="text-2xl font-black mb-4 text-[#181411]">Cuenta en Revisión</h2>
-          <p class="text-[#887263]">Hola ${nombre || 'Colaborador/a'}, estamos validando tus antecedentes. Te notificaremos por correo cuando tu perfil esté activo.</p>
+          <p class="text-[#887263]">Hola ${escapeHTML(nombre || 'Colaborador/a')}, estamos validando tus antecedentes. Te notificaremos por correo cuando tu perfil esté activo.</p>
           <button onclick="location.reload()" class="mt-6 text-sm text-[#e87a30] font-bold">Refrescar estado</button>
+          <a href="index.html" class="text-sm text-gray-500 hover:underline mt-4 block">Volver al inicio</a>
         </div>`;
     }
   }
