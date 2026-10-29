@@ -2,6 +2,7 @@ import { db } from '../../firebase.js';
 import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { fetchUserAppointments, obtenerDatosNido, actualizarEstadoCita, updateAppointmentDateTime } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
+import { formatDateRange } from '../../utils/helpers.js';
 import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
 
@@ -23,8 +24,12 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
       appointmentsHTML = appointments.map(app => {
         const serv = escapeHTML(app.servicioVisual || app.servicio || app.tipoServicio || 'Atención');
         const prof = escapeHTML(app.profesionalNombre || app.prestadorNombre || app.consejeraNombre || 'Asignado');
-        const fDate = escapeHTML(app.fecha || '');
-        const fTime = escapeHTML(app.hora || '');
+        const [horaInicio, horaFin] = String(app.hora || '').split(/\s+a\s+/i);
+        const fechaHora = formatDateRange(
+          app.fechaInicio || (horaInicio ? `${app.fecha}T${horaInicio}` : null),
+          app.fechaFin || (horaFin ? `${app.fecha}T${horaFin}` : null)
+        ) || [app.fecha, app.hora].filter(Boolean).join(' ');
+        const fechaHoraSafe = escapeHTML(fechaHora);
         const fEst = escapeHTML(app.estado || 'Pendiente');
         
         let fEstClass = 'bg-amber-100 text-amber-800'; 
@@ -54,7 +59,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
           <tr class="border-b hover:bg-gray-50/50">
             <td class="p-3 font-bold">${serv}</td>
             <td class="p-3">${prof}</td>
-            <td class="p-3">${fDate} ${fTime}</td>
+            <td class="p-3">${fechaHoraSafe}</td>
             <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${fEstClass} uppercase tracking-wider">${fEst}</span></td>
             <td class="p-3">${actions}</td>
           </tr>

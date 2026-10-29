@@ -1,6 +1,6 @@
 import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
-import { fetchAdminStats, createProduct, fetchServiciosActivos, createServicio, updateServicio, deleteServicio } from '../../api/firestore.js';
+import { fetchAdminStats, getPendingAppointments, getPendingTips, createProduct, fetchServiciosActivos, createServicio, updateServicio, deleteServicio } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { renderAdminInventory } from './tienda.js';
 import { renderAdminTipsManagement } from './tips.js';
@@ -91,7 +91,7 @@ async function renderAdminTab(activeTab) {
           <div class="text-3xl font-black text-[#887263]">${stats.totalPrestadores || 0}</div>
         </div>
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-          <div class="text-gray-500 text-sm font-medium mb-1">Fichas de Consejería</div>
+          <div class="text-gray-500 text-sm font-medium mb-1">Evaluaciones de Consejería</div>
           <div class="text-3xl font-black text-[#887263]">${stats.totalFichas || 0}</div>
         </div>
         <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
@@ -102,8 +102,25 @@ async function renderAdminTab(activeTab) {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 class="font-bold text-lg mb-4 border-b pb-2">Aprobaciones Pendientes</h3>
-          <div id="pending-users-list" class="space-y-3">
-            <p class="text-sm text-gray-400 italic">Cargando solicitudes...</p>
+          <div class="space-y-6">
+            <div class="border-b pb-4">
+              <h4 class="font-bold text-sm text-gray-600 mb-2">👥 Usuarios por Aprobar</h4>
+              <div id="pending-users-list" class="space-y-2 text-sm max-h-40 overflow-y-auto">
+                <p class="text-gray-400 italic">Cargando...</p>
+              </div>
+            </div>
+            <div class="border-b pb-4">
+              <h4 class="font-bold text-sm text-gray-600 mb-2">📅 Citas por Aprobar</h4>
+              <div id="pending-appointments-list" class="space-y-2 text-sm max-h-40 overflow-y-auto">
+                <p class="text-gray-400 italic">Cargando...</p>
+              </div>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-gray-600 mb-2">💡 Tips por Aprobar</h4>
+              <div id="pending-tips-list" class="space-y-2 text-sm max-h-40 overflow-y-auto">
+                <p class="text-gray-400 italic">Cargando...</p>
+              </div>
+            </div>
           </div>
         </div>
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -117,6 +134,67 @@ async function renderAdminTab(activeTab) {
 
     loadPendingUsers();
     loadLatestUsers();
+
+    const pendingAppointmentsList = document.getElementById('pending-appointments-list');
+    if (pendingAppointmentsList) {
+      try {
+        const appointments = await getPendingAppointments();
+        pendingAppointmentsList.innerHTML = appointments.length > 0
+          ? `
+            <p class="text-gray-600">${appointments.length} cita${appointments.length === 1 ? '' : 's'} pendiente${appointments.length === 1 ? '' : 's'}.</p>
+            <div class="space-y-2">
+              ${appointments.map(cita => `
+                <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex justify-between items-center gap-3">
+                  <div class="min-w-0">
+                    <p class="font-bold text-[#181411]">${escapeHTML(cita.nombre || cita.clienteNombre || 'Cliente')}</p>
+                    <p class="text-xs text-gray-500">${escapeHTML(cita.servicioVisual || cita.servicio || 'Servicio')}</p>
+                  </div>
+                  <span class="shrink-0 text-[10px] font-bold bg-[#f4eade] text-[#e87a30] px-2 py-1 rounded-full">
+                    ${escapeHTML(cita.profesionalNombre || cita.consejeraNombre || cita.cuidadoraNombre || 'Por Asignar')}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+            <button type="button" data-admin-tab="admin_registros" class="mt-2 rounded-lg bg-[#e87a30] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#d66a20]">
+              Ir a Registros
+            </button>
+          `
+          : '<p class="text-gray-400 italic">No hay citas pendientes.</p>';
+      } catch (error) {
+        console.error('Error al cargar las citas pendientes del dashboard:', error);
+        pendingAppointmentsList.innerHTML = '<p class="text-sm text-red-600">No se pudieron cargar las citas pendientes.</p>';
+      }
+    }
+
+    const pendingTipsList = document.getElementById('pending-tips-list');
+    if (pendingTipsList) {
+      try {
+        const tips = await getPendingTips();
+        pendingTipsList.innerHTML = tips.length > 0
+          ? tips.map(tip => `
+            <div class="bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex justify-between items-center gap-3">
+              <div class="min-w-0">
+                <p class="font-bold text-[#181411]">${escapeHTML(tip.titulo || 'Tip sin título')}</p>
+                <p class="text-xs text-gray-500">Por: ${escapeHTML(tip.autorNombre || 'Anónimo')}</p>
+              </div>
+              <button type="button" data-admin-tab="admin_tips" class="shrink-0 text-[10px] font-bold bg-[#f4eade] text-[#e87a30] px-2 py-1 rounded-full hover:bg-[#e8dcd0] transition">
+                Revisar
+              </button>
+            </div>
+          `).join('')
+          : '<p class="text-gray-400 italic">No hay tips pendientes.</p>';
+      } catch (error) {
+        console.error('Error al cargar los tips pendientes del dashboard:', error);
+        pendingTipsList.innerHTML = '<p class="text-sm text-red-600">No se pudieron cargar los tips pendientes.</p>';
+      }
+    }
+
+    dashboardContent.querySelectorAll('[data-admin-tab]').forEach(button => {
+      button.addEventListener('click', () => {
+        const tab = button.dataset.adminTab;
+        document.querySelector(`#sidebar-nav [data-action="${tab}"]`)?.click();
+      });
+    });
 
   } else if (activeTab === 'usuarios') {
     dashboardContent.innerHTML = `

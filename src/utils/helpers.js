@@ -30,6 +30,76 @@ function formatFirestoreDate(value, includeTime = false) {
   }
 }
 
+function parseDateRangeValue(value) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+  if (value && typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+  if (value && typeof value === 'object' && typeof value.seconds === 'number') {
+    return new Date(value.seconds * 1000);
+  }
+  if (typeof value !== 'string') return null;
+
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  const localMatch = isoMatch || value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (localMatch) {
+    const isIso = localMatch === isoMatch;
+    const year = Number(localMatch[isIso ? 1 : 3]);
+    const month = Number(localMatch[isIso ? 2 : 2]);
+    const day = Number(localMatch[isIso ? 3 : 1]);
+    const hour = Number(localMatch[4] || 0);
+    const minute = Number(localMatch[5] || 0);
+    const second = Number(localMatch[6] || 0);
+    const date = new Date(year, month - 1, day, hour, minute, second);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+    return date;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateRange(start, end) {
+  const startDate = parseDateRangeValue(start);
+  const endDate = parseDateRangeValue(end);
+  if (!startDate || !endDate) return '';
+
+  const sameStartDate = startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate();
+  if (sameStartDate && endDate <= startDate) {
+    endDate.setDate(endDate.getDate() + 1);
+  }
+
+  const formatter = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  });
+  const getParts = date => Object.fromEntries(
+    formatter.formatToParts(date).map(part => [part.type, part.value])
+  );
+  const startParts = getParts(startDate);
+  const endParts = getParts(endDate);
+  const capitalize = value => value.replace(/\.$/, '').replace(/^./, char => char.toUpperCase());
+  const formatDay = parts => `${capitalize(parts.weekday)} ${parts.day} ${capitalize(parts.month)}`;
+  const formatTime = parts => `${parts.hour}:${parts.minute}`;
+  const endIsSameDate = startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate();
+  const endLabel = endIsSameDate
+    ? formatTime(endParts)
+    : `${formatDay(endParts)}, ${formatTime(endParts)}`;
+
+  return `${formatDay(startParts)}, ${formatTime(startParts)} → ${endLabel}`;
+}
+
 /**
  * Devuelve la fecha en formato YYYY-MM-DD para comparaciones.
  */
@@ -200,4 +270,4 @@ function fileToBase64(file) {
   });
 }
 
-export { formatFirestoreDate, toDateInputValue, FIELD_LABELS, showInfoModal, resolveHistoricalName, getNidoNombreDesdePadre, fileToBase64 };
+export { formatFirestoreDate, formatDateRange, toDateInputValue, FIELD_LABELS, showInfoModal, resolveHistoricalName, getNidoNombreDesdePadre, fileToBase64 };

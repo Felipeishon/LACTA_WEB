@@ -50,6 +50,7 @@ export async function fetchAdminStats() {
             activeUsersSnap,
             pendingUsersSnap,
             activeAppointmentsSnap,
+            pendingAppointmentsSnap,
             completedAppointmentsSnap,
             consejerasSnap,
             cuidadorasSnap,
@@ -58,8 +59,9 @@ export async function fetchAdminStats() {
         ] = await Promise.all([
             getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo"))),
             getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente"))),
-            getDocs(query(collection(db, "reservas"), where("estado", "==", "pendiente"))),
-            getDocs(query(collection(db, "reservas"), where("estado", "==", "completada"))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente", "Aprobado", "aprobado"]))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente"]))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["completada", "Completada"]))),
             getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera"))),
             getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora"))),
             getDocs(collection(db, "fichas_atencion")),
@@ -68,6 +70,7 @@ export async function fetchAdminStats() {
         return {
             totalUsers: activeUsersSnap.size + pendingUsersSnap.size,
             activeAppointments: activeAppointmentsSnap.size,
+            pendingAppointments: pendingAppointmentsSnap.size,
             citasCompletadas: completedAppointmentsSnap.size,
             totalPrestadores: new Set([...consejerasSnap.docs.map(d => d.id), ...cuidadorasSnap.docs.map(d => d.id)]).size,
             pendingPrestadores: pendingUsersSnap.size,
@@ -141,6 +144,28 @@ export async function getPendingUsers() {
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error("Error al obtener usuarios pendientes:", error);
+        throw error;
+    }
+}
+
+export async function getPendingAppointments() {
+    try {
+        const q = query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente"]));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener citas pendientes:", error);
+        throw error;
+    }
+}
+
+export async function getPendingTips() {
+    try {
+        const q = query(collection(db, "tips"), where("estado", "==", "pendiente"));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener tips pendientes:", error);
         throw error;
     }
 }

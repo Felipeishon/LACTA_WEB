@@ -1,6 +1,7 @@
 import { showToast } from '../ui/notifications.js';
 import { fetchServiceAppointments, actualizarEstadoCita } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
+import { formatDateRange } from '../utils/helpers.js';
 import { renderPrestadorFichas } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderCuidadoraDisponibilidad } from './cuidadora/disponibilidad.js';
@@ -34,9 +35,13 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           
           const appIdSafe = escapeHTML(app.id || '');
           const nidoIdSafe = escapeHTML(nidoDataId);
-          const horaSafe = escapeHTML(app.hora || '');
           const nombreSafe = escapeHTML(app.nombre || '');
-          const fechaSafe = escapeHTML(app.fecha || '');
+          const [horaInicio, horaFin] = String(app.hora || '').split(/\s+a\s+/i);
+          const fechaHora = formatDateRange(
+            app.fechaInicio || (horaInicio ? `${app.fecha}T${horaInicio}` : null),
+            app.fechaFin || (horaFin ? `${app.fecha}T${horaFin}` : null)
+          ) || [app.fecha, app.hora].filter(Boolean).join(' ');
+          const fechaHoraSafe = escapeHTML(fechaHora);
           const emailSafe = escapeHTML(app.email || '');
 
           let actionButtons = '';
@@ -65,7 +70,7 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between flex-wrap gap-4">
             <div>
               <h4 class="font-bold text-lg">${nombreSafe}</h4>
-              <p class="text-xs text-gray-500">Fecha actual: <span class="font-bold text-gray-700">${fechaSafe}</span> • Hora: ${horaSafe}</p>
+              <p class="text-xs text-gray-500">Fecha: <span class="font-bold text-gray-700">${fechaHoraSafe}</span></p>
               <p class="text-sm text-gray-600 mt-1">Cliente: ${emailSafe}</p>
               <p class="text-xs text-gray-600 mt-1"><strong>Tel:</strong> <a href="tel:${escapeHTML(app.telefono || '')}" class="text-[#e87a30] hover:underline font-semibold">${escapeHTML(app.telefono || 'No registrado')}</a></p>
               <p class="text-xs text-gray-600"><strong>Dir:</strong> ${escapeHTML(app.direccion || 'No registrada')}</p>
