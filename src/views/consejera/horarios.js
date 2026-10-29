@@ -160,8 +160,8 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
   dashboardContent.innerHTML = `
       <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
         <div>
-          <h3 class="font-bold text-xl mb-1">Mi Disponibilidad (Horarios Base)</h3>
-          <p class="text-sm text-[#887263]">Selecciona la semana y configura tu disponibilidad para el próximo mes.</p>
+          <h3 class="font-bold text-xl mb-1">Mi Disponibilidad (Horarios Base) ⏰</h3>
+          <p class="text-sm text-[#887263]">Declara tus horarios base en los que estarás disponible para recibir las reservas correspondientes</p>
         </div>
         <div>
           <select id="select-semana" class="p-2 border border-gray-300 rounded-lg text-sm bg-white font-bold text-[#181411] focus:ring-[#e87a30]">

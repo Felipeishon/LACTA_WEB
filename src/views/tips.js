@@ -177,7 +177,7 @@ export async function renderCreatorTipsManagement(containerId, currentUserData =
         }
 
         container.innerHTML = `
-            <h2 class="text-2xl font-black text-[#181411] mb-6">Tips</h2>
+            <h2 class="text-2xl font-black text-[#181411] mb-6">Tips 💡</h2>
             <h4 class="font-bold text-lg mb-2">Añadir Nuevo Tip</h4>
             <form id="formAddTip" class="space-y-3 mb-6 relative">
                 <div class="relative">

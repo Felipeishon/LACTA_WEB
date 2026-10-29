@@ -96,7 +96,7 @@ export function renderTarifasForm(dashboardContent, userData, uid, currentRole =
   }
 
   dashboardContent.innerHTML = `
-    <h3 class="font-bold text-2xl mb-2 text-[#181411]">Mis Tarifas 💰</h3>
+    <h3 class="font-bold text-2xl mb-2 text-[#181411]">Mis Tarifas 💵</h3>
     <p class="text-sm text-[#887263] mb-6">Configura el valor por hora de tus servicios.</p>
     
     <div class="glass-panel p-6 rounded-2xl max-w-lg border-t-4 border-[#e87a30]">

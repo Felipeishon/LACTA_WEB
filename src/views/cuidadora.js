@@ -20,15 +20,10 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     const appointments = await fetchServiceAppointments('Cuidador', uid);
     dashboardContent.innerHTML = `
       <div class="glass-panel p-8 rounded-2xl border-t-4 border-[#887263] mb-8">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 class="text-2xl font-black text-[#181411]">Mis Atenciones (Cuidadora) 🌙</h2>
-            <p class="text-[#887263]">Gestiona la aprobación y modificación de tus turnos asignados.</p>
-          </div>
-        </div>
+        <h2 class="text-2xl font-black text-[#181411]">Mi Agenda 📅</h2>
+        <p class="text-[#887263] text-sm">Gestiona la aprobación y atención de tus citas.</p>
       </div>
-      <div class="space-y-4" id="cuidadora-turnos-list">
-        ${appointments.length > 0 ? appointments.map(app => {
+      ${appointments.length > 0 ? `<div class="space-y-4" id="cuidadora-turnos-list">${appointments.map(app => {
           const estado = app.estado || 'Pendiente';
           // CORRECCIÓN: Forzamos minúsculas
           const estadoNormalizado = estado.toLowerCase().trim();
@@ -80,10 +75,11 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
             </div>
           </div>
           `;
-        }).join('') : `
-          <p class="text-center py-10 text-gray-400 italic">No tienes turnos programados en el sistema.</p>
-        `}
-      </div>
+        }).join('')}</div>` : `
+        <div class="bg-white p-8 rounded-xl border border-gray-200 shadow-sm text-center">
+          <p class="text-gray-400 italic">No tienes atenciones agendadas actualmente.</p>
+        </div>
+      `}
     `;
 
     // Handler para Aprobar
@@ -131,12 +127,20 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
 
   } else if (activeTab === 'historial_fichas') {
     dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-6">📋 Mis Bitácoras</h2>
+      <div class="mb-6">
+        <div>
+          <h2 class="text-2xl font-black text-[#181411]">Mis Bitácoras 📖</h2>
+          <p class="text-sm text-gray-500 mb-3">Visualiza todas las bitácoras registradas de cuidado con opción de filtro.</p>
+        </div>
+        <div>
+          <input type="text" id="filtro-bitacoras-cuidadora" placeholder="🔍 Buscar por nido, RUT o cuidadora..." class="p-2 border border-gray-300 rounded-lg text-sm w-full md:w-72 bg-white" />
+        </div>
+      </div>
       <div class="space-y-4" id="prestador-fichas-list">
         <p class="text-center py-10 text-gray-400 italic">Cargando bitácoras...</p>
       </div>
     `;
-    renderPrestadorFichas(uid);
+    renderPrestadorFichas(uid, 'filtro-bitacoras-cuidadora');
 
   } else if (activeTab === 'fichas_cuidado') {
     const appointments = await fetchServiceAppointments('Cuidador', uid);
@@ -154,13 +158,18 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
     }
 
     dashboardContent.innerHTML = `
-      <h2 class="text-2xl font-black text-[#181411] mb-6">📝 Registro y Creación de Fichas</h2>
-      <p class="text-sm text-gray-600 mb-4">Aquí puedes consultar las fichas de los servicios realizados a tus nidos asignados.</p>
+      <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-[#181411]">Evaluaciones 📝</h2>
+          <p class="text-sm text-gray-600 mt-1">Aquí puedes consultar las fichas de los servicios realizados a tus nidos asignados.</p>
+        </div>
+        <input type="text" id="filtro-evaluaciones-cuidadora" placeholder="🔍 Buscar por nido, RUT o cliente..." class="p-2 border border-gray-300 rounded-lg text-sm w-72 bg-white mb-4" />
+      </div>
       <div class="space-y-4" id="prestador-fichas-list">
         <p class="text-center py-10 text-gray-400 italic">Cargando fichas de nidos...</p>
       </div>
     `;
-    renderPrestadorFichas(uid);
+    renderPrestadorFichas(uid, 'filtro-evaluaciones-cuidadora');
 
   } else if (activeTab === 'disponibilidad') {
     await renderCuidadoraDisponibilidad(dashboardContent, userData);

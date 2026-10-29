@@ -18,8 +18,8 @@ export async function renderCuidadoraDisponibilidad(dashboardContent, userData) 
   dashboardContent.innerHTML = `
       <div class="space-y-8">
         <div>
-          <h3 class="font-bold text-xl mb-2">Mi Disponibilidad (Turnos)</h3>
-          <p class="text-sm text-gray-500 mb-4">Declara los turnos en los que estás disponible para recibir reservas.</p>
+          <h3 class="font-bold text-xl mb-2">Mi Disponibilidad (Turnos) ⏰</h3>
+          <p class="text-sm text-gray-500 mb-4">Declara tus turnos en los que estarás disponible para recibir las reservas correspondientes.</p>
           <div class="bg-white border border-gray-200 rounded-xl p-4">
             <button id="btnOpenAddSlotModal" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-indigo-700 transition shadow-sm">
               + Declarar Nuevo Turno Disponible

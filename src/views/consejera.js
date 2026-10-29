@@ -20,14 +20,11 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
   if (activeTab === 'dashboard') {
     const appointments = await fetchServiceAppointments('Consultor', uid);
     dashboardContent.innerHTML = `
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h2 class="text-2xl font-black text-[#181411]">Mis Atenciones (Consejería) 🗓️</h2>
-          <p class="text-gray-500 text-sm">Gestiona la aprobación y atención de las consejerías agendadas.</p>
-        </div>
+      <div class="glass-panel p-8 rounded-2xl border-t-4 border-[#887263] mb-8">
+        <h2 class="text-2xl font-black text-[#181411]">Mi Agenda 📅</h2>
+        <p class="text-[#887263] text-sm">Gestiona la aprobación y atención de tus citas.</p>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-atenciones-consejera">
-        ${appointments.length > 0 ? appointments.map(app => {
+      ${appointments.length > 0 ? `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-atenciones-consejera">${appointments.map(app => {
           const estado = app.estado || 'Pendiente';
           // ESTA ES LA CORRECCIÓN: Forzamos a minúsculas para evitar errores de tipeo en la BD
           const estadoNormalizado = estado.toLowerCase().trim();
@@ -79,10 +76,11 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
             </div>
           </div>
           `;
-        }).join('') : `
-          <div class="col-span-full p-8 text-center text-gray-400 italic">No tienes atenciones agendadas actualmente.</div>
-        `}
-      </div>
+        }).join('')}</div>` : `
+        <div class="bg-white p-8 rounded-xl border border-gray-200 shadow-sm text-center">
+          <p class="text-gray-400 italic">No tienes atenciones agendadas actualmente.</p>
+        </div>
+      `}
     `;
 
     // Handler para Aprobar
@@ -132,7 +130,7 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
     dashboardContent.innerHTML = `
       <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h2 class="text-2xl font-black text-[#181411]">Mis Fichas 🤱</h2>
+          <h2 class="text-2xl font-black text-[#181411]">Mis Evaluaciones 📝</h2>
           <p class="text-sm text-gray-500">Historial completo y filtrable de las atenciones brindadas a los nidos.</p>
         </div>
         <div>
@@ -147,13 +145,13 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
 
   } else if (activeTab === 'bitacoras') {
     dashboardContent.innerHTML = `
-      <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+      <div class="mb-6">
         <div>
-          <h2 class="text-2xl font-black text-[#181411]">Bitácoras de Cuidado 📋</h2>
-          <p class="text-sm text-gray-500">Visualiza todas las bitácoras registradas de cuidado con opción de filtro.</p>
+          <h2 class="text-2xl font-black text-[#181411]">Bitácoras 📖</h2>
+          <p class="text-sm text-gray-500 mb-3">Visualiza todas las bitácoras registradas de cuidado con opción de filtro.</p>
         </div>
         <div>
-          <input type="text" id="filtro-bitacoras-consejera" placeholder="🔍 Buscar por nido, RUT o cuidadora..." class="p-2 border border-gray-300 rounded-lg text-sm w-72 bg-white" />
+          <input type="text" id="filtro-bitacoras-consejera" placeholder="🔍 Buscar por nido, RUT o cuidadora..." class="p-2 border border-gray-300 rounded-lg text-sm w-full md:w-72 bg-white" />
         </div>
       </div>
       <div class="space-y-4" id="consejera-bitacoras-list">

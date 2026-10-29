@@ -17,6 +17,7 @@ import { renderConsejeraTab } from './views/consejera.js';
 import { renderCuidadoraTab } from './views/cuidadora.js';
 import { renderAdminTab } from './views/admin.js';
 import { renderCreatorTipsManagement } from './views/tips.js'; 
+import { renderSidebar } from './ui/sidebar.js';
 import { escapeHTML } from './utils/html.js';
 import { getPrimaryRole, hasRole, getRoles } from './utils/roles.js';
 import './css/mi-cuenta.css';
@@ -57,74 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
     getCurrentUserData: () => currentUserData,
     getCurrentUserRole: () => currentUserRole
   });
-  const NAV_CONFIG = {
-    padre: [
-      { label: "Resumen", icon: "🏠", action: "resumen" },
-      { label: "Tienda Bebé 🛍️", icon: "🧸", action: "tienda" },
-      { label: "Mis Favoritos ❤️", icon: "❤️", action: "favoritos" },
-      { label: "Historial del Bebé", icon: "📜", action: "historial_bebe" }
-    ],
-    consejera: [
-      { label: "Mis Atenciones", icon: "🗓️", action: "dashboard" },
-      { label: "Mis Fichas", icon: "🤱", action: "historial_fichas" },
-      { label: "Bitácoras", icon: "📋", action: "bitacoras" },
-      { label: "Mi Disponibilidad", icon: "⏱️", action: "horarios" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
-      { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
-    ],
-    cuidadora: [
-      { label: "Mis Atenciones", icon: "🌙", action: "dashboard" },
-      { label: "Mis Bitácoras", icon: "📋", action: "historial_fichas" },
-      { label: "Fichas", icon: "📝", action: "fichas_cuidado" },
-      { label: "Mi Disponibilidad", icon: "🗓️", action: "disponibilidad" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" },
-      { label: "Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
-    ],
-    admin: [
-      { label: "Visión General", icon: "👁️", action: "dashboard" },
-      { label: "Usuarios", icon: "👥", action: "usuarios" },
-      { label: "Nidos / Familias", icon: "👶", action: "admin_nidos" },
-      { label: "Registros", icon: "📋", action: "admin_registros" },
-      { label: "Tienda / Inventario", icon: "🛍️️", action: "admin_tienda" },
-      { label: "Gestión de Tips", icon: "💡", action: "admin_tips" },
-      { label: "Servicios", icon: "🩺", action: "admin_servicios" }
-    ]
-  };
-
   function switchTab(action, role, userData) {
     if (action === 'modalPerfilBebe') {
       openPerfilBebeModal(userData);
       return;
     }
     activeTab = action;
-    renderSidebar(role, userData);
+    renderSidebar(userData, {
+      role,
+      activeTab,
+      onNavigate: action => switchTab(action, role, userData),
+      onClose: closeSidebar
+    });
     renderContent(role, userData);
-  }
-
-  function renderSidebar(role, userData) {
-    if (!sidebarNav) return;
-    const items = NAV_CONFIG[role] || [];
-    const filteredItems = items.filter(item => {
-      return !item.permission || (item.permission && userData[item.permission] === true);
-    });
-
-    sidebarNav.innerHTML = filteredItems.map(item => {
-      const isActive = activeTab === item.action;
-      return `
-        <a href="#" data-action="${item.action}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${isActive ? 'bg-[#e87a30] text-white shadow-md shadow-[#e87a30]/30 transform scale-[1.02]' : 'text-[#887263] hover:bg-[#f4eade] hover:text-[#181411]'}">
-          <span class="text-xl">${item.icon}</span>
-          ${item.label}
-        </a>
-      `;
-    }).join('');
-
-    sidebarNav.querySelectorAll('.nav-item').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        switchTab(link.dataset.action, role, userData);
-        closeSidebar();
-      });
-    });
   }
 
   async function renderContent(role, userData) {
@@ -227,7 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateUIForRole(role, userData) {
     currentUserRole = role;
     activeTab = (role === 'padre') ? 'resumen' : 'dashboard';
-    renderSidebar(role, userData);
+    renderSidebar(userData, {
+      role,
+      activeTab,
+      onNavigate: action => switchTab(action, role, userData),
+      onClose: closeSidebar
+    });
     renderContent(role, userData);
     renderRoleSwitcher(userData, (newRole) => {
         updateUIForRole(newRole, userData);
