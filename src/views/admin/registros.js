@@ -96,7 +96,7 @@ async function loadAllRegistros() {
               🍼 Bitácoras (${totalBitacoras})
             </button>
             <button id="btn-vista-fichas" class="text-sm font-bold px-4 py-2 rounded-lg transition-colors ${!esBitacoras ? 'bg-[#e87a30] text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
-              💜 Fichas (${totalFichas})
+              💜 Evaluaciones (${totalFichas})
             </button>
           </div>
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 w-full">
@@ -195,7 +195,7 @@ async function loadAllRegistros() {
         }
       } else {
         if (totalFiltrados === 0) {
-          container.innerHTML = headerHTML + `<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">${hayFiltrosActivos ? 'No hay fichas que coincidan con los filtros aplicados.' : 'No hay fichas de atención registradas en el sistema.'}</p>`;
+          container.innerHTML = headerHTML + `<p class="text-center py-8 text-gray-400 italic bg-white rounded-xl border border-gray-200">${hayFiltrosActivos ? 'No se encontraron evaluaciones que coincidan con los filtros aplicados.' : 'No hay evaluaciones de atención registradas en el sistema.'}</p>`;
         } else {
           container.innerHTML = headerHTML + `
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -331,7 +331,7 @@ async function loadAllRegistros() {
           });
 
           showInfoModal({
-            title: 'Ficha de Atención',
+            title: 'Evaluación de Atención',
             subtitle: `Nido: ${btn.dataset.nido} · Consejera: ${btn.dataset.consejera}`,
             icon: '💜',
             rows

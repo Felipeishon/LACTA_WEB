@@ -109,6 +109,7 @@ service cloud.firestore {
       allow read, list: if request.auth != null && (
         esMiembroDelNido(resource.data.nidoId) || 
         (isPrestador() && resource.data.consejeraId == request.auth.uid) ||
+        (isPrestador() && datosUsuario().rol.hasAny(['cuidadora'])) ||
         isAdmin()
       );
       allow update, delete: if request.auth != null &&

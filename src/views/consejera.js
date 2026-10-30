@@ -58,11 +58,11 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
           } else if (estadoNormalizado === 'aprobado') {
             actionButtons = `
               <button data-id="${appIdSafe}" data-nid="${nidoIdSafe}" class="btn-abrir-ficha w-full mt-2 bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2 rounded text-xs transition">
-                Completar Ficha 📝
+                Completar Evaluación 📝
               </button>
             `;
           } else if (estadoNormalizado === 'completada') {
-            actionButtons = `<div class="mt-2 text-center text-[11px] bg-green-100 text-green-700 py-1.5 rounded font-bold">Ficha Guardada ✅</div>`;
+            actionButtons = `<div class="mt-2 text-center text-[11px] bg-green-100 text-green-700 py-1.5 rounded font-bold">Evaluación Guardada ✅</div>`;
           } else {
             actionButtons = `<div class="mt-2 text-center text-[11px] bg-gray-100 text-gray-500 py-1.5 rounded font-bold uppercase tracking-wider">${estado}</div>`;
           }
@@ -144,17 +144,17 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
         </div>
       </div>
       <div class="space-y-4" id="prestador-fichas-list">
-        <p class="text-center py-10 text-gray-400 italic">Cargando fichas...</p>
+        <p class="text-center py-10 text-gray-400 italic">Cargando evaluaciones...</p>
       </div>
     `;
     renderPrestadorFichas(uid, 'filtro-fichas');
 
   } else if (activeTab === 'bitacoras') {
     dashboardContent.innerHTML = `
-      <div class="mb-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h2 class="text-2xl font-black text-[#181411]">Bitácoras 📖</h2>
-          <p class="text-sm text-gray-500 mb-3">Visualiza todas las bitácoras registradas de cuidado con opción de filtro.</p>
+          <p class="text-sm text-gray-500">Visualiza todas las bitácoras registradas de cuidado con opción de filtro.</p>
         </div>
         <div>
           <input type="text" id="filtro-bitacoras-consejera" placeholder="🔍 Buscar por nido, RUT o cuidadora..." class="p-2 border border-gray-300 rounded-lg text-sm w-full md:w-72 bg-white" />

@@ -6,7 +6,7 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
       <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 class="text-2xl font-black text-[#181411]">📜 Historial del Bebé</h2>
-          <p class="text-sm text-[#887263]">Consulta unificada de fichas de atención y bitácoras de cuidado.</p>
+          <p class="text-sm text-[#887263]">Consulta unificada de evaluaciones de atención y bitácoras de cuidado.</p>
         </div>
       </div>
 
@@ -19,7 +19,7 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
           <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de Registro</label>
           <select id="filtro-tipo" class="w-full p-2 border rounded-lg text-xs bg-white">
             <option value="todos">Todos los registros</option>
-            <option value="ficha">Fichas de Atención</option>
+            <option value="ficha">Evaluaciones de Atención</option>
             <option value="bitacora">Bitácoras de Cuidado</option>
           </select>
         </div>
@@ -91,7 +91,7 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
           }
 
           const badgeClass = esFicha ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700';
-          const badgeLabel = esFicha ? '🤱 Ficha de Atención' : '🍼 Bitácora de Cuidado';
+          const badgeLabel = esFicha ? '🤱 Evaluación de Atención' : '🍼 Evaluación de Cuidado';
 
           const title = escapeHTML(reg.titulo || (esFicha ? 'Atención de Consejería' : 'Reporte de Cuidado'));
           const provider = escapeHTML(reg.prestadorNombre || reg.consejeraNombre || 'Profesional');
