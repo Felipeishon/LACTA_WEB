@@ -1,4 +1,4 @@
-import { fetchFichasAtencionPorNido, fetchFichasCuidadoPorPrestador } from '../api/firestore.js';
+import { fetchFichasAtencionPorNido, fetchFichasAtencionPorPrestador, fetchFichasCuidadoPorPrestador } from '../api/firestore.js';
 import { showToast } from '../ui/notifications.js';
 import { escapeHTML } from '../utils/html.js';
 
@@ -76,6 +76,58 @@ export async function renderPrestadorEvaluaciones(nidoIds) {
         <p class="text-xs text-gray-500 mt-2"><strong>Plan de acción:</strong> ${escapeHTML(ficha.planAccion || 'Sin detalle')}</p>
       </div>
     `).join('');
+  } catch (error) {
+    console.error('Error al cargar evaluaciones de atención:', error);
+    list.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error al cargar las evaluaciones.</p>';
+    showToast('Error al cargar evaluaciones de atención', 'error');
+  }
+}
+
+export async function renderPrestadorEvaluacionesPorPrestador(uid, filterInputId, emptyMessage = 'No se encontraron evaluaciones.') {
+  const list = document.getElementById('prestador-fichas-list');
+  if (!list) return;
+
+  if (!uid) {
+    console.error('renderPrestadorEvaluacionesPorPrestador fue llamado sin UID.');
+    list.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error: No se pudo identificar al prestador.</p>';
+    return;
+  }
+
+  try {
+    const fichas = await fetchFichasAtencionPorPrestador(uid);
+    const getSearchText = ficha => [
+      ficha.nidoNombreBebe,
+      ficha.nidoRutBebe,
+      ...(Array.isArray(ficha.padresNombres) ? ficha.padresNombres : [ficha.padresNombres]),
+      ficha.prestadorNombre
+    ].filter(Boolean).join(' ').toLowerCase();
+    const renderList = items => {
+      if (items.length === 0) {
+        list.innerHTML = `<p class="text-center py-10 text-gray-400 italic">${escapeHTML(emptyMessage)}</p>`;
+        return;
+      }
+
+      list.innerHTML = items.map(ficha => `
+        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <div class="flex justify-between font-bold text-sm text-[#e87a30] mb-2">
+            <span>${escapeHTML(ficha.nidoNombreBebe || 'Evaluación de atención')}</span>
+            <span class="text-xs text-gray-400 font-normal">${escapeHTML(ficha.fechaAtencion || ficha.creadoEn || '')}</span>
+          </div>
+          <p class="text-sm"><strong>Motivo:</strong> ${escapeHTML(ficha.motivoConsulta || ficha.motivo || 'No especificado')}</p>
+          <p class="text-xs text-gray-600 mt-2"><strong>Evaluación:</strong> ${escapeHTML(ficha.evaluacion || 'Sin detalle')}</p>
+          <p class="text-xs text-gray-500 mt-2"><strong>Plan de acción:</strong> ${escapeHTML(ficha.planAccion || 'Sin detalle')}</p>
+        </div>
+      `).join('');
+    };
+    renderList(fichas);
+
+    const filterInput = filterInputId && document.getElementById(filterInputId);
+    if (filterInput) {
+      filterInput.addEventListener('input', () => {
+        const searchTerm = filterInput.value.trim().toLowerCase();
+        renderList(fichas.filter(ficha => getSearchText(ficha).includes(searchTerm)));
+      });
+    }
   } catch (error) {
     console.error('Error al cargar evaluaciones de atención:', error);
     list.innerHTML = '<p class="text-center py-10 text-red-500 italic">Error al cargar las evaluaciones.</p>';

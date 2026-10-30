@@ -557,6 +557,19 @@ export async function fetchFichasAtencionPorNido(nidoId) {
     }
 }
 
+export async function fetchFichasAtencionPorPrestador(prestadorId) {
+    if (!prestadorId) return [];
+    try {
+        const q = query(collection(db, "fichas_atencion"), where("prestadorId", "==", prestadorId));
+        const snap = await getDocs(q);
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    } catch (error) {
+        console.error("Error al obtener fichas de atención del prestador:", error);
+        throw error;
+    }
+}
+
 export async function fetchAllBitacoras() {
     try {
         const snap = await getDocs(collection(db, "bitacoras"));

@@ -2,7 +2,7 @@ import { showToast } from '../ui/notifications.js';
 import { fetchServiceAppointments, fetchAllBitacoras, actualizarEstadoCita } from '../api/firestore.js';
 import { escapeHTML } from '../utils/html.js';
 import { formatDateRange } from '../utils/helpers.js';
-import { renderPrestadorFichas } from './prestador.js';
+import { renderPrestadorEvaluacionesPorPrestador } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderConsejeraHorarios } from './consejera/horarios.js';
 import { showConfirmModal } from '../modales.js';
@@ -147,7 +147,7 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
         <p class="text-center py-10 text-gray-400 italic">Cargando evaluaciones...</p>
       </div>
     `;
-    renderPrestadorFichas(uid, 'filtro-fichas');
+    renderPrestadorEvaluacionesPorPrestador(uid, 'filtro-fichas');
 
   } else if (activeTab === 'bitacoras') {
     dashboardContent.innerHTML = `
