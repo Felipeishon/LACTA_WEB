@@ -1,31 +1,23 @@
 // Archivo: src/mi-cuenta.js
-// Propósito: Orquestador de la interfaz "Mi Cuenta" — autentica usuario,
-// determina rol y delega renderizado por rol a los módulos en `src/views/`.
-//
-// Notas de refactor:
-// - Renderizado específico por rol fue extraído a `src/views/*.js`:
-//   `padre.js`, `consejera.js`, `cuidadora.js`, `admin.js`.
-// - Handlers compartidos de formularios y modales se movieron a
-//   `src/ui/account.js` (checkout, ficha de cuidado, abrir modales).
-// - Mantener `mi-cuenta.js` como punto de entrada/orquestador simplifica
-//   pruebas y futuras migraciones a frameworks.
+// Propósito: Orquestador de la interfaz "Mi Cuenta"
 
 import '../index.css';
 
-import { db, auth } from './firebase.js';
+import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { initFormularios } from './formularios.js';
 import { getUserProfileWithSubcollections } from './api/firestore.js';
 import { initCalendario } from './calendario.js';
 import { initModales } from './modales.js';
 import { showToast } from './ui/notifications.js';
-import { getCartQuantity, openCartModal, updateCartIconIndicator, initCheckoutForm } from './ui/cart.js';
 import { initAccountFormHandlers, openPerfilBebeModal, openFichaCuidadoModal } from './ui/account.js';
 import { renderPadreTab } from './views/padre.js';
 import { renderConsejeraTab } from './views/consejera.js';
 import { renderCuidadoraTab } from './views/cuidadora.js';
 import { renderAdminTab } from './views/admin.js';
 import { renderCreatorTipsManagement } from './views/tips.js'; 
+import { renderSidebar } from './ui/sidebar.js';
 import { escapeHTML } from './utils/html.js';
 import { getPrimaryRole, hasRole, getRoles } from './utils/roles.js';
 import './css/mi-cuenta.css';
@@ -33,6 +25,22 @@ import './css/mi-cuenta.css';
 document.addEventListener('DOMContentLoaded', () => {
   const dashboardContent = document.getElementById('dashboard-content');
   const sidebarNav = document.getElementById('sidebar-nav');
+  const sidebarMenu = document.getElementById('sidebar-menu');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const menuToggle = document.getElementById('btn-menu-toggle');
+
+  const closeSidebar = () => {
+    sidebarMenu?.classList.add('-translate-x-full');
+    sidebarOverlay?.classList.add('hidden');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+  };
+
+  menuToggle?.addEventListener('click', () => {
+    sidebarMenu?.classList.remove('-translate-x-full');
+    sidebarOverlay?.classList.remove('hidden');
+    menuToggle.setAttribute('aria-expanded', 'true');
+  });
+  sidebarOverlay?.addEventListener('click', closeSidebar);
 
   const userNameEl = document.getElementById('user-name');
   const userRoleLabel = document.getElementById('user-role-label');
@@ -40,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeTab = 'resumen';
   let currentUserData = null;
-  let currentUser = null;
   let currentUserRole = 'padre';
+  const pendingAccountReloadKey = 'lactanido-pending-account-reloaded';
 
   initFormularios();
   initCalendario();
@@ -51,96 +59,19 @@ document.addEventListener('DOMContentLoaded', () => {
     getCurrentUserData: () => currentUserData,
     getCurrentUserRole: () => currentUserRole
   });
-  initCheckoutForm({
-    renderContent,
-    getCurrentUserData: () => currentUserData
-  });
-
-  updateCartIconIndicator();
-
-  // --- ESTRUCTURA DE NAVEGACIÓN MODIFICADA (SE AGREGÓ 'MIS TARIFAS') ---
-  const NAV_CONFIG = {
-    padre: [
-      { label: "Resumen", icon: "🏠", action: "resumen" },
-      { label: "Tienda Bebé 🛍️", action: "tienda", icon: "🧸" },
-      { label: "Mis Pedidos 📦", action: "pedidos", icon: "🚚" },
-      { label: "Bitácoras Bebé 📋", action: "bitacora", icon: "🍼" },
-      { label: "Perfil Nido", action: "modalPerfilBebe", icon: "👶", isModal: true }
-    ],
-    consejera: [
-      { label: "Dashboard", icon: "📊", action: "dashboard" },
-      { label: "Mis Citas", icon: "🗓️", action: "citas" },
-      { label: "Fichas Guardadas", icon: "🤱", action: "historial_fichas" },
-      { label: "Mi Horario", icon: "⏱️", action: "horarios" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
-      { label: "Gestionar Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
-    ],
-    cuidadora: [
-      { label: "Turnos", icon: "🌙", action: "dashboard" },
-      { label: "Fichas Guardadas", icon: "📋", action: "historial_fichas" },
-      { label: "Disponibilidad", icon: "🗓️", action: "disponibilidad" },
-      { label: "Mis Tarifas", icon: "💰", action: "tarifas" }, // NUEVA PESTAÑA
-      { label: "Gestionar Tips", icon: "💡", action: "gestionar_tips", permission: "puedeCrearTips" }
-    ],
-    admin: [
-      { label: "Visión General", icon: "👁️", action: "dashboard" },
-      { label: "Usuarios", icon: "👥", action: "usuarios" },
-      { label: "Pedidos / Tienda", icon: "🛍️", action: "admin_tienda" }
-    ]
-  };
-
   function switchTab(action, role, userData) {
     if (action === 'modalPerfilBebe') {
       openPerfilBebeModal(userData);
       return;
     }
     activeTab = action;
-    renderSidebar(role, userData);
+    renderSidebar(userData, {
+      role,
+      activeTab,
+      onNavigate: action => switchTab(action, role, userData),
+      onClose: closeSidebar
+    });
     renderContent(role, userData);
-  }
-
-  function renderSidebar(role, userData) {
-    if (!sidebarNav) return;
-    const items = NAV_CONFIG[role] || [];
-    const filteredItems = items.filter(item => {
-      return !item.permission || (item.permission && userData[item.permission] === true);
-    });
-
-    let cartBtnHtml = '';
-    if (role === 'padre') {
-      cartBtnHtml = `
-        <button id="btnVerCarrito" class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium text-[#887263] hover:bg-[#f4eade] hover:text-[#181411] w-full mt-2 relative">
-          <span class="flex items-center gap-3">
-            <span class="text-xl">🛒</span> Ver Carrito
-          </span>
-          <span id="cart-badge" class="bg-[#e87a30] text-white text-xs px-2 py-0.5 rounded-full font-bold ${getCartQuantity() === 0 ? 'hidden' : ''}">
-            ${getCartQuantity()}
-          </span>
-        </button>
-      `;
-    }
-
-    sidebarNav.innerHTML = filteredItems.map(item => {
-      const isActive = activeTab === item.action;
-      return `
-        <a href="#" data-action="${item.action}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${isActive ? 'bg-[#e87a30] text-white shadow-md shadow-[#e87a30]/30 transform scale-[1.02]' : 'text-[#887263] hover:bg-[#f4eade] hover:text-[#181411]'}">
-          <span class="text-xl">${item.icon}</span>
-          ${item.label}
-        </a>
-      `;
-    }).join('') + cartBtnHtml;
-
-    sidebarNav.querySelectorAll('.nav-item, #btnVerCarrito').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const action = link.dataset.action || 'carrito';
-        if (action === 'carrito') {
-          openCartModal();
-        } else {
-          switchTab(action, role, userData);
-        }
-      });
-    });
   }
 
   async function renderContent(role, userData) {
@@ -163,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       if (activeTab === 'gestionar_tips') {
-        await renderCreatorTipsManagement('dashboard-content');
+          await renderCreatorTipsManagement('dashboard-content', userData);
       }
     } catch (error) {
       console.error("Error cargando pestaña:", error);
@@ -243,7 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateUIForRole(role, userData) {
     currentUserRole = role;
     activeTab = (role === 'padre') ? 'resumen' : 'dashboard';
-    renderSidebar(role, userData);
+    renderSidebar(userData, {
+      role,
+      activeTab,
+      onNavigate: action => switchTab(action, role, userData),
+      onClose: closeSidebar
+    });
     renderContent(role, userData);
     renderRoleSwitcher(userData, (newRole) => {
         updateUIForRole(newRole, userData);
@@ -271,7 +207,13 @@ document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
-        currentUser = user; 
+        try {
+          await updateDoc(doc(db, 'usuarios', user.uid), { ultimoAcceso: serverTimestamp() });
+        } catch (error) {
+          console.error('Error al registrar el último acceso:', error);
+          showToast('No se pudo registrar el último acceso.', 'warning');
+        }
+
         const userData = await getUserProfileWithSubcollections(user.uid);
 
         if (userData) {
@@ -283,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (isUserPending(userData) && !hasRole(userData, 'admin')) {
             renderWaitingScreen(userData.nombre);
           } else {
+            sessionStorage.removeItem(pendingAccountReloadKey);
             const initialRole = getPrimaryRole(userData);
             
             if (userNameEl) userNameEl.textContent = userData?.nombre || "Usuario";
@@ -300,19 +243,24 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Error al conectar con el servidor', 'error');
       }
     } else {
-      currentUser = null; 
       window.location.href = 'index.html';
     }
   });
 
   function renderWaitingScreen(nombre) {
+    if (sessionStorage.getItem(pendingAccountReloadKey) !== 'true') {
+      sessionStorage.setItem(pendingAccountReloadKey, 'true');
+      setTimeout(() => { window.location.reload(); }, 10000);
+    }
+
     if (dashboardContent) {
       dashboardContent.innerHTML = `
         <div class="glass-panel p-10 rounded-2xl text-center slide-up max-w-xl mx-auto mt-20">
           <div class="text-5xl mb-4">⌛</div>
           <h2 class="text-2xl font-black mb-4 text-[#181411]">Cuenta en Revisión</h2>
-          <p class="text-[#887263]">Hola ${nombre || 'Colaborador/a'}, estamos validando tus antecedentes. Te notificaremos por correo cuando tu perfil esté activo.</p>
+          <p class="text-[#887263]">Hola ${escapeHTML(nombre || 'Colaborador/a')}, estamos validando tus antecedentes. Te notificaremos por correo cuando tu perfil esté activo.</p>
           <button onclick="location.reload()" class="mt-6 text-sm text-[#e87a30] font-bold">Refrescar estado</button>
+          <a href="index.html" class="text-sm text-gray-500 hover:underline mt-4 block">Volver al inicio</a>
         </div>`;
     }
   }

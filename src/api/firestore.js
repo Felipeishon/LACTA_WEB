@@ -1,5 +1,10 @@
-import { db } from '../firebase.js';
-import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../firebase.js';
+import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc, orderBy, limit, addDoc, deleteDoc, runTransaction, serverTimestamp, arrayUnion } from 'firebase/firestore';
+
+function cleanRut(rut) {
+    if (!rut) return '';
+    return rut.toString().replace(/[^0-9kK]/g, '').toUpperCase();
+}
 
 export async function getUserProfileWithSubcollections(uid) {
     try {
@@ -8,18 +13,14 @@ export async function getUserProfileWithSubcollections(uid) {
         if (!userSnap.exists()) {
             return null;
         }
-
         const userData = { id: userSnap.id, ...userSnap.data() };
-
         const [caregiverResult, counselorResult] = await Promise.allSettled([
             getDocs(collection(db, 'usuarios', uid, 'caregiverProfile')),
             getDocs(collection(db, 'usuarios', uid, 'counselorProfile'))
         ]);
-
         const userRoles = userData.rol?.map(r => r.toLowerCase()) || [];
         const hasCaregiverRole = userRoles.includes('cuidadora') || userRoles.includes('caregiver');
         const hasCounselorRole = userRoles.includes('consejera') || userRoles.includes('counselor');
-
         if (hasCaregiverRole && caregiverResult.status === 'rejected') {
             console.error('Error crítico al leer subcolección de cuidadora:', caregiverResult.reason);
             throw new Error('No se pudo cargar el perfil de cuidadora. Verifica las reglas de seguridad de Firestore.');
@@ -28,7 +29,6 @@ export async function getUserProfileWithSubcollections(uid) {
             const docSnap = caregiverResult.value.docs[0];
             userData.caregiverProfile = { id: docSnap.id, ...docSnap.data() };
         }
-
         if (hasCounselorRole && counselorResult.status === 'rejected') {
             console.error('Error crítico al leer subcolección de consejera:', counselorResult.reason);
             throw new Error('No se pudo cargar el perfil de consejera. Verifica las reglas de seguridad de Firestore.');
@@ -37,7 +37,6 @@ export async function getUserProfileWithSubcollections(uid) {
             const docSnap = counselorResult.value.docs[0];
             userData.counselorProfile = { id: docSnap.id, ...docSnap.data() };
         }
-
         return userData;
     } catch (error) {
         console.error('Error al obtener perfil del usuario con subcolecciones:', error);
@@ -47,18 +46,36 @@ export async function getUserProfileWithSubcollections(uid) {
 
 export async function fetchAdminStats() {
     try {
-        const activeUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo")));
-        const pendingUsersSnap = await getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente")));
-        const activeAppointmentsSnap = await getDocs(query(collection(db, "reservas"), where("estado", "==", "pendiente")));
-        
-        const consejerasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera")));
-        const cuidadorasSnap = await getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora")));
-        
+        const [
+            activeUsersSnap,
+            pendingUsersSnap,
+            activeAppointmentsSnap,
+            pendingAppointmentsSnap,
+            completedAppointmentsSnap,
+            consejerasSnap,
+            cuidadorasSnap,
+            fichasSnap,
+            bitacorasSnap
+        ] = await Promise.all([
+            getDocs(query(collection(db, "usuarios"), where("estado", "==", "activo"))),
+            getDocs(query(collection(db, "usuarios"), where("estado", "==", "pendiente"))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente", "Aprobado", "aprobado"]))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente"]))),
+            getDocs(query(collection(db, "reservas"), where("estado", "in", ["completada", "Completada"]))),
+            getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "consejera"))),
+            getDocs(query(collection(db, "usuarios"), where("rol", "array-contains", "cuidadora"))),
+            getDocs(collection(db, "fichas_atencion")),
+            getDocs(collection(db, "bitacoras"))
+        ]);
         return {
             totalUsers: activeUsersSnap.size + pendingUsersSnap.size,
             activeAppointments: activeAppointmentsSnap.size,
+            pendingAppointments: pendingAppointmentsSnap.size,
+            citasCompletadas: completedAppointmentsSnap.size,
             totalPrestadores: new Set([...consejerasSnap.docs.map(d => d.id), ...cuidadorasSnap.docs.map(d => d.id)]).size,
-            pendingPrestadores: pendingUsersSnap.size
+            pendingPrestadores: pendingUsersSnap.size,
+            totalFichas: fichasSnap.size,
+            totalBitacoras: bitacorasSnap.size
         };
     } catch (e) {
         console.error("Error al obtener estadísticas:", e);
@@ -66,12 +83,21 @@ export async function fetchAdminStats() {
     }
 }
 
-export async function fetchUserAppointments(uid) {
+export async function fetchUserAppointments(uid, nidoId = null) {
     try {
-        const q = query(collection(db, "reservas"), where("uid", "==", uid));
-        const snap = await getDocs(q);
-        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+        const snap = await getDocs(collection(db, "reservas"));
+        const docs = snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(r => {
+                const esMia = r.uid === uid || r.userId === uid || r.usuarioId === uid || r.clienteId === uid;
+                const esDeMiNido = nidoId && r.nidoId === nidoId;
+                return esMia || esDeMiNido;
+            });
+        return docs.sort((a, b) => {
+            const tA = a.creadoEn?.toDate ? a.creadoEn.toDate().getTime() : new Date(a.creadoEn || 0).getTime();
+            const tB = b.creadoEn?.toDate ? b.creadoEn.toDate().getTime() : new Date(b.creadoEn || 0).getTime();
+            return tB - tA;
+        });
     } catch (error) {
         console.error("Error al obtener citas del usuario:", error);
         throw error;
@@ -80,18 +106,31 @@ export async function fetchUserAppointments(uid) {
 
 export async function fetchServiceAppointments(servicio, uid) {
     try {
-        let q;
-        if (uid) {
-            q = query(collection(db, "reservas"), where("profesionalId", "==", uid));
-        } else {
-            q = query(collection(db, "reservas"), where("servicio", "==", servicio));
-        }
-        const snap = await getDocs(q);
+        const snap = await getDocs(collection(db, "reservas"));
         const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (uid) {
-            return all.filter(a => a.servicio === servicio || !servicio);
-        }
-        return all;
+        // Excluir citas canceladas o rechazadas de la vista activa
+        const ESTADOS_EXCLUIDOS = ['cancelada', 'rechazada'];
+        const activas = all.filter(a => {
+            const estado = (a.estado || 'pendiente').toString().toLowerCase().trim();
+            return !ESTADOS_EXCLUIDOS.includes(estado);
+        });
+
+        const tipoServicio = servicio === 'Consultor' ? 'Consultor'
+            : servicio === 'Cuidador' ? 'Cuidadora'
+                : servicio;
+        const campoProfesional = servicio === 'Consultor' ? 'consejeraId'
+            : servicio === 'Cuidador' ? 'cuidadoraId'
+                : null;
+
+        return activas.filter(a => {
+            const coincideTipo = a.tipoServicio === tipoServicio;
+            if (!uid) return coincideTipo;
+            if (!campoProfesional) return coincideTipo;
+
+            const idProfesional = a.profesionalId || a.prestadorId;
+            return a[campoProfesional] === uid ||
+                (coincideTipo && idProfesional === uid);
+        });
     } catch (error) {
         console.error("Error al obtener citas del servicio:", error);
         throw error;
@@ -109,13 +148,47 @@ export async function getPendingUsers() {
     }
 }
 
+export async function getPendingAppointments() {
+    try {
+        const q = query(collection(db, "reservas"), where("estado", "in", ["Pendiente", "pendiente"]));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener citas pendientes:", error);
+        throw error;
+    }
+}
+
+export async function getPendingTips() {
+    try {
+        const q = query(collection(db, "tips"), where("estado", "==", "pendiente"));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener tips pendientes:", error);
+        throw error;
+    }
+}
+
+export async function getPendingPrestadores() {
+    try {
+        const q = query(collection(db, "usuarios"), where("estado", "==", "pendiente"));
+        const snap = await getDocs(q);
+        return snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(user => {
+                const roles = Array.isArray(user.rol) ? user.rol : [user.rol].filter(Boolean);
+                return roles.includes('consejera') || roles.includes('cuidadora');
+            });
+    } catch (error) {
+        console.error("Error al obtener prestadores pendientes:", error);
+        throw error;
+    }
+}
+
 export async function getActiveProfessionals(rolStr) {
     try {
-        const q = query(
-            collection(db, "usuarios"), 
-            where("estado", "==", "activo"),
-            where("rol", "array-contains", rolStr)
-        );
+        const q = query(collection(db, "usuarios"), where("estado", "==", "activo"), where("rol", "array-contains", rolStr));
         const snap = await getDocs(q);
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
@@ -135,6 +208,96 @@ export async function getLatestUsers() {
     }
 }
 
+export async function getAllUsers() {
+    try {
+        const snap = await getDocs(collection(db, "usuarios"));
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener todos los usuarios:", error);
+        throw error;
+    }
+}
+
+export async function getAllNidos() {
+    try {
+        const snap = await getDocs(collection(db, "nidos"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todos los nidos:", error);
+        throw error;
+    }
+}
+
+export async function updateUserProfile(uid, updateData) {
+    const adminUid = auth.currentUser?.uid;
+    const allowedRoles = ['padre', 'consejera', 'cuidadora', 'admin'];
+    const allowedStatuses = ['activo', 'pendiente', 'inactivo'];
+    const roles = Array.isArray(updateData.rol) ? [...new Set(updateData.rol)] : [];
+    const changes = {
+        nombre: String(updateData.nombre || '').trim(),
+        email: String(updateData.email || '').trim(),
+        telefono: String(updateData.telefono || '').trim(),
+        estado: updateData.estado,
+        rol: roles,
+        puedeCrearTips: (roles.includes('consejera') || roles.includes('cuidadora')) &&
+            updateData.puedeCrearTips === true
+    };
+    if (roles.includes('padre')) {
+        const direccion = updateData.direccion || {};
+        const calle = String(direccion.calle || '').trim();
+        const numero = String(direccion.numero || '').trim();
+        const departamento = String(direccion.departamento || '').trim();
+        const comuna = String(direccion.comuna || '').trim();
+        const referencia = String(direccion.referencia || '').trim();
+        changes.direccion = {
+            calle,
+            numero,
+            departamento,
+            comuna,
+            referencia,
+            texto: [[calle, numero].filter(Boolean).join(' '), comuna].filter(Boolean).join(', ')
+        };
+    }
+    if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
+    if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) throw new Error('Los datos del usuario no son válidos.');
+    if (roles.length === 0 || roles.some(role => !allowedRoles.includes(role))) throw new Error('Los roles del usuario no son válidos.');
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const userRef = doc(db, 'usuarios', uid);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(userRef, changes);
+        transaction.set(auditLogRef, {
+            adminUid, action: 'UPDATE_USER', targetType: 'USER', targetId: uid, changes, timestamp: serverTimestamp()
+        });
+    });
+}
+
+export async function deleteUserProfile(uid) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar al usuario.');
+    if (adminUid === uid) throw new Error('No puedes desactivar tu propia cuenta.');
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const userRef = doc(db, 'usuarios', uid);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(userRef, { estado: 'inactivo' });
+        transaction.set(auditLogRef, {
+            adminUid, action: 'DELETE_USER', targetType: 'USER', targetId: uid, reason: 'Desactivado desde el panel de administración.', timestamp: serverTimestamp()
+        });
+    });
+}
+
 export async function getCaregiverBlockedDays(uid) {
     try {
         const q = query(collection(db, `usuarios/${uid}/bloqueos`), orderBy("date", "asc"));
@@ -148,11 +311,7 @@ export async function getCaregiverBlockedDays(uid) {
 
 export async function addCaregiverBlockedDay(uid, date, motivo) {
     try {
-        const docRef = await addDoc(collection(db, `usuarios/${uid}/bloqueos`), {
-            date,
-            motivo,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, `usuarios/${uid}/bloqueos`), { date, motivo, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error agregando bloqueo:", error);
@@ -178,7 +337,6 @@ export async function saveConsejeraSchedule(uid, horarios) {
     }
 }
 
-// NUEVA FUNCIÓN: Guarda las tarifas personalizadas en el documento principal del usuario
 export async function saveUserTarifas(uid, tarifas) {
     try {
         await updateDoc(doc(db, "usuarios", uid), { tarifas });
@@ -188,13 +346,34 @@ export async function saveUserTarifas(uid, tarifas) {
     }
 }
 
-export async function getAvailabilitySlots(uid) {
+export async function getAvailabilitySlots(uid, tipoServicio) {
     try {
         const q = query(collection(db, `usuarios/${uid}/disponibilidad`), orderBy("fechaInicio", "asc"));
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const slots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return tipoServicio ? slots.filter(slot => slot.tipoServicio === tipoServicio) : slots;
     } catch (error) {
         console.error("Error cargando slots de disponibilidad:", error);
+        throw error;
+    }
+}
+
+export async function getAvailableHoursForProfessional(uid, fecha) {
+    try {
+        if (!uid || !fecha) return [];
+        const slots = await getAvailabilitySlots(uid);
+        const matches = slots.filter(s => s.fechaInicio && s.fechaInicio.startsWith(fecha) && !s.reservado);
+        const hours = matches.map(s => {
+            const d = new Date(s.fechaInicio);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+        });
+        const unique = Array.from(new Set(hours));
+        unique.sort();
+        return unique;
+    } catch (error) {
+        console.error('Error al obtener horas disponibles:', error);
         throw error;
     }
 }
@@ -225,50 +404,89 @@ export async function removeAvailabilitySlot(uid, slotId) {
     }
 }
 
-export async function vincularNidoPorRutBebe(uidPadre, rutBebe, nombreBebe) {
+export async function vincularNidoFamiliar(uidUsuario, hijosArray) {
     try {
-        const q = query(collection(db, "nidos"), where("rutBebe", "==", rutBebe));
-        const snap = await getDocs(q);
+        if (!Array.isArray(hijosArray) || hijosArray.length === 0) throw new Error("Debe ingresar al menos un hijo/bebé.");
         let nidoId = null;
-
-        if (snap.empty) {
+        const nidosSnap = await getDocs(collection(db, "nidos"));
+        let nidoExistenteDoc = null;
+        for (const nidoDoc of nidosSnap.docs) {
+            const data = nidoDoc.data();
+            const hijosRegistrados = data.hijos || [];
+            const matchHijosArray = hijosRegistrados.some(h => hijosArray.some(nuevo => {
+                const cleanNuevoRut = cleanRut(nuevo.rut);
+                const cleanHijoRut = cleanRut(h.rut);
+                return cleanNuevoRut === cleanHijoRut;
+            }));
+            const matchAntiguo = data.rutBebe && hijosArray.some(nuevo => cleanRut(nuevo.rut) === cleanRut(data.rutBebe));
+            if (matchHijosArray || matchAntiguo) { nidoExistenteDoc = nidoDoc; break; }
+        }
+        if (!nidoExistenteDoc) {
             const nuevoNidoRef = doc(collection(db, "nidos"));
             nidoId = nuevoNidoRef.id;
             await setDoc(nuevoNidoRef, {
-                rutBebe: rutBebe,
-                nombreBebe: nombreBebe,
-                padresUids: [uidPadre],
-                creadoEn: new Date().toISOString()
+                hijos: hijosArray, padresUids: [uidUsuario], estado: 'activo', creadoEn: new Date().toISOString()
             });
         } else {
-            const nidoDoc = snap.docs[0];
-            nidoId = nidoDoc.id;
-            const datosNido = nidoDoc.data();
-            if (!datosNido.padresUids.includes(uidPadre)) {
-                await updateDoc(doc(db, "nidos", nidoId), {
-                    padresUids: [...datosNido.padresUids, uidPadre]
-                });
+            nidoId = nidoExistenteDoc.id;
+            const datosNido = nidoExistenteDoc.data();
+            const padresActuales = datosNido.padresUids || [];
+            if (!padresActuales.includes(uidUsuario)) {
+                try {
+                    await updateDoc(doc(db, "nidos", nidoId), { padresUids: arrayUnion(uidUsuario) });
+                } catch (error) {
+                    if (error.code === 'permission-denied') {
+                        console.error("El nido ya existe, pero no tienes permisos para unirte. Contacta al administrador.", error);
+                    }
+                    throw error;
+                }
             }
         }
-
-        await updateDoc(doc(db, "usuarios", uidPadre), {
-            nidoId: nidoId
-        });
-
+        await updateDoc(doc(db, "usuarios", uidUsuario), { nidoId: nidoId });
         return nidoId;
     } catch (error) {
-        console.error("Error al vincular nido:", error);
+        console.error("Error al vincular el nido familiar:", error);
         throw error;
     }
+}
+
+export async function deleteNidoProfile(nidoId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) throw new Error('No se pudo identificar al nido.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const nidoRef = doc(db, 'nidos', nidoId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(nidoRef, { estado: 'inactivo', fechaDesactivacion: new Date().toISOString() });
+        transaction.set(auditLogRef, { adminUid, action: 'DELETE_NIDO', targetType: 'NIDO', targetId: nidoId, reason: 'Desactivado desde el panel de administración.', timestamp: serverTimestamp() });
+    });
+}
+
+export async function reactivarNidoProfile(nidoId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof nidoId !== 'string' || !nidoId.trim()) throw new Error('No se pudo identificar al nido.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const nidoRef = doc(db, 'nidos', nidoId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(nidoRef, { estado: 'activo', fechaReactivacion: new Date().toISOString() });
+        transaction.set(auditLogRef, { adminUid, action: 'REACTIVATE_NIDO', targetType: 'NIDO', targetId: nidoId, timestamp: serverTimestamp() });
+    });
 }
 
 export async function obtenerDatosNido(nidoId) {
     if (!nidoId) return null;
     try {
         const docSnap = await getDoc(doc(db, "nidos", nidoId));
-        if (docSnap.exists()) {
-            return { id: docSnap.id, ...docSnap.data() };
-        }
+        if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
         return null;
     } catch (error) {
         console.error("Error al obtener datos del nido:", error);
@@ -278,18 +496,26 @@ export async function obtenerDatosNido(nidoId) {
 
 export async function saveFichaCuidado(fichaData) {
     try {
-        const docRef = await addDoc(collection(db, "bitacoras"), {
-            ...fichaData,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, "bitacoras"), { ...fichaData, creadoEn: new Date().toISOString() });
         if (fichaData.reservaId) {
-            await updateDoc(doc(db, "reservas", fichaData.reservaId), {
-                estado: 'completada'
-            });
+            await updateDoc(doc(db, "reservas", fichaData.reservaId), { estado: 'completada' });
         }
         return docRef.id;
     } catch (error) {
         console.error("Error al guardar ficha de cuidado:", error);
+        throw error;
+    }
+}
+
+export async function saveFichaAtencion(fichaData) {
+    try {
+        const docRef = await addDoc(collection(db, "fichas_atencion"), { ...fichaData, creadoEn: new Date().toISOString() });
+        if (fichaData.reservaId) {
+            await updateDoc(doc(db, "reservas", fichaData.reservaId), { estado: 'completada' });
+        }
+        return docRef.id;
+    } catch (error) {
+        console.error("Error al guardar ficha de atención:", error);
         throw error;
     }
 }
@@ -307,10 +533,7 @@ export async function fetchFichasCuidadoPorNido(nidoId) {
 }
 
 export async function fetchFichasCuidadoPorPrestador(prestadorId) {
-    if (!prestadorId) {
-        console.warn("fetchFichasCuidadoPorPrestador fue llamado sin un prestadorId.");
-        return [];
-    }
+    if (!prestadorId) return [];
     try {
         const q = query(collection(db, "bitacoras"), where("prestadorId", "==", prestadorId));
         const snap = await getDocs(q);
@@ -318,6 +541,53 @@ export async function fetchFichasCuidadoPorPrestador(prestadorId) {
         return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
     } catch (error) {
         console.error("Error al obtener fichas del prestador:", error);
+        throw error;
+    }
+}
+
+export async function fetchFichasAtencionPorNido(nidoId) {
+    try {
+        const q = query(collection(db, "fichas_atencion"), where("nidoId", "==", nidoId));
+        const snap = await getDocs(q);
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    } catch (error) {
+        console.error("Error al obtener fichas de atención del nido:", error);
+        throw error;
+    }
+}
+
+export async function fetchFichasAtencionPorPrestador(prestadorId) {
+    if (!prestadorId) return [];
+    try {
+        const q = query(collection(db, "fichas_atencion"), where("prestadorId", "==", prestadorId));
+        const snap = await getDocs(q);
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    } catch (error) {
+        console.error("Error al obtener fichas de atención del prestador:", error);
+        throw error;
+    }
+}
+
+export async function fetchAllBitacoras() {
+    try {
+        const snap = await getDocs(collection(db, "bitacoras"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todas las bitácoras:", error);
+        throw error;
+    }
+}
+
+export async function fetchAllFichasAtencion() {
+    try {
+        const snap = await getDocs(collection(db, "fichas_atencion"));
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return docs.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+    } catch (error) {
+        console.error("Error al obtener todas las fichas de atención:", error);
         throw error;
     }
 }
@@ -333,13 +603,67 @@ export async function fetchActiveProducts() {
     }
 }
 
-export async function createProduct(productData) {
+export async function fetchServiciosActivos() {
     try {
-        const docRef = await addDoc(collection(db, "productos"), {
-            ...productData,
+        const q = query(collection(db, "servicios"), where("activo", "==", true));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener servicios activos:", error);
+        throw error;
+    }
+}
+
+export async function createServicio(data) {
+    try {
+        const nombre = String(data.nombre || '').trim();
+        const descripcion = String(data.descripcion || '').trim();
+        const icono = String(data.icono || '').trim();
+        if (!nombre || !descripcion) throw new Error('El nombre y la descripción del servicio son obligatorios.');
+
+        const docRef = await addDoc(collection(db, "servicios"), {
+            nombre,
+            descripcion,
+            icono,
             activo: true,
             creadoEn: new Date().toISOString()
         });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error al crear servicio:", error);
+        throw error;
+    }
+}
+
+export async function updateServicio(id, data) {
+    try {
+        if (typeof id !== 'string' || !id.trim()) throw new Error('No se pudo identificar el servicio.');
+
+        const nombre = String(data.nombre || '').trim();
+        const descripcion = String(data.descripcion || '').trim();
+        const icono = String(data.icono || '').trim();
+        if (!nombre || !descripcion) throw new Error('El nombre y la descripción del servicio son obligatorios.');
+
+        await updateDoc(doc(db, "servicios", id), { nombre, descripcion, icono });
+    } catch (error) {
+        console.error("Error al actualizar servicio:", error);
+        throw error;
+    }
+}
+
+export async function deleteServicio(id) {
+    try {
+        if (typeof id !== 'string' || !id.trim()) throw new Error('No se pudo identificar el servicio.');
+        await deleteDoc(doc(db, "servicios", id));
+    } catch (error) {
+        console.error("Error al eliminar servicio:", error);
+        throw error;
+    }
+}
+
+export async function createProduct(productData) {
+    try {
+        const docRef = await addDoc(collection(db, "productos"), { ...productData, activo: true, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error al crear producto:", error);
@@ -347,11 +671,34 @@ export async function createProduct(productData) {
     }
 }
 
+export async function updateProduct(productId, productData) {
+    const adminUid = auth.currentUser?.uid;
+    const allowedCategories = ['Lactancia', 'Higiene', 'Accesorios'];
+    const changes = {
+        nombre: String(productData.nombre || '').trim(), precio: Number(productData.precio),
+        stock: Number(productData.stock), categoria: productData.categoria, imagenUrl: String(productData.imagenUrl || '').trim()
+    };
+    if (!adminUid || typeof productId !== 'string' || !productId.trim()) throw new Error('No se pudo identificar el producto.');
+    if (!changes.nombre || !Number.isFinite(changes.precio) || changes.precio < 0) throw new Error('El nombre o precio del producto no son válidos.');
+    if (!Number.isInteger(changes.stock) || changes.stock < 0) throw new Error('El stock del producto no es válido.');
+    if (!allowedCategories.includes(changes.categoria)) throw new Error('La categoría del producto no es válida.');
+
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const productRef = doc(db, 'productos', productId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(productRef, changes);
+        transaction.set(auditLogRef, { adminUid, action: 'UPDATE_PRODUCT', targetType: 'PRODUCT', targetId: productId, changes, timestamp: serverTimestamp() });
+    });
+}
+
 export async function deleteProduct(productId) {
     try {
-        await updateDoc(doc(db, "productos", productId), {
-            activo: false
-        });
+        await updateDoc(doc(db, "productos", productId), { activo: false });
     } catch (error) {
         console.error("Error al eliminar producto:", error);
         throw error;
@@ -363,44 +710,22 @@ export async function createPedido(pedidoData) {
         await runTransaction(db, async (transaction) => {
             let totalCalculado = 0;
             const productosVerificados = [];
-
             for (const item of pedidoData.productos) {
                 const prodRef = doc(db, "productos", item.productoId);
                 const prodDoc = await transaction.get(prodRef);
-                if (!prodDoc.exists()) {
-                    throw new Error(`Producto no existe.`);
-                }
+                if (!prodDoc.exists()) throw new Error(`Producto no existe.`);
                 const dbData = prodDoc.data();
                 const actualStock = dbData.stock || 0;
-                if (actualStock < item.cantidad) {
-                    throw new Error(`Stock insuficiente. Stock actual: ${actualStock}`);
-                }
-                
+                if (actualStock < item.cantidad) throw new Error(`Stock insuficiente. Stock actual: ${actualStock}`);
                 const precioReal = dbData.precio || 0;
                 totalCalculado += precioReal * item.cantidad;
-
-                productosVerificados.push({
-                    productoId: item.productoId,
-                    nombre: dbData.nombre || item.nombre,
-                    precio: precioReal,
-                    cantidad: item.cantidad
-                });
-
-                transaction.update(prodRef, {
-                    stock: actualStock - item.cantidad
-                });
+                productosVerificados.push({ productoId: item.productoId, nombre: dbData.nombre || item.nombre, precio: precioReal, cantidad: item.cantidad });
+                transaction.update(prodRef, { stock: actualStock - item.cantidad });
             }
-            
             const nuevoPedidoRef = doc(collection(db, "pedidos"));
             transaction.set(nuevoPedidoRef, {
-                compradorUid: pedidoData.compradorUid,
-                nidoId: pedidoData.nidoId || null,
-                direccion: pedidoData.direccion || '',
-                telefono: pedidoData.telefono || '',
-                productos: productosVerificados,
-                total: totalCalculado,
-                estado: pedidoData.estado || 'pagado',
-                creadoEn: new Date().toISOString()
+                compradorUid: pedidoData.compradorUid, nidoId: pedidoData.nidoId || null, direccion: pedidoData.direccion || '',
+                telefono: pedidoData.telefono || '', productos: productosVerificados, total: totalCalculado, estado: pedidoData.estado || 'pagado', creadoEn: new Date().toISOString()
             });
         });
     } catch (error) {
@@ -445,13 +770,78 @@ export async function fetchAllTips() {
 
 export async function createTip(tipData) {
     try {
-        const docRef = await addDoc(collection(db, "tips"), {
-            ...tipData,
-            creadoEn: new Date().toISOString()
-        });
+        const docRef = await addDoc(collection(db, "tips"), { ...tipData, creadoEn: new Date().toISOString() });
         return docRef.id;
     } catch (error) {
         console.error("Error al crear el tip:", error);
+        throw error;
+    }
+}
+
+export async function deleteTip(tipId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) throw new Error('No se pudo identificar el tip.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const tipRef = doc(db, 'tips', tipId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.delete(tipRef);
+        transaction.set(auditLogRef, { adminUid, action: 'DELETE_TIP', targetType: 'TIP', targetId: tipId, reason: 'Moderado desde el panel de administración.', timestamp: serverTimestamp() });
+    });
+}
+
+export async function approveTip(tipId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof tipId !== 'string' || !tipId.trim()) throw new Error('No se pudo identificar el tip.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const tipRef = doc(db, 'tips', tipId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(tipRef, { estado: 'aprobado' });
+        transaction.set(auditLogRef, { adminUid, action: 'APPROVE_TIP', targetType: 'TIP', targetId: tipId, timestamp: serverTimestamp() });
+    });
+}
+
+export async function updateAppointmentDateTime(reservaId, nuevaFecha, nuevaHora) {
+    try {
+        const reservaRef = doc(db, 'reservas', reservaId);
+        await updateDoc(reservaRef, { fecha: nuevaFecha, hora: nuevaHora });
+    } catch (error) {
+        console.error("Error al actualizar la fecha y hora de la cita:", error);
+        throw error;
+    }
+}
+
+// -----------------------------------------------------------
+// NUEVO: FUNCION PARA APROBAR, RECHAZAR O ANULAR CITAS
+// Y LIBERAR EL TURNO EN CASO DE RECHAZO O ANULACIÓN
+// -----------------------------------------------------------
+export async function actualizarEstadoCita(reservaId, nuevoEstado, slotId = null, profesionalId = null) {
+    try {
+        const reservaRef = doc(db, 'reservas', reservaId);
+        await updateDoc(reservaRef, { estado: nuevoEstado });
+
+        // Si se cancela o rechaza, devolver la disponibilidad del bloque al calendario
+        if ((nuevoEstado === 'Cancelada' || nuevoEstado === 'Rechazada') && slotId && profesionalId) {
+            const slotRef = doc(db, `usuarios/${profesionalId}/disponibilidad`, slotId);
+            const slotSnap = await getDoc(slotRef);
+            if (slotSnap.exists()) {
+                await updateDoc(slotRef, {
+                    reservado: false,
+                    disponible: true
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error al actualizar el estado de la cita:", error);
         throw error;
     }
 }

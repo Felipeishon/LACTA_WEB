@@ -27,7 +27,9 @@ service cloud.firestore {
 
     // --- SEGURIDAD POR COLECCIÓN ---
     match /usuarios/{userId} {
-      allow read, update: if request.auth.uid == userId || isAdmin();
+      // Permite a cualquier usuario logueado leer los perfiles para listar profesionales al agendar
+      allow read: if request.auth != null;
+      allow update: if request.auth.uid == userId || isAdmin();
       allow create: if request.auth != null
         && (
           (
@@ -50,29 +52,40 @@ service cloud.firestore {
         allow get, list, write: if request.auth.uid == userId || isAdmin();
       }
 
-      // REGLA NUEVA: Permite gestionar la disponibilidad granular.
-      // Reemplaza el campo `horarios` del modelo antiguo.
       match /disponibilidad/{slotId} {
-        allow read, list: if request.auth != null; // Cualquiera autenticado puede leer para buscar disponibilidad.
-        allow create, update, delete: if request.auth.uid == userId || isAdmin(); // Solo el dueño o un admin puede modificar.
+        allow read, list: if request.auth != null;
+        // REGLA CORREGIDA: Permite a los padres (usuarios logueados) actualizar el estado a "reservado: true"
+        allow update: if request.auth != null; 
+        allow create, delete: if request.auth.uid == userId || isAdmin();
       }
     }
 
+    // NUEVA COLECCIÓN: Citas (Agregada para permitir replicar la reserva para los profesionales)
+    match /citas/{citaId} {
+      allow create: if request.auth != null;
+      allow read, list, update: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+
     match /reservas/{reservaId} {
-      allow read: if (isAdmin() || (request.auth != null && (request.auth.uid == resource.data.uid || request.auth.uid == resource.data.profesionalId)));
-      // Permite a un usuario autenticado listar reservas.
-      // Las queries en el cliente DEBEN ser seguras y filtrar por UID del padre o del profesional.
-      // ej. where('uid', '==', request.auth.uid) o where('profesionalId', '==', request.auth.uid)
-      // La regla es permisiva, pero las queries del cliente son las que aseguran los datos.
-      allow list: if request.auth != null;
-      allow update: if request.auth != null && (request.auth.uid == resource.data.uid || request.auth.uid == resource.data.profesionalId || isAdmin());
+      allow read, list: if request.auth != null;
+      // REGLA CORREGIDA: Flexibilizada para que el padre y el profesional puedan ver y editar el estado
+      allow update: if request.auth != null;
       allow delete: if isAdmin();
       allow create: if request.auth != null;
     }
 
     match /nidos/{nidoId} {
-      allow read, update: if request.auth != null &&
-        (request.auth.uid in resource.data.padresUids || isAdmin());
+      allow list: if request.auth != null;
+      allow get: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.padresUids ||
+        isAdmin() ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['padresUids']) &&
+          request.auth.uid in request.resource.data.padresUids
+        )
+      );
       allow create: if request.auth != null;
       allow delete: if isAdmin();
     }
@@ -83,6 +96,7 @@ service cloud.firestore {
       );
       allow read, list: if request.auth != null && (
         esMiembroDelNido(resource.data.nidoId) || 
+        datosUsuario().rol.hasAny(['consejera']) ||
         (isPrestador() && resource.data.prestadorId == request.auth.uid) ||
         isAdmin()
       );
@@ -95,6 +109,7 @@ service cloud.firestore {
       allow read, list: if request.auth != null && (
         esMiembroDelNido(resource.data.nidoId) || 
         (isPrestador() && resource.data.consejeraId == request.auth.uid) ||
+        (isPrestador() && datosUsuario().rol.hasAny(['cuidadora'])) ||
         isAdmin()
       );
       allow update, delete: if request.auth != null &&
@@ -102,7 +117,7 @@ service cloud.firestore {
     }
 
     match /productos/{productoId} {
-      allow read, list: if request.auth != null;
+      allow read, list: if true;
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (
         request.auth != null &&
@@ -110,6 +125,11 @@ service cloud.firestore {
         request.resource.data.stock >= 0 &&
         request.resource.data.stock < resource.data.stock
       );
+    }
+
+    match /servicios/{servicioId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     match /pedidos/{pedidoId} {
@@ -123,18 +143,17 @@ service cloud.firestore {
 
     match /tips/{tipId} {
       allow read, list: if true;
-      allow create, update, delete: if request.auth != null &&
+      allow create: if request.auth != null &&
         (datosUsuario().puedeCrearTips == true || isAdmin());
+      allow update, delete: if isAdmin();
     }
 
+    // --- REGLA MODIFICADA: AUDIT LOGS ---
     match /auditLogs/{logId} {
       allow read: if isAdmin();
       allow create: if isAdmin();
-      allow update, delete: if false; // Los logs de auditoría son inmutables una vez creados
+      allow update, delete: if false;
     }
 
-    match /{document=**} {
-      allow read, write: if false;
-    }
   }
 }

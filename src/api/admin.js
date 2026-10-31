@@ -15,7 +15,7 @@ export async function approveUserWithAudit(targetUid, adminNotes = 'Aprobación 
   const auth = getAuth(app);
   const adminUid = auth.currentUser ? auth.currentUser.uid : null;
 
-  if (!adminUid) {
+  if (!adminUid || typeof targetUid !== 'string' || !targetUid.trim()) {
     throw new Error('No se pudo identificar al administrador. Inicia sesión nuevamente.');
   }
 
@@ -24,7 +24,12 @@ export async function approveUserWithAudit(targetUid, adminNotes = 'Aprobación 
     // se completen con éxito, o ninguna lo haga.
     await runTransaction(db, async (transaction) => {
       // 1. Referencia al documento del usuario que queremos aprobar
+      const adminRef = doc(db, 'usuarios', adminUid);
       const usuarioRef = doc(db, 'usuarios', targetUid);
+      const adminSnap = await transaction.get(adminRef);
+      if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+        throw new Error('La cuenta actual no tiene permisos de administrador.');
+      }
 
       // 2. Actualizar el estado directamente en la colección 'usuarios'
       transaction.update(usuarioRef, {

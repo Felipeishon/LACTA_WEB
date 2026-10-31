@@ -7,6 +7,7 @@ function initMobileMenu() {
   const btnUserMenuRegistro = document.getElementById('btnUserMenuRegistro');
   const btnMobileLogin = document.getElementById('btnMobileLogin');
   const btnMobileRegistro = document.getElementById('btnMobileRegistro');
+  const btnMobileMiCuenta = document.getElementById('btnMobileMiCuenta');
 
   if (!btnToggleMenu || !mobileNav) return;
 
@@ -56,6 +57,11 @@ function initMobileMenu() {
       btnToggleMenu.setAttribute('aria-expanded', 'false');
     });
   }
+
+  btnMobileMiCuenta?.addEventListener('click', () => {
+    mobileNav.classList.add('hidden');
+    btnToggleMenu.setAttribute('aria-expanded', 'false');
+  });
 
   document.addEventListener('click', (event) => {
     const target = event.target;

@@ -3,3 +3,9 @@ dist
 .env
 *.bak
 .DS_Store
+
+# Carpetas de herramientas de IA
+.agents/
+.agents_old/
+.claude/
+.ollama/

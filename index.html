@@ -92,14 +92,16 @@
           <span>Ingresar</span>
         </button>
 
+        <!-- Botón Registrarse corregido -->
         <button id="btnAbrirModalRegistroPadre"
-          class="min-w-[84px] cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          class="inline-flex items-center justify-center cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold shadow-md hover:bg-[#d66a20] transition-all active:scale-95"
           aria-label="Abrir registro de padres">
-          <span class="truncate">Registrarse</span>
+          <span>Registrarse</span>
         </button>
 
+        <!-- Botón Mi Cuenta corregido -->
         <a href="mi-cuenta.html" id="btnIrMiCuenta"
-          class="hidden items-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#d66a20] transition-all shadow-md active:scale-95"
+          class="hidden items-center justify-center gap-2 cursor-pointer rounded-full h-10 px-4 bg-[#e87a30] text-white text-sm font-bold shadow-md hover:bg-[#d66a20] transition-all active:scale-95"
           aria-label="Ir a mi cuenta">
           <i class="fa-solid fa-user-check text-white"></i>
           <span>Mi Cuenta</span>
@@ -118,6 +120,8 @@
           <a class="text-[#887263] text-base font-semibold leading-normal hover:text-[#e87a30] transition-colors"
             href="#contacto">Contacto</a>
         </nav>
+        <a href="mi-cuenta.html" id="btnMobileMiCuenta"
+          class="hidden mx-auto w-4/5 text-center bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-3 rounded-xl mt-6 mb-4 transition shadow-md">Mi Cuenta</a>
       </div>
     </header>
 
@@ -130,12 +134,12 @@
           <div class="@[480px]:p-4">
             <div
               class="flex min-h-[320px] md:min-h-[480px] flex-col gap-6 bg-cover bg-center bg-no-repeat @[480px]:gap-8 @[480px]:rounded-xl items-center justify-center p-6 shadow-sm"
-              style="background-image: linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%), url('/Images/hero.jpg');">
+              style="background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3)), url('/Images/hero.jpg');">
               <div class="flex flex-col gap-3 text-center max-w-3xl">
                 <h2 class="text-white text-3xl md:text-5xl font-black leading-tight tracking-[-0.033em] drop-shadow-md">
                   Bienvenido a tu Nido Seguro
                 </h2>
-                <p class="text-white text-sm md:text-lg font-medium leading-relaxed drop-shadow">
+                <p class="text-white/95 text-sm md:text-lg font-medium leading-relaxed drop-shadow-md">
                   Tú cuides de él, nosotros cuidamos de ti. Ofrecemos consultoría experta en lactancia y cuidadores 24/7
                   para acompañarte, sin juicios y con mucho amor, en tu maternidad.
                 </p>
@@ -150,51 +154,19 @@
 
         <!-- SERVICIOS SECTION -->
         <section id="servicios" aria-label="Nuestros Servicios" class="w-full flex justify-center items-center pt-24 pb-16 px-4 scroll-mt-[80px]">
-          <div class="w-full max-w-5xl mx-auto rounded-xl shadow-lg flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url('/Images/servicios-lactancia.jpg');">
+          <div class="w-full max-w-5xl mx-auto rounded-2xl shadow-lg flex flex-col items-center justify-center p-8 md:p-12 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3)), url('/Images/servicios-lactancia.jpg');">
             <div class="relative z-10 flex flex-col items-center gap-10 w-full">
               <div class="flex flex-col gap-4 items-center text-center">
-                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow">Servicios</span>
+                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow-md">Servicios</span>
                 <h2 class="text-white text-3xl font-bold leading-tight tracking-[-0.015em] drop-shadow-md">
                   Apoyo integral para ti y tu bebé
                 </h2>
-                <p class="text-white/90 font-normal leading-normal max-w-[720px] drop-shadow">
+                <p class="text-white font-medium leading-normal max-w-[720px] drop-shadow-md">
                   Validamos tu esfuerzo. Ofrecemos servicios adaptados a las necesidades únicas de tu familia, dándote la tranquilidad que necesitas para descansar.
                 </p>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
-                <article class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
-                  <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M92,140a12,12,0,1,1,12-12A12,12,0,0,1,92,140Zm72-24a12,12,0,1,0,12,12A12,12,0,0,0,164,116Zm-12.27,45.23a45,45,0,0,1-47.46,0,8,8,0,0,0-8.54,13.54,61,61,0,0,0,64.54,0,8,8,0,0,0-8.54-13.54ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88.11,88.11,0,0,0-84.09-87.91C120.32,56.38,120,71.88,120,72a8,8,0,0,0,16,0,8,8,0,0,1,16,0,24,24,0,0,1-48,0c0-.73.13-14.3,8.46-30.63A88,88,0,1,0,216,128Z"></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-2 text-center">
-                    <h4 class="text-[#181411] text-lg font-bold leading-tight">Consultoría de Lactancia</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-relaxed">Recibe orientación personalizada y sin juicios de consultores certificados. Estamos aquí para escucharte y guiarte.</p>
-                  </div>
-                </article>
-                <article class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
-                  <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M208,96a80,80,0,1,0-88,79.6V200H88a8,8,0,0,0,0,16h32v24a8,8,0,0,0,16,0V216h32a8,8,0,0,0,0-16H136V175.6A80.11,80.11,0,0,0,208,96ZM64,96a64,64,0,1,1,64,64A64.07,64.07,0,0,1,64,96Z"></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-2 text-center">
-                    <h4 class="text-[#181411] text-lg font-bold leading-tight">Servicios de Cuidadores 24/7</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-relaxed">Nuestros cuidadores profesionales están disponibles para darte ese merecido descanso, sabiendo que tu bebé está a salvo.</p>
-                  </div>
-                </article>
-                <article class="h-full flex flex-col items-center justify-start gap-4 rounded-xl border border-[#e5dfdc] bg-white p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-default">
-                  <div class="text-[#e87a30] bg-[#fdf5f0] p-4 rounded-full" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28px" height="28px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"></path>
-                    </svg>
-                  </div>
-                  <div class="flex flex-col gap-2 text-center">
-                    <h4 class="text-[#181411] text-lg font-bold leading-tight">Apoyo Personalizado</h4>
-                    <p class="text-[#887263] text-sm font-normal leading-relaxed">Planes de cuidado personalizados para abordar tus preocupaciones. Tú no estás sola en este proceso.</p>
-                  </div>
-                </article>
+              <div id="servicios-grid" class="flex flex-wrap justify-center gap-6 w-full">
+                <p class="w-full rounded-xl border border-white/30 bg-white/90 px-6 py-8 text-center font-medium text-[#887263] shadow-sm">Cargando servicios...</p>
               </div>
             </div>
           </div>
@@ -202,53 +174,24 @@
 
         <!-- TIENDA SECTION -->
         <section id="tienda" aria-label="Tienda" class="w-full flex justify-center items-center pt-24 pb-16 px-4 scroll-mt-[80px]">
-          <div class="w-full max-w-5xl mx-auto rounded-xl shadow-lg flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url('/Images/tienda-bebe.jpg');">
+          <div class="w-full max-w-5xl mx-auto rounded-2xl shadow-lg flex flex-col items-center justify-center p-8 md:p-12 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3)), url('/Images/tienda-bebe.jpg');">
             <div class="relative z-10 flex flex-col items-center gap-10 w-full">
               <div class="flex flex-col gap-4 items-center text-center">
-                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow">Tienda</span>
+                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow-md">Tienda</span>
                 <h2 class="text-white text-3xl font-bold leading-tight tracking-[-0.015em] drop-shadow-md">
                   Productos Seleccionados con Amor
                 </h2>
-                <p class="text-white/90 font-normal leading-normal max-w-[720px] drop-shadow">
+                <p class="text-white font-medium leading-normal max-w-[720px] drop-shadow-md">
                   Todo lo que necesitas, aprobado por nuestras especialistas para tu tranquilidad.
                 </p>
               </div>
               <div id="tienda-productos-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
-                <div class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-full max-w-xs mx-auto items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
-                  <div class="flex flex-col items-center flex-1 w-full text-center">
-                    <img src="https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&w=400&q=80" loading="lazy" alt="Biberón de vidrio" class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
-                    <h3 class="text-[#181411] font-bold text-lg mb-1">Biberones Anticólicos</h3>
-                    <p class="text-[#887263] text-sm mb-4">Para las noches en las que necesitas que papá tome el relevo y cuide su guatita.</p>
-                  </div>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
-                    <span>Adquirir por WhatsApp</span>
-                  </a>
-                </div>
-                <div class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-full max-w-xs mx-auto items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
-                  <div class="flex flex-col items-center flex-1 w-full text-center">
-                    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80" loading="lazy" alt="Portabebé ergonómico" class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
-                    <h3 class="text-[#181411] font-bold text-lg mb-1">Portabebés</h3>
-                    <p class="text-[#887263] text-sm mb-4">Mantén a tu bebé cerca y tus manos libres con total seguridad y comodidad.</p>
-                  </div>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
-                    <span>Adquirir por WhatsApp</span>
-                  </a>
-                </div>
-                <div class="flex flex-col justify-between bg-white rounded-xl border border-[#e5dfdc] p-5 w-full max-w-xs mx-auto items-center transition-all duration-300 hover:-translate-y-2 hover:shadow-lg h-full">
-                  <div class="flex flex-col items-center flex-1 w-full text-center">
-                    <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80" loading="lazy" alt="Pañales ecológicos" class="w-32 h-32 object-cover rounded-lg mb-4 shadow-sm" />
-                    <h3 class="text-[#181411] font-bold text-lg mb-1">Pañales Ecológicos</h3>
-                    <p class="text-[#887263] text-sm mb-4">Máxima suavidad y protección natural para la piel más delicada de tu bebé.</p>
-                  </div>
-                  <a href="https://wa.me/56912345678" target="_blank" rel="noopener" class="bg-[#5b8a72] text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-[#4a735e] transition-colors active:scale-95 w-full text-center flex items-center justify-center gap-2">
-                    <span>Adquirir por WhatsApp</span>
-                  </a>
-                </div>
+                <p class="col-span-full text-center py-10 text-white italic">Cargando productos...</p>
               </div>
               <div class="flex pt-6 justify-center w-full">
-                <button class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 bg-white border border-transparent hover:bg-gray-200 text-[#181411] text-sm font-bold leading-normal tracking-[0.015em] transition-all active:scale-95 shadow-sm">
+                <a href="https://www.mercadolibre.cl/perfil/TU_USUARIO" target="_blank" rel="noopener noreferrer" class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 bg-white border border-transparent hover:bg-gray-200 text-[#181411] text-sm font-bold leading-normal tracking-[0.015em] transition-all active:scale-95 shadow-sm">
                   <span class="truncate">Ver Todos los Productos</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -256,10 +199,10 @@
 
         <!-- TESTIMONIOS SECTION -->
         <section id="testimonios" aria-label="Testimonios" class="w-full flex justify-center items-center pt-24 pb-16 px-4 scroll-mt-[80px]">
-          <div class="w-full max-w-5xl mx-auto rounded-xl shadow-lg flex flex-col items-center justify-center p-8 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url('/Images/testimonios-madre.jpg');">
+          <div class="w-full max-w-5xl mx-auto rounded-2xl shadow-lg flex flex-col items-center justify-center p-8 md:p-12 relative overflow-hidden bg-cover bg-center" style="background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3)), url('/Images/testimonios-madre.jpg');">
             <div class="relative z-10 flex flex-col items-center gap-10 w-full">
               <div class="flex flex-col gap-4 items-center text-center">
-                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow">Testimonios</span>
+                <span class="text-white font-bold text-sm uppercase tracking-wider drop-shadow-md">Testimonios</span>
                 <h2 class="text-white text-3xl font-bold leading-tight tracking-[-0.015em] drop-shadow-md">
                   Mamás que ya son parte de la tribu
                 </h2>
@@ -390,7 +333,22 @@
         <input name="rut" placeholder="RUT (ej: 12.345.678-9)" required class="input-rut p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="RUT o DNI" maxlength="12" />
         <input name="email" type="email" placeholder="Email" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
         <input name="telefono" placeholder="Teléfono" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Teléfono" />
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input name="calle" placeholder="Calle" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Calle" />
+          <input name="numero" placeholder="Número" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Número" />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input name="departamento" placeholder="Depto / Casa (opcional)" class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Departamento" />
+          <input name="comuna" placeholder="Comuna" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Comuna" />
+        </div>
+        <input name="referencia" placeholder="Referencia (opcional)" class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Referencia" />
+        <p class="text-xs text-gray-400 mb-2">Dirección de atención para servicios presenciales.</p>
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Crear mi cuenta</button>
         <p class="text-center text-sm text-[#887263] mt-2">¿Eres colaborador? <button type="button" id="linkCambiarAPrestador" class="text-[#e87a30] underline font-bold">Regístrate aquí</button></p>
       </form>
@@ -412,7 +370,17 @@
           <label class="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" name="tipo" value="cuidadora" class="accent-[#e87a30]"> Cuidadora 24/7</label>
         </div>
         <textarea name="referencias" placeholder="Cuéntanos sobre tu experiencia o links a certificaciones" class="p-3 rounded-lg border border-[#e5dfdc] text-sm focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" rows="3"></textarea>
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">Sube una foto de tu título o certificación (Opcional)</label>
+          <input type="file" id="registro-prestador-certificado" name="certificadoFile" accept="image/*,application/pdf" class="w-full p-2 border border-[#e5dfdc] rounded-lg text-sm file:mr-3 file:rounded file:border-0 file:bg-[#f4eade] file:px-3 file:py-1 file:text-xs file:font-bold" />
+          <p class="text-xs text-gray-400 mt-1">Máximo 2 MB para imágenes (se comprimen); PDF hasta 500 KB. Formatos: JPG, PNG o PDF.</p>
+        </div>
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#887263] text-white font-bold rounded-full py-3 mt-2 hover:bg-[#6b584b] transition-colors active:scale-95 shadow-md">Registrarse como Prestador</button>
       </form>
     </div>
@@ -421,49 +389,45 @@
   <dialog id="modalAgendarCita" class="bg-transparent p-0 m-auto w-full max-w-lg outline-none backdrop:bg-black/50">
     <div class="bg-white rounded-2xl p-8 w-full relative shadow-2xl overflow-y-auto max-h-[90vh]">
       <button type="button" class="btnCerrarModal absolute top-4 right-4 text-2xl text-gray-400 hover:text-[#181411]" aria-label="Cerrar">×</button>
-      <h2 class="text-2xl font-bold mb-2 text-[#181411]">Llamada de Evaluación</h2>
-      <p class="text-sm text-[#887263] mb-6">Agenda 15 minutos gratuitos para conocernos sin presiones.</p>
+      <h2 class="text-2xl font-bold mb-2 text-[#181411]">Agendar Nueva Cita</h2>
+      <p class="text-sm text-[#887263] mb-6">Selecciona servicio, profesional, fecha y horario.</p>
       <form id="reservaForm" class="flex flex-col gap-4" autocomplete="off">
-        <label class="text-sm text-[#181411] font-bold">Nombre:
-          <input type="text" name="nombre" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Nombre" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Email:
-          <input type="email" name="email" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Teléfono:
-          <input type="tel" name="telefono" required pattern="[0-9+ ]{7,15}" class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" placeholder="Ej: +56912345678" aria-label="Teléfono" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Fecha sugerida:
-          <div class="flex items-center">
-            <input type="date" name="fecha" id="fechaAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Fecha" />
-            <button type="button" id="btnAbrirModalCalendarioAnon" class="ml-2 p-3 bg-[#fdf5f0] text-[#e87a30] rounded-lg hover:bg-[#f4e2d8] transition-colors" aria-label="Abrir calendario">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256">
-                <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A24,24,0,0,0,24,56V208a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V56A24,24,0,0,0,208,32Zm8,176a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V88H216Zm0-136H40V56a8,8,0,0,1,8-8H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24a8,8,0,0,1,8,8Z"></path>
-              </svg>
-            </button>
-          </div>
-        </label>
-        <label class="text-sm text-[#181411] font-bold">Hora:
-          <input type="time" name="hora" id="horaAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Hora" />
-        </label>
-        <label class="text-sm text-[#181411] font-bold">¿En qué necesitas apoyo?:
-          <select name="servicio" id="servicioAnon" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Servicio">
+        <!-- 1. Servicio -->
+        <label class="text-sm text-[#181411] font-bold">Servicio:
+          <select name="servicio" id="servicio" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Servicio">
             <option value="">Selecciona...</option>
-            <option value="Cuidador">Apoyo de Cuidadora</option>
-            <option value="Consultor">Asesoría de Lactancia</option>
+            <option value="consejera">Consejería (Asesoría de Lactancia)</option>
+            <option value="cuidadora">Cuidadora (Apoyo 24/7)</option>
           </select>
         </label>
-        <label class="text-sm text-[#181411] font-bold hidden" id="labelProfesionalAnon">Especialista:
-          <select name="profesionalId" id="profesionalAnon" disabled required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] bg-gray-50 font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Profesional">
+
+        <!-- 2. Profesional (dinámico según servicio) -->
+        <label id="labelProfesional" class="text-sm text-[#181411] font-bold hidden">Profesional:
+          <select name="profesionalId" id="profesionalId" disabled required class="w-full mt-1 p-2 border rounded bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50 cursor-pointer" aria-label="Profesional">
             <option value="">Selecciona profesional...</option>
           </select>
         </label>
-        <label class="text-sm text-[#181411] font-bold">Duración estimada del apoyo (horas):
-          <input type="number" name="duracion" id="duracion" min="1" max="40" required class="w-full mt-1 p-3 rounded-lg border border-[#e5dfdc] font-normal focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Duración" />
+
+        <!-- 3. Fecha -->
+        <label class="text-sm text-[#181411] font-bold">Fecha:
+          <input type="date" name="fecha" id="fecha" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Fecha" />
         </label>
-        <span id="avisoHorarioAnon" class="text-xs text-[#e87a30] font-medium"></span>
-        <span id="avisoReservaAnon" class="text-xs text-red-600 font-medium"></span>
-        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-4 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Confirmar Evaluación</button>
+
+        <!-- 4. Hora de Inicio (select con bloques disponibles) -->
+        <label class="text-sm text-[#181411] font-bold">Hora de Inicio:
+          <select name="hora" id="horaCita" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Hora de Inicio">
+            <option value="">Selecciona fecha y profesional primero</option>
+          </select>
+        </label>
+
+        <!-- 5. Duración Estimada -->
+        <label class="text-sm text-[#181411] font-bold">Duración estimada (horas):
+          <input type="number" name="duracion" id="duracion" min="1" max="40" required class="w-full mt-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Duración" />
+        </label>
+
+        <span id="avisoHorario" class="text-xs text-[#e87a30] font-medium"></span>
+        <span id="avisoReserva" class="text-xs text-red-600 font-medium"></span>
+        <button type="submit" class="bg-[#e87a30] text-white font-bold rounded-full py-3 mt-4 hover:bg-[#d66a20] transition-colors active:scale-95 shadow-md">Confirmar Reserva</button>
       </form>
       <p class="text-[#887263] text-xs font-normal leading-normal pt-5 text-center w-full">Los cuidadores están disponibles 24/7. Las consultas de L-V 8am-6pm, Sáb 9am-5pm.</p>
     </div>
@@ -507,7 +471,12 @@
       <h2 class="text-2xl font-bold mb-6 text-[#181411] text-center">Ingresar a mi cuenta</h2>
       <form id="loginForm" class="flex flex-col gap-4" autocomplete="off">
         <input name="email" type="email" placeholder="Email" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Email" />
-        <input name="password" type="password" placeholder="Contraseña" required class="p-3 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+        <div class="relative w-full">
+          <input name="password" type="password" placeholder="Contraseña" required class="w-full p-3 pr-10 rounded-lg border border-[#e5dfdc] focus:outline-none focus:ring-2 focus:ring-[#e87a30]/50" aria-label="Contraseña" />
+          <button type="button" class="btn-toggle-password absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-[#e87a30]" aria-label="Mostrar contraseña">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
         <button type="submit" class="bg-[#181411] text-white font-bold rounded-full py-3 mt-2 hover:bg-gray-800 transition-colors active:scale-95 shadow-md">Entrar</button>
       </form>
       <div class="mt-6 text-center space-y-3">
@@ -538,6 +507,43 @@
         d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
     </svg>
   </a>
+
+  <!-- Script con la lógica exacta y limpia de visibilidad -->
+  <script type="module">
+    import { auth } from './src/firebase.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+
+    onAuthStateChanged(auth, (user) => {
+      const btnIngresarDesktop = document.getElementById('btnAbrirModalLogin');
+      const btnRegistroDesktop = document.getElementById('btnAbrirModalRegistroPadre');
+      const btnIrMiCuenta = document.getElementById('btnIrMiCuenta');
+
+      const btnMobileLogin = document.getElementById('btnMobileLogin');
+      const btnMobileRegistro = document.getElementById('btnMobileRegistro');
+
+      if (user) {
+        // SESIÓN ACTIVA: Ocultamos "Ingresar" y "Registrarse", y mostramos únicamente "Mi Cuenta"
+        if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'none';
+        if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'none';
+        if (btnIrMiCuenta) {
+          btnIrMiCuenta.classList.remove('hidden');
+          btnIrMiCuenta.classList.add('flex');
+        }
+        if (btnMobileLogin) btnMobileLogin.style.display = 'none';
+        if (btnMobileRegistro) btnMobileRegistro.style.display = 'none';
+      } else {
+        // SIN SESIÓN: Mostramos "Ingresar" y "Registrarse" con sus estilos originales, y ocultamos "Mi Cuenta"
+        if (btnIngresarDesktop) btnIngresarDesktop.style.display = 'inline-flex';
+        if (btnRegistroDesktop) btnRegistroDesktop.style.display = 'inline-flex';
+        if (btnIrMiCuenta) {
+          btnIrMiCuenta.classList.remove('flex');
+          btnIrMiCuenta.classList.add('hidden');
+        }
+        if (btnMobileLogin) btnMobileLogin.style.display = 'inline-flex';
+        if (btnMobileRegistro) btnMobileRegistro.style.display = 'inline-flex';
+      }
+    });
+  </script>
 
   <script type="module" src="src/main.js"></script>
 </body>
