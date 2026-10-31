@@ -8,7 +8,7 @@ import {
 import { approveUserWithAudit } from '../../api/admin.js';
 import { escapeHTML } from '../../utils/html.js';
 import { hasRole } from '../../utils/roles.js';
-import { formatFirestoreDate } from '../../utils/helpers.js';
+import { formatFirestoreDate, fileToBase64 } from '../../utils/helpers.js';
 import { auth } from '../../firebase.js';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { showConfirmModal } from '../../modales.js';
@@ -165,7 +165,11 @@ async function loadAllUsersTable() {
           form.elements.nombre.value = user.nombre || '';
           form.elements.email.value = user.email || '';
           form.elements.telefono.value = user.telefono || '';
+          form.querySelector('#edit-user-rut').value = user.rut || '';
           form.elements.estado.value = user.estado || 'pendiente';
+          form.querySelector('#edit-user-referencias').value = user.referencias || '';
+          form.querySelector('#edit-user-certificado').value = '';
+          form.querySelector('#msg-certificado-cargado').classList.toggle('hidden', !user.certificadoUrl);
           const certificateContainer = form.querySelector('#edit-user-certificate');
           const certificateUrl = getCertificateDataUrl(user.certificadoUrl);
           if (certificateContainer) {
@@ -183,6 +187,7 @@ async function loadAllUsersTable() {
           form.querySelector('#edit-user-comuna').value = direccion.comuna || '';
           form.querySelector('#edit-user-referencia').value = direccion.referencia || '';
           const direccionContainer = document.getElementById('container-direccion-admin');
+          const prestadorExtrasContainer = document.getElementById('container-prestador-extras');
           const tipsPermissionContainer = document.getElementById('edit-tips-permission-container');
           const tipsPermissionInput = document.getElementById('edit-user-tips');
           const roleInputs = form.querySelectorAll('input[name="rol"]');
@@ -192,6 +197,7 @@ async function loadAllUsersTable() {
               .map(input => input.value);
             const esPrestador = rolesActuales.includes('consejera') || rolesActuales.includes('cuidadora');
             direccionContainer.classList.toggle('hidden', !rolesActuales.includes('padre'));
+            prestadorExtrasContainer.classList.toggle('hidden', !esPrestador);
             tipsPermissionContainer.classList.toggle('hidden', !esPrestador);
             if (!esPrestador) tipsPermissionInput.checked = false;
           };
@@ -263,6 +269,11 @@ async function loadAllUsersTable() {
         const roles = Array.from(editForm.querySelectorAll('input[name="rol"]:checked')).map(input => input.value);
         const esPrestador = roles.includes('consejera') || roles.includes('cuidadora');
         const puedeCrearTips = esPrestador && document.getElementById('edit-user-tips').checked;
+        const rut = document.getElementById('edit-user-rut').value.trim();
+        const referencias = esPrestador ? document.getElementById('edit-user-referencias').value.trim() : undefined;
+        const certificadoFile = document.getElementById('edit-user-certificado').files[0];
+        const user = users.find(item => item.id === uid);
+        let certificadoUrl = esPrestador ? user?.certificadoUrl || null : undefined;
         const direccion = roles.includes('padre') ? {
           calle: document.getElementById('edit-user-calle').value.trim(),
           numero: document.getElementById('edit-user-numero').value.trim(),
@@ -277,24 +288,52 @@ async function loadAllUsersTable() {
           showToast('Selecciona al menos un rol.', 'error');
           return;
         }
+        if (esPrestador && certificadoFile) {
+          const maxImageBytes = 2 * 1024 * 1024;
+          const maxPdfBytes = 500 * 1024;
+          const isImage = ['image/jpeg', 'image/png'].includes(certificadoFile.type);
+          const isPdf = certificadoFile.type === 'application/pdf';
+
+          if (!isImage && !isPdf) {
+            showToast('El certificado debe estar en formato JPG, PNG o PDF.', 'error');
+            return;
+          }
+          if (certificadoFile.size > maxImageBytes || (isPdf && certificadoFile.size > maxPdfBytes)) {
+            showToast(isPdf
+              ? 'El archivo PDF no puede superar los 500 KB.'
+              : 'La imagen no puede superar los 2 MB.',
+            'error');
+            return;
+          }
+        }
         try {
+          if (esPrestador && certificadoFile) {
+            certificadoUrl = await fileToBase64(certificadoFile);
+          }
           await updateUserProfile(uid, {
             nombre: formData.get('nombre'),
             email: formData.get('email'),
             telefono: formData.get('telefono'),
+            rut,
             estado: formData.get('estado'),
             rol: roles,
             puedeCrearTips,
+            referencias,
+            certificadoUrl,
             direccion
           });
-          const user = users.find(item => item.id === uid);
           if (user) {
             user.nombre = formData.get('nombre');
             user.email = formData.get('email');
             user.telefono = formData.get('telefono');
+            user.rut = rut;
             user.estado = formData.get('estado');
             user.rol = roles;
             user.puedeCrearTips = puedeCrearTips;
+            if (esPrestador) {
+              user.referencias = referencias;
+              user.certificadoUrl = certificadoUrl;
+            }
             if (direccion) user.direccion = direccion;
           }
           editModal?.close();

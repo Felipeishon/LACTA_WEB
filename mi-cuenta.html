@@ -146,6 +146,7 @@
       <form id="formEdicionUsuario" class="flex flex-col gap-4" autocomplete="off">
         <input type="hidden" name="uid" />
         <div id="edit-user-certificate" class="hidden"></div>
+        
         <label class="text-xs font-bold text-gray-700">Nombre
           <input type="text" name="nombre" required class="w-full mt-1 p-2 border rounded text-sm" />
         </label>
@@ -155,6 +156,24 @@
         <label class="text-xs font-bold text-gray-700">Teléfono
           <input type="tel" id="edit-user-telefono" name="telefono" class="w-full mt-1 p-2 border rounded text-sm" />
         </label>
+        
+        <!-- CAMPO RUT -->
+        <div class="mb-3">
+          <label class="block text-xs font-bold text-gray-600 mb-1">RUT</label>
+          <input type="text" id="edit-user-rut" placeholder="Ej: 12.345.678-9" class="w-full p-2 border rounded-xl text-sm">
+        </div>
+
+        <!-- CONTENEDOR PRESTADOR (Experiencia y Certificado) -->
+        <div id="container-prestador-extras" class="mb-3 p-3 bg-blue-50 rounded-xl border border-blue-100 hidden">
+          <label class="block text-xs font-bold text-gray-600 mb-1">Experiencia / Certificaciones (Texto)</label>
+          <textarea id="edit-user-referencias" rows="2" placeholder="Escribe la experiencia..." class="w-full p-2 border rounded-xl text-sm mb-2"></textarea>
+          
+          <label class="block text-xs font-bold text-gray-600 mb-1">Subir nuevo Certificado (Imagen o PDF)</label>
+          <input type="file" id="edit-user-certificado" accept="image/*,application/pdf" class="w-full p-2 border rounded-xl text-sm bg-white">
+          <p id="msg-certificado-cargado" class="text-xs text-green-600 mt-1 hidden">✅ Certificado actual cargado (Sube uno nuevo para reemplazarlo)</p>
+        </div>
+
+        <!-- CONTENEDOR DIRECCIÓN (Padres) -->
         <div id="container-direccion-admin" class="hidden mt-3 space-y-2">
           <label class="block text-xs font-bold text-gray-600">Dirección</label>
           <div class="grid grid-cols-2 gap-2">
@@ -167,6 +186,7 @@
           </div>
           <input type="text" id="edit-user-referencia" placeholder="Referencia (opcional)" class="p-2 border rounded-xl text-sm w-full" />
         </div>
+
         <label class="text-xs font-bold text-gray-700">Estado
           <select name="estado" class="w-full mt-1 p-2 border rounded text-sm">
             <option value="activo">Activo</option>

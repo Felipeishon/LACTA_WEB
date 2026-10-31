@@ -238,6 +238,7 @@ export async function updateUserProfile(uid, updateData) {
         nombre: String(updateData.nombre || '').trim(),
         email: String(updateData.email || '').trim(),
         telefono: String(updateData.telefono || '').trim(),
+        rut: String(updateData.rut || '').trim(),
         estado: updateData.estado,
         rol: roles,
         puedeCrearTips: (roles.includes('consejera') || roles.includes('cuidadora')) &&
@@ -258,6 +259,10 @@ export async function updateUserProfile(uid, updateData) {
             referencia,
             texto: [[calle, numero].filter(Boolean).join(' '), comuna].filter(Boolean).join(', ')
         };
+    }
+    if (roles.includes('consejera') || roles.includes('cuidadora')) {
+        changes.referencias = String(updateData.referencias || '').trim();
+        changes.certificadoUrl = updateData.certificadoUrl || null;
     }
     if (!adminUid || typeof uid !== 'string' || !uid.trim()) throw new Error('No se pudo identificar la actualización.');
     if (!changes.nombre || !changes.email || !allowedStatuses.includes(changes.estado)) throw new Error('Los datos del usuario no son válidos.');
