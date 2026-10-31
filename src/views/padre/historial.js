@@ -90,22 +90,25 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
             fechaStr = reg.fechaObj.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           }
 
-          const badgeClass = esFicha ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700';
-          const badgeLabel = esFicha ? '🤱 Evaluación de Atención' : '🍼 Evaluación de Cuidado';
-
-          const title = escapeHTML(reg.titulo || (esFicha ? 'Atención de Consejería' : 'Reporte de Cuidado'));
+          const title = esFicha ? '📝 Evaluación' : '🍼 Bitácora';
           const provider = escapeHTML(reg.prestadorNombre || reg.consejeraNombre || 'Profesional');
-          const observations = escapeHTML(reg.observaciones || reg.diagnostico || reg.resumen || 'Sin observaciones detalladas.');
+          const observations = esFicha ? `
+            <p><strong>Motivo:</strong> ${escapeHTML(reg.motivoConsulta || 'N/A')}</p>
+            <p><strong>Evaluación:</strong> ${escapeHTML(reg.evaluacion || 'N/A')}</p>
+            <p><strong>Plan:</strong> ${escapeHTML(reg.planAccion || 'N/A')}</p>
+          ` : `
+            <p><strong>Alimentación:</strong> ${escapeHTML(reg.tipoAlimentacion || 'N/A')} • <strong>Sueño:</strong> ${escapeHTML(reg.horasSueno || 0)}h • <strong>Pañales:</strong> ${escapeHTML(reg.cantidadPanales || 0)}</p>
+            <p class="mt-1"><strong>Obs:</strong> ${escapeHTML(reg.observaciones || 'Sin observaciones')}</p>
+          `;
 
           return `
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative pl-6 border-l-4 ${esFicha ? 'border-indigo-500' : 'border-emerald-500'}">
               <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
                 <div>
-                  <span class="text-xs text-gray-400 font-bold block">${escapeHTML(fechaStr)}</span>
-                  <h4 class="font-bold text-base text-[#181411]">${title}</h4>
+                  <span class="text-xs text-gray-400 font-bold block mb-1">${escapeHTML(fechaStr)}</span>
+                  <h4 class="font-bold text-base text-[#181411] mt-1">${title}</h4>
                   <p class="text-xs text-[#887263]">Prestador: ${provider}</p>
                 </div>
-                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${badgeClass}">${badgeLabel}</span>
               </div>
               <div class="text-sm text-gray-600 mt-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
                 ${observations}
