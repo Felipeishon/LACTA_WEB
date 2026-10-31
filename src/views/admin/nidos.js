@@ -280,7 +280,7 @@ async function renderDetalleNido(nidoId) {
         <div class="border border-gray-100 rounded-lg p-4 mb-3 bg-white shadow-sm hover:shadow-md transition-shadow">
           <div class="flex justify-between items-start mb-2">
             <div>
-              <p class="font-bold text-sm text-[#181411]">Ficha de Atención</p>
+              <p class="font-bold text-sm text-[#181411]">Evaluación de Atención</p>
               <p class="text-xs text-gray-500">${escapeHTML(fechaF)}</p>
               <p class="text-xs text-purple-600 font-semibold mt-0.5">${escapeHTML(nombreConsejera)}</p>
             </div>
@@ -338,7 +338,7 @@ async function renderDetalleNido(nidoId) {
           </div>
 
           <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h3 class="font-bold text-lg mb-4 border-b pb-2">💜 Fichas de Atención (${fichas.length})</h3>
+            <h3 class="font-bold text-lg mb-4 border-b pb-2">💜 Evaluaciones de Atención (${fichas.length})</h3>
             <div class="max-h-[400px] overflow-y-auto pr-2">
               ${fichas.length > 0 ? fichas.map(renderFicha).join('') : '<p class="text-sm text-gray-400 italic">No hay fichas de atención registradas para este nido.</p>'}
             </div>
