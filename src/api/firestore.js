@@ -619,6 +619,25 @@ export async function fetchServiciosActivos() {
     }
 }
 
+export async function fetchAllServicios() {
+    try {
+        const snap = await getDocs(collection(db, "servicios"));
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener todos los servicios:", error);
+        throw error;
+    }
+}
+
+export async function toggleServicioStatus(id, nuevoEstado) {
+    try {
+        await updateDoc(doc(db, "servicios", id), { activo: nuevoEstado });
+    } catch (error) {
+        console.error("Error al actualizar el estado del servicio:", error);
+        throw error;
+    }
+}
+
 export async function createServicio(data) {
     try {
         const nombre = String(data.nombre || '').trim();
