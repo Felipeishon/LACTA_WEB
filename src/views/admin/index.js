@@ -1,6 +1,6 @@
 import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
-import { fetchAdminStats, getPendingAppointments, getPendingTips, createProduct, fetchAllServicios, toggleServicioStatus, createServicio, updateServicio, deleteServicio } from '../../api/firestore.js';
+import { fetchAdminStats, getPendingAppointments, getPendingTips, createProduct, fetchAllServicios, toggleServicioStatus, createServicio, updateServicio, deleteServicio, fetchAllEncuestas, approveEncuesta, deleteEncuesta } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { renderAdminInventory } from './tienda.js';
 import { renderAdminTipsManagement } from './tips.js';
@@ -110,6 +110,85 @@ async function renderAdminServicesList(onEdit) {
   } catch (error) {
     console.error('Error al cargar servicios para administración:', error);
     servicesList.innerHTML = '<p class="text-sm font-medium text-red-600">No se pudieron cargar los servicios.</p>';
+  }
+}
+
+async function renderAdminEncuestasList() {
+  const container = document.getElementById('admin-encuestas-list');
+  if (!container) return;
+
+  try {
+    const encuestas = await fetchAllEncuestas();
+    if (encuestas.length === 0) {
+      container.innerHTML = '<div class="rounded-xl border border-gray-100 bg-white p-8 text-center italic text-gray-400">Aún no hay reseñas.</div>';
+      return;
+    }
+
+    container.innerHTML = encuestas.map(encuesta => {
+      const calificacion = Math.min(5, Math.max(0, Number(encuesta.calificacion) || 0));
+      const estrellas = '⭐'.repeat(calificacion) + '☆'.repeat(5 - calificacion);
+      const estadoAprobado = encuesta.estado === 'aprobado';
+      const botonAprobar = encuesta.publicarTestimonio === true && !estadoAprobado
+        ? `<button type="button" data-approve-encuesta="${escapeHTML(encuesta.id)}" class="rounded-lg bg-green-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-green-600">Aprobar para Web</button>`
+        : estadoAprobado
+          ? '<span class="text-xs font-bold text-green-600">✅ Publicado</span>'
+          : '';
+
+      return `
+        <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md md:p-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 flex-1">
+              <div class="mb-2 text-xl" aria-label="Calificación: ${calificacion} de 5">${estrellas}</div>
+              <p class="mb-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">${escapeHTML(encuesta.comentario || 'Sin comentario')}</p>
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                <span>Por: <strong class="text-gray-700">${escapeHTML(encuesta.nombreTestimonio || 'Anónimo')}</strong></span>
+                <span>Prestador: <strong class="text-gray-700">${escapeHTML(encuesta.prestadorNombre || 'No especificado')}</strong></span>
+              </div>
+              ${encuesta.publicarTestimonio !== true ? '<p class="mt-2 text-xs italic text-gray-400">El padre no autorizó publicar este comentario.</p>' : ''}
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
+              ${botonAprobar}
+              <button type="button" data-delete-encuesta="${escapeHTML(encuesta.id)}" class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100">Eliminar</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-approve-encuesta]').forEach(button => {
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          await approveEncuesta(button.dataset.approveEncuesta);
+          showToast('Testimonio aprobado para la web.', 'success');
+          await renderAdminEncuestasList();
+        } catch (error) {
+          console.error('Error al aprobar testimonio:', error);
+          button.disabled = false;
+          showToast(error.message || 'No se pudo aprobar el testimonio.', 'error');
+        }
+      });
+    });
+
+    container.querySelectorAll('[data-delete-encuesta]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const confirmado = await showConfirmModal('Eliminar Reseña', '¿Estás seguro de eliminar esta reseña? Esta acción no se puede deshacer.');
+        if (!confirmado) return;
+        button.disabled = true;
+        try {
+          await deleteEncuesta(button.dataset.deleteEncuesta);
+          showToast('Reseña eliminada correctamente.', 'success');
+          await renderAdminEncuestasList();
+        } catch (error) {
+          console.error('Error al eliminar reseña:', error);
+          button.disabled = false;
+          showToast(error.message || 'No se pudo eliminar la reseña.', 'error');
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error al cargar reseñas administrativas:', error);
+    container.innerHTML = '<p class="rounded-xl bg-white p-6 text-center font-medium text-red-600">No se pudieron cargar las reseñas.</p>';
   }
 }
 
@@ -374,6 +453,15 @@ async function renderAdminTab(activeTab) {
       </div>
     `;
     await renderAdminTipsManagement();
+
+  } else if (activeTab === 'admin_encuestas') {
+    dashboardContent.innerHTML = `
+      <h2 class="text-2xl font-black text-[#181411] mb-6">Gestión de Reseñas y Testimonios</h2>
+      <div id="admin-encuestas-list" class="space-y-4">
+        <p class="rounded-xl bg-white p-6 text-center italic text-gray-400">Cargando reseñas...</p>
+      </div>
+    `;
+    await renderAdminEncuestasList();
 
   } else if (activeTab === 'admin_servicios') {
     let idServicioEditando = null;

@@ -7,7 +7,7 @@ import { initNavigation } from './ui/navigation.js';
 import { initTipsModal } from './views/tips.js';
 import { auth } from './firebase.js';
 import { onAuthStateChanged } from 'firebase/auth';
-import { fetchActiveProducts, fetchServiciosActivos } from './api/firestore.js';
+import { fetchActiveProducts, fetchServiciosActivos, fetchTestimoniosAprobados } from './api/firestore.js';
 import { escapeHTML } from './utils/html.js';
 
 async function renderServicios() {
@@ -89,6 +89,40 @@ async function renderLandingProducts() {
   }
 }
 
+async function renderLandingTestimonios() {
+  const grid = document.getElementById('testimonios-grid');
+  if (!grid) return;
+
+  try {
+    const testimonios = await fetchTestimoniosAprobados();
+    if (testimonios.length === 0) {
+      grid.innerHTML = '<p class="col-span-full text-center text-white/70 italic">Pronto compartiremos testimonios de nuestra comunidad.</p>';
+      return;
+    }
+
+    grid.innerHTML = testimonios.map(testimonio => {
+      const calificacion = Math.min(5, Math.max(0, Number(testimonio.calificacion) || 0));
+      const estrellas = '⭐'.repeat(calificacion);
+
+      return `
+        <article class="bg-white rounded-xl border border-[#e5dfdc] p-8 w-full max-w-xs mx-auto shadow-sm text-center flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
+          <div>
+            <p class="mb-3 text-lg" aria-label="Calificación: ${calificacion} de 5">${estrellas}</p>
+            <p class="text-[#181411] text-base mb-6 italic">"${escapeHTML(testimonio.comentario || '')}"</p>
+          </div>
+          <div>
+            <span class="block text-[#e87a30] text-lg font-bold">${escapeHTML(testimonio.nombreTestimonio || 'Anónimo')}</span>
+            <span class="block text-[#887263] text-sm">Paciente</span>
+          </div>
+        </article>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('Error al cargar testimonios de la landing:', error);
+    grid.innerHTML = '<p class="col-span-full text-center text-white/70 italic">No fue posible cargar los testimonios.</p>';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initModales();
   initCalendario();
@@ -97,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTipsModal(); // Inicializar el modal de tips
   renderServicios();
   renderLandingProducts();
+  renderLandingTestimonios();
 
   // --- Observador de sesión: adapta el navbar según el estado de autenticación ---
   const btnLogin = document.getElementById('btnAbrirModalLogin');

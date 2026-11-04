@@ -543,6 +543,63 @@ export async function getEncuestasByNido(nidoId) {
     }
 }
 
+export async function fetchAllEncuestas() {
+    try {
+        const q = query(collection(db, "encuestas"), orderBy("fecha", "desc"));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener todas las encuestas:", error);
+        throw error;
+    }
+}
+
+export async function fetchTestimoniosAprobados() {
+    try {
+        const q = query(collection(db, "encuestas"), where("estado", "==", "aprobado"));
+        const snap = await getDocs(q);
+        let testimonios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        testimonios = testimonios.filter(testimonio => testimonio.publicarTestimonio === true);
+        testimonios.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        return testimonios.slice(0, 3);
+    } catch (error) {
+        console.error("Error al obtener testimonios aprobados:", error);
+        throw error;
+    }
+}
+
+export async function approveEncuesta(encuestaId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof encuestaId !== 'string' || !encuestaId.trim()) throw new Error('No se pudo identificar la encuesta.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const encuestaRef = doc(db, 'encuestas', encuestaId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.update(encuestaRef, { estado: 'aprobado' });
+        transaction.set(auditLogRef, { adminUid, action: 'APPROVE_ENCUESTA', targetType: 'ENCUESTA', targetId: encuestaId, timestamp: serverTimestamp() });
+    });
+}
+
+export async function deleteEncuesta(encuestaId) {
+    const adminUid = auth.currentUser?.uid;
+    if (!adminUid || typeof encuestaId !== 'string' || !encuestaId.trim()) throw new Error('No se pudo identificar la encuesta.');
+    await runTransaction(db, async transaction => {
+        const adminRef = doc(db, 'usuarios', adminUid);
+        const encuestaRef = doc(db, 'encuestas', encuestaId);
+        const auditLogRef = doc(collection(db, 'auditLogs'));
+        const adminSnap = await transaction.get(adminRef);
+        if (!adminSnap.exists() || !Array.isArray(adminSnap.data().rol) || !adminSnap.data().rol.includes('admin')) {
+            throw new Error('La cuenta actual no tiene permisos de administrador.');
+        }
+        transaction.delete(encuestaRef);
+        transaction.set(auditLogRef, { adminUid, action: 'DELETE_ENCUESTA', targetType: 'ENCUESTA', targetId: encuestaId, reason: 'Moderada desde el panel de administración.', timestamp: serverTimestamp() });
+    });
+}
+
 export async function saveFichaCuidado(fichaData) {
     try {
         const docRef = await addDoc(collection(db, "bitacoras"), { ...fichaData, creadoEn: new Date().toISOString() });

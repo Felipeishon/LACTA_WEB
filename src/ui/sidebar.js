@@ -30,6 +30,7 @@ const NAV_CONFIG = {
     { label: "Registros", icon: "📋", action: "admin_registros" },
     { label: "Tienda / Inventario", icon: "🛍️️", action: "admin_tienda" },
     { label: "Gestión de Tips", icon: "💡", action: "admin_tips" },
+    { label: "Reseñas", icon: "⭐", action: "admin_encuestas" },
     { label: "Servicios", icon: "🩺", action: "admin_servicios" }
   ]
 };

@@ -156,7 +156,7 @@ service cloud.firestore {
     }
 
     match /encuestas/{encuestaId} {
-      allow read, list: if request.auth != null;
+      allow read, list: if resource.data.estado == 'aprobado' || request.auth != null;
       allow create: if request.auth != null && request.resource.data.padreUid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
