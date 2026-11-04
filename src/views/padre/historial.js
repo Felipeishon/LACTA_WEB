@@ -1,5 +1,7 @@
-import { fetchFichasAtencionPorNido, fetchFichasCuidadoPorNido } from '../../api/firestore.js';
+import { fetchFichasAtencionPorNido, fetchFichasCuidadoPorNido, getEncuestasByNido, saveEncuesta } from '../../api/firestore.js';
+import { auth } from '../../firebase.js';
 import { escapeHTML } from '../../utils/html.js';
+import { showToast } from '../../ui/notifications.js';
 
 export async function renderPadreHistorial(dashboardContent, nidoId) {
     dashboardContent.innerHTML = `
@@ -41,13 +43,16 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
     try {
       let fichasAtencion = [];
       let bitacoras = [];
+      let encuestasPrevias = [];
 
       if (nidoId) {
-        [fichasAtencion, bitacoras] = await Promise.all([
+        [fichasAtencion, bitacoras, encuestasPrevias] = await Promise.all([
           fetchFichasAtencionPorNido(nidoId),
-          fetchFichasCuidadoPorNido(nidoId)
+          fetchFichasCuidadoPorNido(nidoId),
+          getEncuestasByNido(nidoId)
         ]);
       }
+      const reservasCalificadas = encuestasPrevias.map(encuesta => encuesta.reservaId);
 
       const parsearFecha = (rawDate) => {
         if (!rawDate) return null;
@@ -92,6 +97,19 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
 
           const title = esFicha ? '📝 Evaluación' : '🍼 Bitácora';
           const provider = escapeHTML(reg.prestadorNombre || reg.consejeraNombre || 'Profesional');
+          const yaCalificada = reservasCalificadas.includes(reg.reservaId);
+          const botonCalificar = !yaCalificada && reg.reservaId
+            ? `
+              <button class="btn-calificar mt-3 text-xs font-bold bg-[#f4eade] text-[#e87a30] hover:bg-[#e8dcd0] px-3 py-1.5 rounded-lg transition"
+                data-reserva="${escapeHTML(reg.reservaId)}"
+                data-prestador="${escapeHTML(reg.prestadorId || reg.consejeraId || '')}"
+                data-nombre="${provider}">
+                ⭐ Calificar Atención
+              </button>
+            `
+            : yaCalificada
+              ? '<span class="text-xs text-green-600 font-bold mt-3 block">✅ Calificación enviada</span>'
+              : '';
           const observations = esFicha ? `
             <p><strong>Motivo:</strong> ${escapeHTML(reg.motivoConsulta || 'N/A')}</p>
             <p><strong>Evaluación:</strong> ${escapeHTML(reg.evaluacion || 'N/A')}</p>
@@ -113,6 +131,7 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
               <div class="text-sm text-gray-600 mt-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
                 ${observations}
               </div>
+              ${botonCalificar}
             </div>
           `;
         }).join('');
@@ -144,6 +163,126 @@ export async function renderPadreHistorial(dashboardContent, nidoId) {
       };
 
       renderRegistros(historialCombinado);
+
+      contenedorLista?.addEventListener('click', event => {
+        const botonCalificar = event.target?.closest?.('.btn-calificar');
+        if (!botonCalificar) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4';
+        modal.innerHTML = `
+          <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="titulo-encuesta">
+            <div class="mb-4 flex items-start justify-between gap-4">
+              <h3 id="titulo-encuesta" class="text-xl font-black text-[#181411]">Calificar a ${escapeHTML(botonCalificar.dataset.nombre || 'Profesional')}</h3>
+              <button type="button" data-cerrar-encuesta class="text-xl text-gray-400 hover:text-gray-700" aria-label="Cerrar">×</button>
+            </div>
+            <form id="form-encuesta">
+              <div id="selector-estrellas" class="flex justify-center gap-2 my-4 text-4xl cursor-pointer">
+                <span data-val="1" class="estrella text-gray-300 hover:text-yellow-400 transition-colors">★</span>
+                <span data-val="2" class="estrella text-gray-300 hover:text-yellow-400 transition-colors">★</span>
+                <span data-val="3" class="estrella text-gray-300 hover:text-yellow-400 transition-colors">★</span>
+                <span data-val="4" class="estrella text-gray-300 hover:text-yellow-400 transition-colors">★</span>
+                <span data-val="5" class="estrella text-gray-300 hover:text-yellow-400 transition-colors">★</span>
+              </div>
+              <input type="hidden" id="valor-calificacion" value="0">
+              <textarea id="comentario-encuesta" placeholder="¿Cómo fue tu experiencia? (Opcional)" class="mb-4 min-h-24 w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-[#e87a30] focus:outline-none"></textarea>
+              <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="check-publicar-testimonio" class="w-4 h-4 text-[#e87a30] rounded focus:ring-[#e87a30]">
+                  <span class="text-sm font-bold text-gray-700">Autorizo publicar mi comentario como testimonio</span>
+                </label>
+
+                <div id="container-nombre-testimonio" class="hidden mt-2">
+                  <label class="block text-xs font-bold text-gray-600 mb-1">¿Cómo quieres aparecer?</label>
+                  <input type="text" id="input-nombre-testimonio" placeholder="Ej: María P." maxlength="30" class="w-full p-2 border rounded-xl text-sm">
+                </div>
+              </div>
+              <button type="submit" class="w-full rounded-lg bg-[#e87a30] px-4 py-2 font-bold text-white transition hover:bg-[#cf6825]">Enviar Calificación</button>
+            </form>
+          </div>
+        `;
+        document.body.append(modal);
+
+        let calificacionSeleccionada = 0;
+        const estrellas = modal.querySelectorAll('.estrella');
+        const inputCalificacion = modal.querySelector('#valor-calificacion');
+
+        estrellas.forEach(estrella => {
+          estrella.addEventListener('click', event => {
+            const valor = parseInt(event.currentTarget.dataset.val, 10);
+            calificacionSeleccionada = valor;
+            inputCalificacion.value = valor;
+
+            estrellas.forEach((est, index) => {
+              if (index < valor) {
+                est.classList.remove('text-gray-300');
+                est.classList.add('text-yellow-400');
+              } else {
+                est.classList.remove('text-yellow-400');
+                est.classList.add('text-gray-300');
+              }
+            });
+          });
+        });
+
+        const checkPublicarTestimonio = modal.querySelector('#check-publicar-testimonio');
+        const containerNombreTestimonio = modal.querySelector('#container-nombre-testimonio');
+        const inputNombreTestimonio = modal.querySelector('#input-nombre-testimonio');
+        checkPublicarTestimonio.addEventListener('change', () => {
+          containerNombreTestimonio.classList.toggle('hidden', !checkPublicarTestimonio.checked);
+          if (!checkPublicarTestimonio.checked) inputNombreTestimonio.value = '';
+        });
+
+        const cerrarModal = () => modal.remove();
+        modal.addEventListener('click', event => {
+          const botonCerrar = modal.querySelector('[data-cerrar-encuesta]');
+          if (event.target === modal || botonCerrar?.contains(event.target)) {
+            cerrarModal();
+          }
+        });
+
+        modal.querySelector('#form-encuesta')?.addEventListener('submit', async event => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const botonEnviar = form.querySelector('button[type="submit"]');
+          if (calificacionSeleccionada === 0) {
+            showToast('Por favor selecciona una calificación de 1 a 5 estrellas.', 'warning');
+            return;
+          }
+          if (!botonEnviar) return;
+
+          botonEnviar.disabled = true;
+          const reservaId = botonCalificar.dataset.reserva;
+          try {
+            await saveEncuesta({
+              reservaId,
+              nidoId,
+              prestadorId: botonCalificar.dataset.prestador || '',
+              prestadorNombre: botonCalificar.dataset.nombre || 'Profesional',
+              calificacion: calificacionSeleccionada,
+              comentario: form.querySelector('#comentario-encuesta').value.trim(),
+              padreUid: auth.currentUser.uid,
+              publicarTestimonio: checkPublicarTestimonio.checked,
+              nombreTestimonio: inputNombreTestimonio.value.trim() || 'Anónimo'
+            });
+            reservasCalificadas.push(reservaId);
+            cerrarModal();
+            showToast('¡Gracias por calificar la atención!', 'success');
+            const botonEnHistorial = Array.from(contenedorLista.querySelectorAll('.btn-calificar'))
+              .find(boton => boton.dataset.reserva === reservaId);
+            if (botonEnHistorial) {
+              const spanExito = document.createElement('span');
+              spanExito.className = 'text-xs text-green-600 font-bold mt-3 block';
+              spanExito.textContent = '✅ Calificación enviada';
+              botonEnHistorial.replaceWith(spanExito);
+            }
+          } catch (error) {
+            console.error('Error al enviar la calificación:', error);
+            showToast(error.message || 'No se pudo enviar la calificación. Intenta nuevamente.', 'error');
+            botonEnviar.disabled = false;
+          }
+        });
+      });
 
       inputTexto?.addEventListener('input', aplicarFiltros);
       selectTipo?.addEventListener('change', aplicarFiltros);

@@ -509,6 +509,8 @@ export async function saveEncuesta(encuestaData) {
             prestadorNombre: encuestaData.prestadorNombre,
             calificacion: encuestaData.calificacion,
             comentario: encuestaData.comentario,
+            publicarTestimonio: encuestaData.publicarTestimonio,
+            nombreTestimonio: encuestaData.nombreTestimonio,
             fecha: new Date().toISOString(),
             padreUid: auth.currentUser.uid
         });
@@ -526,6 +528,17 @@ export async function getEncuestasByPrestador(prestadorId) {
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error("Error al obtener encuestas del prestador:", error);
+        throw error;
+    }
+}
+
+export async function getEncuestasByNido(nidoId) {
+    try {
+        const q = query(collection(db, "encuestas"), where("nidoId", "==", nidoId));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener encuestas del nido:", error);
         throw error;
     }
 }
