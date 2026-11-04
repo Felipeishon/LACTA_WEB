@@ -499,6 +499,37 @@ export async function obtenerDatosNido(nidoId) {
     }
 }
 
+export async function saveEncuesta(encuestaData) {
+    try {
+        if (!auth.currentUser) throw new Error('Debes iniciar sesión para guardar una encuesta.');
+        const docRef = await addDoc(collection(db, "encuestas"), {
+            reservaId: encuestaData.reservaId,
+            nidoId: encuestaData.nidoId,
+            prestadorId: encuestaData.prestadorId,
+            prestadorNombre: encuestaData.prestadorNombre,
+            calificacion: encuestaData.calificacion,
+            comentario: encuestaData.comentario,
+            fecha: new Date().toISOString(),
+            padreUid: auth.currentUser.uid
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error al guardar la encuesta:", error);
+        throw error;
+    }
+}
+
+export async function getEncuestasByPrestador(prestadorId) {
+    try {
+        const q = query(collection(db, "encuestas"), where("prestadorId", "==", prestadorId));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("Error al obtener encuestas del prestador:", error);
+        throw error;
+    }
+}
+
 export async function saveFichaCuidado(fichaData) {
     try {
         const docRef = await addDoc(collection(db, "bitacoras"), { ...fichaData, creadoEn: new Date().toISOString() });
