@@ -7,6 +7,33 @@ import { initAuthHandlers } from './auth.js';
 import { calcularCostoServicio } from './utils/pricing.js';
 
 export function initFormularios() {
+  const contactForm = document.getElementById('contactForm');
+  contactForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: new FormData(form)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'No se pudo enviar el mensaje.');
+      }
+
+      showToast('¡Mensaje enviado con éxito! Te responderemos pronto.', 'success');
+      form.reset();
+    } catch (error) {
+      console.error('Error al enviar el formulario de contacto:', error);
+      showToast('Error al enviar el mensaje. Intenta nuevamente.', 'error');
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
+  });
+
   const formReserva = document.getElementById('reservaForm');
   const servicio = document.getElementById('servicio') || document.getElementById('servicioAnon');
   const fechaInput = document.getElementById('fecha') || document.getElementById('fechaAnon');
