@@ -5,6 +5,7 @@ import { escapeHTML } from '../../utils/html.js';
 import { formatDateRange } from '../../utils/helpers.js';
 import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
+import { enviarNotificacionCita } from '../../api/emailService.js';
 
 export async function renderPadreResumen(dashboardContent, userData, nidoId, openPerfilBebeModal, switchTab) {
     const appointments = await fetchUserAppointments(userData.uid, nidoId);
@@ -513,12 +514,12 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                 const snapAntiguo = await getDocs(qAntiguo);
                 snapAntiguo.forEach((doc) => {
                   const prof = doc.data();
-                  if (prof.estado !== 'pendiente') profesionales.push({ id: doc.id, nombre: prof.nombre });
+                  if (prof.estado !== 'pendiente') profesionales.push({ id: doc.id, nombre: prof.nombre, email: prof.email || '' });
                 });
               } else {
                 querySnapshot.forEach((doc) => {
                   const prof = doc.data();
-                  if (prof.estado !== 'pendiente') profesionales.push({ id: doc.id, nombre: prof.nombre });
+                  if (prof.estado !== 'pendiente') profesionales.push({ id: doc.id, nombre: prof.nombre, email: prof.email || '' });
                 });
               }
             } catch (queryError) {
@@ -535,7 +536,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             } else {
               let opciones = '<option value="">Selecciona un profesional...</option>';
               profesionales.forEach(prof => {
-                 opciones += `<option value="${prof.id}" data-nombre="${escapeHTML(prof.nombre)}">${escapeHTML(prof.nombre || 'Profesional')}</option>`;
+                 opciones += `<option value="${prof.id}" data-nombre="${escapeHTML(prof.nombre)}" data-email="${escapeHTML(prof.email)}">${escapeHTML(prof.nombre || 'Profesional')}</option>`;
               });
               selectProfesional.innerHTML = opciones;
               selectProfesional.disabled = false;
@@ -885,6 +886,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
         
         let profId = selectProfesional.value;
         let profNombre = 'Asignado Automáticamente';
+        let profEmail = '';
         let finalFecha = '';
         let finalHora = '';
         let finalSlotId = null;
@@ -898,6 +900,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
         } else {
           const profOption = selectProfesional.options[selectProfesional.selectedIndex];
           profNombre = profOption ? profOption.dataset.nombre : 'Profesional';
+          profEmail = profOption ? profOption.dataset.email : '';
           
           const slotData = JSON.parse(selectTurno.value);
           finalFecha = slotData.fecha; 
@@ -984,6 +987,18 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             showToast('⚠️ Cita agendada, pero hubo error de permisos al actualizar el panel de la Consejera.', 'warning');
           } else {
             showToast('¡Cita solicitada con éxito y bloque reservado!', 'success');
+          }
+
+          console.log('Correo destinatario profesional:', profEmail);
+          if (profEmail) {
+            await enviarNotificacionCita(
+              profEmail,
+              profNombre,
+              'Nueva solicitud de cita - LactaNido',
+              `Hola ${profNombre}, tienes una nueva solicitud de cita de ${userData.nombre} para el día ${finalFecha} a las ${finalHora}. Por favor, ingresa a tu panel para aprobarla.`
+            );
+          } else {
+            console.log('Correo a profesional pendiente');
           }
           
           closeModal();
