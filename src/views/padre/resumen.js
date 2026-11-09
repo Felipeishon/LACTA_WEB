@@ -77,8 +77,8 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             <p class="text-[#887263] text-sm mb-6">Gestiona el cuidado y bienestar de tu familia desde aquí.</p>
           </div>
           <div class="flex flex-wrap gap-3">
-            <button id="btnAgendarCitaResumen" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-md flex items-center gap-2">
-              <span>+ Agendar Nueva Cita</span>
+            <button id="btnAgendarCitaResumen" class="bg-[#e87a30] hover:bg-[#d66a20] text-white font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-md flex items-center gap-2 ${!nidoData ? 'opacity-50 cursor-not-allowed' : ''}" ${!nidoData ? 'disabled' : ''}>
+              <span>${nidoData ? '+ Agendar Nueva Cita' : 'Primero crea tu Nido'}</span>
             </button>
             <button id="btnIrTiendaResumen" class="bg-white border border-gray-200 hover:bg-gray-50 text-[#181411] font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-sm flex items-center gap-2">
               <span>🛍️ Tienda de Bebé</span>
@@ -273,6 +273,11 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
     });
 
     document.getElementById('btnAgendarCitaResumen')?.addEventListener('click', () => {
+      if (!nidoData) {
+        showToast('Debes crear tu Nido Familiar antes de agendar una cita.', 'warning');
+        return;
+      }
+
       const modalExistente = document.getElementById('modal-agendar-cita');
       if (modalExistente) modalExistente.remove();
 
