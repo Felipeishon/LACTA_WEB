@@ -359,7 +359,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
 
               <div>
                 <label class="block text-xs font-bold text-gray-600 mb-1">Teléfono de Contacto</label>
-                <input type="tel" id="cita-telefono" required placeholder="+56 9 1234 5678" class="w-full p-2.5 border rounded-xl text-sm bg-white" />
+                <input type="tel" id="cita-telefono" required value="${escapeHTML(userData.telefono || userData.telefonoPrincipal || '')}" placeholder="+56 9 1234 5678" class="w-full p-2.5 border rounded-xl text-sm bg-white" />
               </div>
 
               <div id="container-direccion">
