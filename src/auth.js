@@ -2,7 +2,7 @@ import { db, auth } from './firebase.js';
 import { doc, setDoc, getDoc } from 'firebase/firestore'; // <-- Agregado getDoc
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { showToast } from './ui/notifications.js';
-import { emailService } from './emailService.js';
+import { emailService } from './api/emailService.js';
 import { validarRut } from './rut.js';
 import { fileToBase64 } from './utils/helpers.js';
 
@@ -54,7 +54,7 @@ export function initAuthHandlers() {
           estado: 'activo'
         });
 
-        emailService.sendWelcomeParent(data.nombre, data.email);
+        await emailService.sendWelcomeParent(data.nombre, data.email);
 
         showToast('¡Bienvenido/a a LactaNido! Registro completado.', 'success');
         window.location.href = 'mi-cuenta.html';
@@ -128,7 +128,16 @@ export function initAuthHandlers() {
           estado: 'pendiente'
         });
 
-        emailService.sendPendingPrestador(data.nombre, data.email);
+        await Promise.allSettled([
+          emailService.sendPendingPrestador(data.nombre, data.email, rolesSeleccionados),
+          emailService.sendAdminNewPrestadorAlert({
+            nombre: data.nombre,
+            email: data.email,
+            rut: data.rut,
+            telefono: data.telefono,
+            roles: rolesSeleccionados
+          })
+        ]);
 
         showToast('Registro recibido. Tu perfil será revisado y te notificaremos.', 'info');
         window.location.href = 'mi-cuenta.html';

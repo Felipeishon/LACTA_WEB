@@ -6,7 +6,7 @@ import { renderPrestadorEvaluaciones, renderPrestadorFichas } from './prestador.
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderCuidadoraDisponibilidad } from './cuidadora/disponibilidad.js';
 import { showConfirmModal } from '../modales.js';
-import { enviarNotificacionCita } from '../api/emailService.js';
+import { emailService } from '../api/emailService.js';
 
 export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoModal) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -96,13 +96,15 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           btn.disabled = true;
           await actualizarEstadoCita(btn.dataset.id, 'Aprobado');
           const app = appointments.find(appointment => appointment.id === btn.dataset.id);
-          if (app) {
-            await enviarNotificacionCita(
-              app.email,
-              app.nombre,
-              'Tu cita ha sido aprobada - LactaNido',
-              `Hola ${app.nombre}, tu cita de ${app.servicioVisual || app.servicio} con ${userData.nombre} para el día ${app.fecha} a las ${app.hora} ha sido aprobada. ¡Te esperamos!`
-            );
+          if (app?.email) {
+            await emailService.sendBookingApproved({
+              padreEmail: app.email,
+              padreNombre: app.nombre,
+              profNombre: userData.nombre,
+              servicio: app.servicioVisual || app.servicio,
+              fecha: app.fecha,
+              hora: app.hora
+            });
           }
           showToast('Cita aprobada correctamente', 'success');
           renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
@@ -123,6 +125,17 @@ export async function renderCuidadoraTab(activeTab, userData, openFichaCuidadoMo
           btn.disabled = true;
           const { id, slot, prof } = btn.dataset;
           await actualizarEstadoCita(id, 'Rechazada', slot, prof);
+          const app = appointments.find(appointment => appointment.id === id);
+          if (app?.email) {
+            await emailService.sendBookingRejected({
+              padreEmail: app.email,
+              padreNombre: app.nombre,
+              profNombre: userData.nombre,
+              servicio: app.servicioVisual || app.servicio,
+              fecha: app.fecha,
+              hora: app.hora
+            });
+          }
           showToast('Turno rechazado y horario liberado', 'success');
           renderCuidadoraTab('dashboard', userData, openFichaCuidadoModal);
         } catch (e) {

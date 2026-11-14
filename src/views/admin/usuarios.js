@@ -1,6 +1,6 @@
 
 import { showToast } from '../../ui/notifications.js';
-import { emailService } from '../../emailService.js';
+import { emailService } from '../../api/emailService.js';
 import {
   getPendingUsers, getAllUsers, getLatestUsers,
   updateUserProfile, deleteUserProfile
@@ -45,19 +45,25 @@ async function loadPendingUsers() {
             ? `<button type="button" onclick="window.openBase64File('${escapeHTML(certificadoUrl)}')" class="inline-block mt-2 text-xs font-bold text-blue-600 underline hover:text-blue-800">📄 Ver Documentación</button>`
             : '<span class="text-xs text-gray-400 italic mt-2 block">Sin certificación adjunta</span>'}
         </div>
-        <button data-uid="${escapeHTML(u.id)}" data-nombre="${escapeHTML(u.nombre)}" data-email="${escapeHTML(u.email)}" class="btn-approve bg-green-500 text-white text-[10px] font-bold py-1 px-2 rounded hover:bg-green-600 transition-colors">Aprobar</button>
+        <button data-uid="${escapeHTML(u.id)}" data-nombre="${escapeHTML(u.nombre)}" data-email="${escapeHTML(u.email)}" data-rol="${escapeHTML(JSON.stringify(u.rol || []))}" class="btn-approve bg-green-500 text-white text-[10px] font-bold py-1 px-2 rounded hover:bg-green-600 transition-colors">Aprobar</button>
       `;
       container.appendChild(div);
     });
 
     container.querySelectorAll('.btn-approve').forEach(b => b.addEventListener('click', async (e) => {
-      const { uid, nombre, email } = e.target.dataset;
+      const { uid, nombre, email, rol } = e.target.dataset;
       const targetBtn = e.target;
       targetBtn.disabled = true;
       try {
         await approveUserWithAudit(uid, 'Aprobado desde el panel de administración.');
         showToast('Usuario aprobado con éxito (acción auditada).', 'success');
-        emailService.sendApprovalNotification(nombre, email);
+        let rolesParsed = [];
+        try {
+          rolesParsed = JSON.parse(rol || '[]');
+        } catch (error) {
+          console.warn('No se pudieron leer los roles del usuario aprobado:', error);
+        }
+        await emailService.sendApprovalNotification(nombre, email, rolesParsed);
         loadPendingUsers();
       } catch (error) {
         console.error('Error en el flujo de aprobación:', error);
@@ -273,6 +279,7 @@ async function loadAllUsersTable() {
         const referencias = esPrestador ? document.getElementById('edit-user-referencias').value.trim() : undefined;
         const certificadoFile = document.getElementById('edit-user-certificado').files[0];
         const user = users.find(item => item.id === uid);
+        const estadoAnterior = user?.estado;
         let certificadoUrl = esPrestador ? user?.certificadoUrl || null : undefined;
         const direccion = roles.includes('padre') ? {
           calle: document.getElementById('edit-user-calle').value.trim(),
@@ -322,6 +329,9 @@ async function loadAllUsersTable() {
             certificadoUrl,
             direccion
           });
+          if (estadoAnterior === 'pendiente' && formData.get('estado') === 'activo') {
+            await emailService.sendApprovalNotification(formData.get('nombre'), formData.get('email'), roles);
+          }
           if (user) {
             user.nombre = formData.get('nombre');
             user.email = formData.get('email');

@@ -5,6 +5,7 @@ import { showToast } from './ui/notifications.js';
 import { formatRut } from './rut.js';
 import { initAuthHandlers } from './auth.js';
 import { calcularCostoServicio } from './utils/pricing.js';
+import { emailService } from './api/emailService.js';
 
 export function initFormularios() {
   const contactForm = document.getElementById('contactForm');
@@ -55,6 +56,7 @@ export function initFormularios() {
   const spanPrecioTotal = document.getElementById('precioTotal');
   const spanPrecioDesglose = document.getElementById('precioDesglose');
   let profesionalTarifasCache = null;
+  let profesionalEmailCache = '';
 
   initAuthHandlers();
 
@@ -127,6 +129,7 @@ export function initFormularios() {
     profesionalSelect.addEventListener('change', async (e) => {
       const profId = e.target.value;
       profesionalTarifasCache = null; 
+      profesionalEmailCache = '';
       if (resumenPrecioDiv) resumenPrecioDiv.classList.add('hidden');
 
       if (!profId) {
@@ -147,8 +150,10 @@ export function initFormularios() {
       // Obtener tarifas del profesional seleccionado
       try {
         const docSnap = await getDoc(doc(db, 'usuarios', profId));
-        if (docSnap.exists() && docSnap.data().tarifas) {
-           profesionalTarifasCache = docSnap.data().tarifas;
+        if (docSnap.exists()) {
+          const profesionalData = docSnap.data();
+          profesionalTarifasCache = profesionalData.tarifas || null;
+          profesionalEmailCache = profesionalData.email || '';
         }
       } catch(err) {
         console.error("Error al cargar tarifas del profesional:", err);
@@ -347,6 +352,36 @@ export function initFormularios() {
           creadoEn: new Date().toISOString(),
           estado: 'pendiente'
         });
+
+        const servicioSeleccionado = servicio?.value || data.servicio || '';
+        const modalidadSeleccionada = data.modalidad || '';
+        const fechaSeleccionada = fechaInput?.value || data.fecha || '';
+        const horaSeleccionada = hora?.value || data.hora || '';
+        const nombreProfesional = data.profesionalNombre || profesionalSelect?.selectedOptions[0]?.textContent || 'Profesional';
+        const correoPadre = data.email || '';
+        void Promise.allSettled([
+          emailService.sendBookingCreatedToProvider({
+            profId: data.profesionalId,
+            profEmail: profesionalEmailCache,
+            profNombre: nombreProfesional,
+            padreNombre: data.nombre || 'Padre/Madre',
+            servicio: servicioSeleccionado,
+            modalidad: modalidadSeleccionada,
+            fecha: fechaSeleccionada,
+            hora: horaSeleccionada
+          }),
+          ...(correoPadre && String(correoPadre).includes('@') ? [
+            emailService.sendBookingCreatedToParent({
+              padreEmail: correoPadre,
+              padreNombre: data.nombre || 'Padre/Madre',
+              profNombre: nombreProfesional,
+              servicio: servicioSeleccionado,
+              modalidad: modalidadSeleccionada,
+              fecha: fechaSeleccionada,
+              hora: horaSeleccionada
+            })
+          ] : [])
+        ]);
 
         if (avisoReserva) avisoReserva.textContent = "Reserva enviada con éxito.";
         formReserva.reset();
