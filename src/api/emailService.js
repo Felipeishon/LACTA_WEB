@@ -8,11 +8,50 @@ export function formatRolesLabel(roles) {
   const isCuidadora = normalizedRoles.includes('cuidadora');
 
   if (isConsejera && isCuidadora) {
-    return 'Perfil Mixto (Consejera de Lactancia y Cuidadora)';
+    return 'Perfil Mixto: Consejera de Lactancia y Cuidadora';
   }
   if (isConsejera) return 'Consejera de Lactancia';
   if (isCuidadora) return 'Cuidadora';
   return '';
+}
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+// Acepta '2026-11-21' o '21-11-2026'. Si no puede interpretarla, devuelve el texto original.
+export function formatFechaLegible(fecha) {
+  if (!fecha) return '';
+  const texto = String(fecha).trim();
+  let anio, mes, dia;
+  let m = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    [, anio, mes, dia] = m;
+  } else {
+    m = texto.match(/^(\d{2})-(\d{2})-(\d{4})/);
+    if (!m) return texto;
+    [, dia, mes, anio] = m;
+  }
+  const d = new Date(Number(anio), Number(mes) - 1, Number(dia));
+  if (d.getFullYear() !== Number(anio) || d.getMonth() !== Number(mes) - 1 || d.getDate() !== Number(dia)) return texto;
+  return `${DIAS[d.getDay()]} ${Number(dia)} de ${MESES[d.getMonth()]} de ${anio}`;
+}
+
+// Para líneas de lista: '09:00 a 12:00' o '09:00'. Si no encuentra horas, devuelve el texto original.
+export function formatHoraLista(hora) {
+  if (!hora) return '';
+  const horas = String(hora).match(/\d{1,2}:\d{2}/g) || [];
+  if (horas.length >= 2) return `${horas[0]} a ${horas[1]}`;
+  if (horas.length === 1) return horas[0];
+  return String(hora).trim();
+}
+
+// Para frases: 'sábado 21 de noviembre de 2026, de 09:00 a 13:00'
+export function horarioFrase(fecha, hora) {
+  const f = formatFechaLegible(fecha);
+  const horas = String(hora || '').match(/\d{1,2}:\d{2}/g) || [];
+  if (horas.length >= 2) return `${f}, de ${horas[0]} a ${horas[1]}`;
+  if (horas.length === 1) return `${f}, a las ${horas[0]}`;
+  return `${f} ${hora || ''}`.trim();
 }
 
 export async function enviarNotificacionCita(to_email, to_name, subject, message, replyTo = ADMIN_EMAIL) {
@@ -47,7 +86,7 @@ export const emailService = {
     return enviarNotificacionCita(
       email,
       nombre,
-      '¡Bienvenido/a a LactaNido!',
+      '¡Te damos la bienvenida a LactaNido!',
       `Hola ${nombre}, tu registro como padre/madre se completó correctamente. Ya puedes ingresar a tu cuenta y solicitar servicios en LactaNido.`
     );
   },
@@ -88,7 +127,7 @@ export const emailService = {
       isAdminRecipient ? ADMIN_EMAIL : profEmail,
       isAdminRecipient ? 'Equipo LactaNido' : profNombre,
       'Nueva solicitud de cita pendiente de aprobación',
-      `Hola ${isAdminRecipient ? 'Equipo LactaNido' : profNombre}, tienes una nueva solicitud de cita pendiente de aprobación${isAdminRecipient ? ' para asignación automática' : ''}.\n\nPadre/madre: ${padreNombre}\nServicio: ${servicio}\nModalidad: ${modalidad}\nFecha: ${fecha}\nHora: ${hora}`
+      `Hola ${isAdminRecipient ? 'Equipo LactaNido' : profNombre}, tienes una nueva solicitud de cita pendiente de aprobación${isAdminRecipient ? ' para asignación automática' : ''}.\n\nPadre/madre: ${padreNombre}\nServicio: ${servicio}\nModalidad: ${modalidad}\nFecha: ${formatFechaLegible(fecha)}\nHora: ${formatHoraLista(hora)}`
     );
   },
 
@@ -97,7 +136,7 @@ export const emailService = {
       padreEmail,
       padreNombre,
       'Solicitud de cita registrada - LactaNido',
-      `Hola ${padreNombre}, tu solicitud de cita quedó registrada en estado Pendiente.\n\nProfesional: ${profNombre}\nServicio: ${servicio}\nModalidad: ${modalidad}\nFecha: ${fecha}\nHora: ${hora}`
+      `Hola ${padreNombre}, tu solicitud de cita quedó registrada en estado Pendiente.\n\nProfesional: ${profNombre}\nServicio: ${servicio}\nModalidad: ${modalidad}\nFecha: ${formatFechaLegible(fecha)}\nHora: ${formatHoraLista(hora)}`
     );
   },
 
@@ -106,7 +145,7 @@ export const emailService = {
       padreEmail,
       padreNombre,
       'Tu cita fue aprobada - LactaNido',
-      `Hola ${padreNombre}, ${profNombre} aprobó tu cita de ${servicio} para el día ${fecha} a las ${hora}. ¡Te esperamos!`
+      `Hola ${padreNombre}, ${profNombre} aprobó tu cita de ${servicio} para el ${horarioFrase(fecha, hora)}. ¡Te esperamos!`
     );
   },
 
@@ -115,7 +154,7 @@ export const emailService = {
       padreEmail,
       padreNombre,
       'Actualización sobre tu solicitud de cita - LactaNido',
-      `Hola ${padreNombre}, ${profNombre} no pudo aceptar tu cita de ${servicio} del día ${fecha} a las ${hora} por un imprevisto de agenda. El horario fue liberado; te invitamos a reagendar desde tu cuenta de LactaNido.`
+      `Hola ${padreNombre}, ${profNombre} no pudo aceptar tu cita de ${servicio} del ${horarioFrase(fecha, hora)} por un imprevisto de agenda. El horario fue liberado; te invitamos a reagendar desde tu cuenta de LactaNido.`
     );
   },
 
@@ -124,8 +163,8 @@ export const emailService = {
     return enviarNotificacionCita(
       profEmail || ADMIN_EMAIL,
       isAdminRecipient ? 'Equipo LactaNido' : profNombre,
-      'Cita anulada por el padre/madre - LactaNido',
-      `Hola ${isAdminRecipient ? 'Equipo LactaNido' : profNombre}, ${padreNombre} anuló la cita de ${servicio} del día ${fecha} a las ${hora}. El bloque quedó disponible nuevamente.`
+      'Cita anulada por la familia - LactaNido',
+      `Hola ${isAdminRecipient ? 'Equipo LactaNido' : profNombre}, ${padreNombre} anuló la cita de ${servicio} del ${horarioFrase(fecha, hora)}. El bloque quedó disponible nuevamente.`
     );
   },
 
@@ -136,7 +175,7 @@ export const emailService = {
       profEmail || ADMIN_EMAIL,
       destinatario,
       'Cita reagendada pendiente de aprobación - LactaNido',
-      `Hola ${destinatario}, ${padreNombre} reagendó su cita de ${servicio} al día ${fecha} a las ${hora}. La solicitud requiere ${isAdminRecipient ? 'asignación del equipo' : 'tu aprobación'}.`
+      `Hola ${destinatario}, ${padreNombre} reagendó su cita de ${servicio} al ${horarioFrase(fecha, hora)}. La solicitud requiere ${isAdminRecipient ? 'asignación del equipo' : 'tu aprobación'}.`
     );
   }
 };
