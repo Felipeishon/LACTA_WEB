@@ -1,11 +1,11 @@
 import { db } from '../../firebase.js';
-import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { fetchUserAppointments, obtenerDatosNido, actualizarEstadoCita, updateAppointmentDateTime } from '../../api/firestore.js';
 import { escapeHTML } from '../../utils/html.js';
 import { formatDateRange } from '../../utils/helpers.js';
 import { showToast } from '../../ui/notifications.js';
 import { showConfirmModal } from '../../modales.js';
-import { enviarNotificacionCita } from '../../api/emailService.js';
+import { emailService } from '../../api/emailService.js';
 
 export async function renderPadreResumen(dashboardContent, userData, nidoId, openPerfilBebeModal, switchTab) {
     const appointments = await fetchUserAppointments(userData.uid, nidoId);
@@ -129,7 +129,25 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
           btn.textContent = 'Anulando...';
           btn.disabled = true;
           const { id, slot, prof } = btn.dataset;
+          const app = appointments.find(appointment => appointment.id === id);
           await actualizarEstadoCita(id, 'Cancelada', slot, prof);
+          let profEmail = app?.profesionalEmail || '';
+          if (!profEmail && prof && prof !== 'asignacion_automatica') {
+            try {
+              const professionalSnap = await getDoc(doc(db, 'usuarios', prof));
+              profEmail = professionalSnap.exists() ? professionalSnap.data().email || '' : '';
+            } catch (error) {
+              console.error('No se pudo obtener el correo de la profesional:', error);
+            }
+          }
+          await emailService.sendBookingCancelled({
+            profEmail,
+            profNombre: app?.profesionalNombre || app?.prestadorNombre || 'Profesional',
+            padreNombre: app?.nombre || userData.nombre,
+            servicio: app?.servicioVisual || app?.servicio || 'Atención',
+            fecha: app?.fecha,
+            hora: app?.hora
+          });
           showToast('Cita anulada y horario liberado con éxito', 'success');
           // Recargar pestaña
           renderPadreResumen(dashboardContent, userData, nidoId, openPerfilBebeModal, switchTab);
@@ -238,6 +256,16 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
               const nuevoSlotId = btnSlot.dataset.slotId;
               const nuevaFecha = btnSlot.dataset.fecha;
               const nuevaHora = btnSlot.dataset.hora;
+              const app = appointments.find(appointment => appointment.id === citaId);
+              let profEmail = app?.profesionalEmail || '';
+              if (!profEmail) {
+                try {
+                  const professionalSnap = await getDoc(doc(db, 'usuarios', profId));
+                  profEmail = professionalSnap.exists() ? professionalSnap.data().email || '' : '';
+                } catch (error) {
+                  console.error('No se pudo obtener el correo de la profesional:', error);
+                }
+              }
 
               try {
                 btnSlot.disabled = true;
@@ -253,6 +281,14 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
                 await updateDoc(nuevoSlotRef, { reservado: true, disponible: false, bookingId: citaId });
 
                 await actualizarEstadoCita(citaId, 'Pendiente');
+                await emailService.sendBookingRescheduled({
+                  profEmail,
+                  profNombre: app?.profesionalNombre || app?.prestadorNombre || profNombre,
+                  padreNombre: app?.nombre || userData.nombre,
+                  servicio: app?.servicioVisual || app?.servicio || servicio,
+                  fecha: nuevaFecha,
+                  hora: nuevaHora
+                });
 
                 showToast('¡Cita reagendada con éxito!', 'success');
                 closeReagendarModal();
@@ -946,6 +982,7 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             userNombre: userData.nombre || 'Padre/Madre',
             clienteNombre: userData.nombre || 'Padre/Madre',
             email: userData.email || '',
+            profesionalEmail: profEmail || '',
             nidoId: nidoId || null,
             servicio: servicioNombreReal,
             tipoServicio: tipoServicioReal,
@@ -994,17 +1031,27 @@ export async function renderPadreResumen(dashboardContent, userData, nidoId, ope
             showToast('¡Cita solicitada con éxito y bloque reservado!', 'success');
           }
 
-          console.log('Correo destinatario profesional:', profEmail);
-          if (profEmail) {
-            await enviarNotificacionCita(
+          await Promise.allSettled([
+            emailService.sendBookingCreatedToProvider({
+              profId,
               profEmail,
               profNombre,
-              'Nueva solicitud de cita - LactaNido',
-              `Hola ${profNombre}, tienes una nueva solicitud de cita de ${userData.nombre} para el día ${finalFecha} a las ${finalHora}. Por favor, ingresa a tu panel para aprobarla.`
-            );
-          } else {
-            console.log('Correo a profesional pendiente');
-          }
+              padreNombre: userData.nombre || 'Padre/Madre',
+              servicio: servicioSeleccionado,
+              modalidad: modalidadSeleccionada,
+              fecha: finalFecha,
+              hora: finalHora
+            }),
+            emailService.sendBookingCreatedToParent({
+              padreEmail: userData.email,
+              padreNombre: userData.nombre || 'Padre/Madre',
+              profNombre,
+              servicio: servicioSeleccionado,
+              modalidad: modalidadSeleccionada,
+              fecha: finalFecha,
+              hora: finalHora
+            })
+          ]);
           
           closeModal();
           switchTab('resumen', 'padre', userData);

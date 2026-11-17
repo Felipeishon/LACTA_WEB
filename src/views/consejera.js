@@ -6,7 +6,7 @@ import { renderPrestadorEvaluacionesPorPrestador } from './prestador.js';
 import { renderTarifasForm } from './shared/tarifas.js';
 import { renderConsejeraHorarios } from './consejera/horarios.js';
 import { showConfirmModal } from '../modales.js';
-import { enviarNotificacionCita } from '../api/emailService.js';
+import { emailService } from '../api/emailService.js';
 
 export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoModal) {
   const dashboardContent = document.getElementById('dashboard-content');
@@ -98,14 +98,15 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
           btn.disabled = true;
           await actualizarEstadoCita(btn.dataset.id, 'Aprobado');
           const app = appointments.find(appointment => appointment.id === btn.dataset.id);
-          if (app) {
-            console.log('Correo destinatario de la cita:', app.email);
-            await enviarNotificacionCita(
-              app.email,
-              app.nombre,
-              'Tu cita ha sido aprobada - LactaNido',
-              `Hola ${app.nombre}, tu cita de ${app.servicioVisual || app.servicio} con ${userData.nombre} para el día ${app.fecha} a las ${app.hora} ha sido aprobada. ¡Te esperamos!`
-            );
+          if (app?.email) {
+            await emailService.sendBookingApproved({
+              padreEmail: app.email,
+              padreNombre: app.nombre,
+              profNombre: userData.nombre,
+              servicio: app.servicioVisual || app.servicio,
+              fecha: app.fecha,
+              hora: app.hora
+            });
           }
           showToast('Consejería aprobada correctamente', 'success');
           renderConsejeraTab('dashboard', userData, openFichaCuidadoModal);
@@ -126,6 +127,17 @@ export async function renderConsejeraTab(activeTab, userData, openFichaCuidadoMo
           btn.disabled = true;
           const { id, slot, prof } = btn.dataset;
           await actualizarEstadoCita(id, 'Rechazada', slot, prof);
+          const app = appointments.find(appointment => appointment.id === id);
+          if (app?.email) {
+            await emailService.sendBookingRejected({
+              padreEmail: app.email,
+              padreNombre: app.nombre,
+              profNombre: userData.nombre,
+              servicio: app.servicioVisual || app.servicio,
+              fecha: app.fecha,
+              hora: app.hora
+            });
+          }
           showToast('Cita rechazada y horario liberado', 'success');
           renderConsejeraTab('dashboard', userData, openFichaCuidadoModal);
         } catch (e) {
