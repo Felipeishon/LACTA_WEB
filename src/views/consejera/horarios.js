@@ -288,6 +288,20 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
 
       const dispRef = collection(db, `usuarios/${uid}/disponibilidad`);
       const snapshot = await getDocs(dispRef);
+      const reservedSlotKeys = new Set();
+      snapshot.forEach(docSnap => {
+        const slot = docSnap.data();
+        if (slot.reservado !== true) return;
+        if (slot.tipoServicio !== 'consejeria' && slot.tipoServicio !== 'Consejería') return;
+
+        const fechaInicio = typeof slot.fechaInicio?.toDate === 'function'
+          ? slot.fechaInicio.toDate()
+          : new Date(slot.fechaInicio);
+        const fechaFin = typeof slot.fechaFin?.toDate === 'function'
+          ? slot.fechaFin.toDate()
+          : new Date(slot.fechaFin);
+        reservedSlotKeys.add(`${fechaInicio.getTime()}|${fechaFin.getTime()}`);
+      });
       const batch = writeBatch(db);
 
       snapshot.forEach(docSnap => {
@@ -302,6 +316,9 @@ export async function renderConsejeraHorarios(dashboardContent, userData) {
       });
 
       newSlots.forEach(slotData => {
+        const slotKey = `${slotData.fechaInicio.getTime()}|${slotData.fechaFin.getTime()}`;
+        if (reservedSlotKeys.has(slotKey)) return;
+
         const newDocRef = doc(collection(db, `usuarios/${uid}/disponibilidad`));
         batch.set(newDocRef, slotData);
       });
